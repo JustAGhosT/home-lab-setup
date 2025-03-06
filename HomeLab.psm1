@@ -10,6 +10,29 @@
     Version: 1.0.0
 #>
 
+# Check and import required modules
+$requiredModules = @('Az')
+
+foreach ($module in $requiredModules) {
+    if (-not (Get-Module -Name $module -ListAvailable)) {
+        Write-Warning "Required module '$module' is not installed. Attempting to install..."
+        
+        try {
+            Install-Module -Name $module -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Write-Verbose "Module '$module' installed successfully."
+        }
+        catch {
+            throw "Failed to install required module '$module'. Please install it manually using: Install-Module -Name $module -Scope CurrentUser"
+        }
+    }
+    
+    # Import the module if it's not already loaded
+    if (-not (Get-Module -Name $module)) {
+        Write-Verbose "Importing module '$module'..."
+        Import-Module -Name $module -ErrorAction Stop
+    }
+}
+
 # Use $PSScriptRoot if available; otherwise, fall back to the current directory.
 if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
     [string]$scriptDirectory = (Get-Location).Path

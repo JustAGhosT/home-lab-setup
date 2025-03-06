@@ -25,7 +25,6 @@
     
     # Modules that must be imported into the global environment prior to importing this module
     RequiredModules    = @(
-        @{ModuleName = 'Az'; ModuleVersion = '9.0.0'; Guid = 'eec9596b-3d73-426f-a7d4-6dd308a7a798'}
     )
     
     # Functions to export from this module.
@@ -51,4 +50,7 @@
             ReleaseNotes = 'Initial release of HomeLab module with modular architecture'
         }
     }
+
+    # Initialization script
+    ScriptsToProcess = @('Initialize-HomeLab.ps1')
 }
