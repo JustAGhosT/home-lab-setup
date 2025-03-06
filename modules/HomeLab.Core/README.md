@@ -2,7 +2,7 @@
 
 ## Overview
 
-HomeLab.Core is the foundation module for the HomeLab system. It provides essential functionality for configuration management, logging, prerequisites checking, and initial setup that other modules depend on.
+HomeLab.Core is the foundation module for the [HomeLab system](../../README.md). It provides essential functionality for configuration management, logging, prerequisites checking, and initial setup that other modules depend on.
 
 ## Features
 
@@ -80,6 +80,15 @@ Write-Log -Message "Configuration updated" -Level INFO
 
 - PowerShell 5.1 or higher
 
+## Related Modules
+
+- [HomeLab.Azure](../HomeLab.Azure/README.md) - Uses Core for configuration and logging
+- [HomeLab.Security](../HomeLab.Security/README.md) - Uses Core for configuration and logging
+- [HomeLab.UI](../HomeLab.UI/README.md) - Uses Core for configuration and logging
+- [HomeLab.Monitoring](../HomeLab.Monitoring/README.md) - Uses Core for configuration and logging
+
 ## Notes
 
 This is a core module that other HomeLab modules depend on. It should be loaded first in the module loading sequence.
+
+[Back to main README](../../README.md)

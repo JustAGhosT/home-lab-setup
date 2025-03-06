@@ -2,7 +2,7 @@
 
 ## Overview
 
-HomeLab.Monitoring provides monitoring and alerting capabilities for your HomeLab environment. It helps track resource usage, costs, and system health.
+HomeLab.Monitoring provides monitoring and alerting capabilities for your [HomeLab environment](../../README.md). It helps track resource usage, costs, and system health.
 
 ## Features
 
@@ -49,7 +49,7 @@ Import-Module -Name ".\HomeLab.Monitoring.psm1"
 
 ## Configuration
 
-This module relies on configuration settings from HomeLab.Core, particularly:
+This module relies on configuration settings from [HomeLab.Core](../HomeLab.Core/README.md), particularly:
 
 - Monitoring intervals
 - Cost thresholds
@@ -74,11 +74,19 @@ Set-AlertRule -Name "HighCPU" -Metric "CPU" -Threshold 90 -Operator "GreaterThan
 
 ## Dependencies
 
-- HomeLab.Core module
-- HomeLab.Azure module
+- [HomeLab.Core](../HomeLab.Core/README.md) module
+- [HomeLab.Azure](../HomeLab.Azure/README.md) module
 - Az PowerShell module (9.0.0 or higher)
 - PowerShell 5.1 or higher
+
+## Related Modules
+
+- [HomeLab.Core](../HomeLab.Core/README.md) - Provides configuration and logging
+- [HomeLab.Azure](../HomeLab.Azure/README.md) - Provides Azure resources to monitor
+- [HomeLab.UI](../HomeLab.UI/README.md) - Displays monitoring information to users
 
 ## Notes
 
 This module is designed to help you monitor and maintain your HomeLab environment. Regular monitoring can help identify issues before they become problems and keep costs under control.
+
+[Back to main README](../../README.md)

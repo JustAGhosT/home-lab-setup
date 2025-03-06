@@ -2,7 +2,7 @@
 
 ## Overview
 
-HomeLab.Azure provides functionality for deploying and managing Azure infrastructure for your home lab environment. It handles Azure resource deployment, NAT gateway management, and other Azure-specific operations.
+HomeLab.Azure provides functionality for deploying and managing Azure infrastructure for your home lab environment. It handles Azure resource deployment, NAT gateway management, and other Azure-specific operations as part of the [HomeLab system](../../README.md).
 
 ## Features
 
@@ -43,7 +43,7 @@ Import-Module -Name ".\HomeLab.Azure.psm1"
 
 ## Configuration
 
-This module relies on configuration settings from HomeLab.Core, particularly:
+This module relies on configuration settings from [HomeLab.Core](../HomeLab.Core/README.md), particularly:
 
 - Azure subscription ID
 - Azure location
@@ -65,10 +65,18 @@ Enable-NatGateway
 
 ## Dependencies
 
-- HomeLab.Core module
+- [HomeLab.Core](../HomeLab.Core/README.md) module
 - Az PowerShell module (9.0.0 or higher)
 - PowerShell 5.1 or higher
+
+## Related Modules
+
+- [HomeLab.Core](../HomeLab.Core/README.md) - Provides configuration and logging
+- [HomeLab.Security](../HomeLab.Security/README.md) - Uses Azure resources for VPN setup
+- [HomeLab.Monitoring](../HomeLab.Monitoring/README.md) - Monitors Azure resources
 
 ## Notes
 
 This module contains the Azure-specific functionality for the HomeLab system. It requires an active Azure subscription and appropriate permissions to create resources.
+
+[Back to main README](../../README.md)

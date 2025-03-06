@@ -15,11 +15,11 @@ The setup includes:
 
 The HomeLab system uses a modular architecture with the following components:
 
-- **HomeLab.Core**: Foundation module with configuration, logging, and setup utilities
-- **HomeLab.Azure**: Azure-specific functionality for resource deployment and management
-- **HomeLab.Security**: Security-related functionality including VPN and certificates
-- **HomeLab.UI**: User interface components including menus and handlers
-- **HomeLab.Monitoring**: Monitoring and alerting capabilities
+- **[HomeLab.Core](./modules/HomeLab.Core/README.md)**: Foundation module with configuration, logging, and setup utilities
+- **[HomeLab.Azure](./modules/HomeLab.Azure/README.md)**: Azure-specific functionality for resource deployment and management
+- **[HomeLab.Security](./modules/HomeLab.Security/README.md)**: Security-related functionality including VPN and certificates
+- **[HomeLab.UI](./modules/HomeLab.UI/README.md)**: User interface components including menus and handlers
+- **[HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md)**: Monitoring and alerting capabilities
 
 ## Prerequisites
 
@@ -160,15 +160,15 @@ HomeLab/
    - Try to access internet resources
    - Check outbound IP using a service like ipinfo.io
 
-## Documentation
+## Module Documentation
 
 Each module in the HomeLab system has its own README with detailed information:
 
-- [HomeLab.Core README](./modules/HomeLab.Core/README.md)
-- [HomeLab.Azure README](./modules/HomeLab.Azure/README.md)
-- [HomeLab.Security README](./modules/HomeLab.Security/README.md)
-- [HomeLab.UI README](./modules/HomeLab.UI/README.md)
-- [HomeLab.Monitoring README](./modules/HomeLab.Monitoring/README.md)
+- [HomeLab.Core](./modules/HomeLab.Core/README.md) - Foundation module with configuration, logging, and setup utilities
+- [HomeLab.Azure](./modules/HomeLab.Azure/README.md) - Azure-specific functionality for resource deployment and management
+- [HomeLab.Security](./modules/HomeLab.Security/README.md) - Security-related functionality including VPN and certificates
+- [HomeLab.UI](./modules/HomeLab.UI/README.md) - User interface components including menus and handlers
+- [HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md) - Monitoring and alerting capabilities
 
 ## Contributing
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-HomeLab.UI provides the user interface components for the HomeLab system, including menus, handlers, and helper functions for user interaction.
+HomeLab.UI provides the user interface components for the [HomeLab system](../../README.md), including menus, handlers, and helper functions for user interaction.
 
 ## Features
 
@@ -89,9 +89,18 @@ if (Get-UserConfirmation -Message "Are you sure you want to proceed?") {
 
 ## Dependencies
 
-- HomeLab.Core module
+- [HomeLab.Core](../HomeLab.Core/README.md) module
 - PowerShell 5.1 or higher
+
+## Related Modules
+
+- [HomeLab.Core](../HomeLab.Core/README.md) - Provides configuration and logging
+- [HomeLab.Azure](../HomeLab.Azure/README.md) - Provides Azure functionality for UI operations
+- [HomeLab.Security](../HomeLab.Security/README.md) - Provides security functions for UI operations
+- [HomeLab.Monitoring](../HomeLab.Monitoring/README.md) - Provides monitoring data for UI display
 
 ## Notes
 
 This module provides the user interface for the HomeLab system. It depends on the other modules to perform the actual operations selected by the user.
+
+[Back to main README](../../README.md)

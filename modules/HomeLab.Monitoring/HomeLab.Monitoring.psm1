@@ -1,18 +1,23 @@
-﻿# HomeLab.Monitoring module
-# Load all public and private function definitions
+﻿#Requires -Version 5.1
+#Requires -Modules @{ ModuleName="HomeLab.Core"; ModuleVersion="0.1.0" }
+#Requires -Modules @{ ModuleName="HomeLab.Azure"; ModuleVersion="0.1.0" }
+#Requires -Modules @{ ModuleName="Az"; ModuleVersion="9.0.0" }
 
-$Public = @(Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -ErrorAction SilentlyContinue)
-$Private = @(Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue)
+# Get the directory where this script is located
+$ScriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Dot source the files
-foreach ($import in @($Public + $Private)) {
+# Load all function files
+$PublicFunctions = @(Get-ChildItem -Path "$ScriptPath\Public\*.ps1" -Recurse -ErrorAction SilentlyContinue)
+$PrivateFunctions = @(Get-ChildItem -Path "$ScriptPath\Private\*.ps1" -Recurse -ErrorAction SilentlyContinue)
+
+# Dot source the function files
+foreach ($FunctionFile in ($PublicFunctions + $PrivateFunctions)) {
     try {
-        . $import.FullName
-        Write-Verbose "Imported $($import.FullName)"
+        . $FunctionFile.FullName
     } catch {
-        Write-Error -Message "Failed to import function $($import.FullName): $_"
+        Write-Error -Message "Failed to import function $($FunctionFile.FullName): $_"
     }
 }
 
 # Export public functions
-Export-ModuleMember -Function $Public.BaseName
+Export-ModuleMember -Function $PublicFunctions.BaseName

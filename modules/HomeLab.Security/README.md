@@ -2,7 +2,7 @@
 
 ## Overview
 
-HomeLab.Security provides security-related functionality for the HomeLab environment, including VPN certificate management, VPN gateway configuration, and VPN client setup.
+HomeLab.Security provides security-related functionality for the [HomeLab environment](../../README.md), including VPN certificate management, VPN gateway configuration, and VPN client setup.
 
 ## Features
 
@@ -45,7 +45,7 @@ Import-Module -Name ".\HomeLab.Security.psm1"
 
 ## Configuration
 
-This module relies on configuration settings from HomeLab.Core, particularly:
+This module relies on configuration settings from [HomeLab.Core](../HomeLab.Core/README.md), particularly:
 
 - Certificate storage location
 - VPN settings
@@ -70,10 +70,18 @@ Export-VpnClientProfile -Name "HomeLab-VPN" -Path "$env:USERPROFILE\Downloads"
 
 ## Dependencies
 
-- HomeLab.Core module
-- HomeLab.Azure module
+- [HomeLab.Core](../HomeLab.Core/README.md) module
+- [HomeLab.Azure](../HomeLab.Azure/README.md) module
 - PowerShell 5.1 or higher
+
+## Related Modules
+
+- [HomeLab.Core](../HomeLab.Core/README.md) - Provides configuration and logging
+- [HomeLab.Azure](../HomeLab.Azure/README.md) - Provides Azure infrastructure for VPN
+- [HomeLab.UI](../HomeLab.UI/README.md) - Provides UI for security operations
 
 ## Notes
 
 This module handles security-sensitive operations. Ensure that certificates and VPN profiles are stored securely and that appropriate access controls are in place.
+
+[Back to main README](../../README.md)
