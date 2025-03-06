@@ -11,6 +11,16 @@ The setup includes:
 - Azure NAT Gateway for outbound internet connectivity
 - PowerShell module for managing the entire environment
 
+## Architecture
+
+The HomeLab system uses a modular architecture with the following components:
+
+- **HomeLab.Core**: Foundation module with configuration, logging, and setup utilities
+- **HomeLab.Azure**: Azure-specific functionality for resource deployment and management
+- **HomeLab.Security**: Security-related functionality including VPN and certificates
+- **HomeLab.UI**: User interface components including menus and handlers
+- **HomeLab.Monitoring**: Monitoring and alerting capabilities
+
 ## Prerequisites
 
 - Azure CLI installed and configured
@@ -77,6 +87,14 @@ Control the NAT Gateway to manage costs:
 - Disable NAT Gateway when not in use to save costs
 - Check NAT Gateway status
 
+### Monitoring & Alerting
+
+Keep track of your environment:
+- Monitor Azure resource usage and performance
+- Track and analyze Azure costs
+- Perform health checks on your HomeLab environment
+- Set up alerts for important events or thresholds
+
 ## Cost Management
 
 - **VPN Gateway**: ~$27/month (Basic SKU)
@@ -93,6 +111,25 @@ The HomeLab setup allows you to configure:
 - Project name for resource naming
 - Azure location for resource deployment
 - Log file location for troubleshooting
+
+The default configuration file is stored at `$env:USERPROFILE\HomeLab\config.json`. You can modify settings through the Settings menu in the application.
+
+## Project Structure
+
+The HomeLab module is organized into the following directory structure:
+
+```
+HomeLab/
+├── modules/
+│   ├── HomeLab.Core/
+│   ├── HomeLab.Azure/
+│   ├── HomeLab.Security/
+│   ├── HomeLab.UI/
+│   └── HomeLab.Monitoring/
+├── HomeLab.psd1
+├── HomeLab.psm1
+└── README.md
+```
 
 ## Troubleshooting
 
@@ -125,10 +162,13 @@ The HomeLab setup allows you to configure:
 
 ## Documentation
 
-The HomeLab setup includes comprehensive documentation:
-- Main README with overview and setup instructions
-- VPN Gateway documentation with detailed configuration options
-- Client certificate management guide for secure access
+Each module in the HomeLab system has its own README with detailed information:
+
+- [HomeLab.Core README](./modules/HomeLab.Core/README.md)
+- [HomeLab.Azure README](./modules/HomeLab.Azure/README.md)
+- [HomeLab.Security README](./modules/HomeLab.Security/README.md)
+- [HomeLab.UI README](./modules/HomeLab.UI/README.md)
+- [HomeLab.Monitoring README](./modules/HomeLab.Monitoring/README.md)
 
 ## Contributing
 
@@ -137,3 +177,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Author
+
+Jurie Smit
