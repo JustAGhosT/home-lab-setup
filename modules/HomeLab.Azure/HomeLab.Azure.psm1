@@ -6,35 +6,40 @@
     including deploying full or component-based infrastructure and enabling/disabling NAT Gateways.
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 
-# Define paths for Public and Private function files.
-$publicPath = Join-Path -Path $PSScriptRoot -ChildPath "Public"
-$privatePath = Join-Path -Path $PSScriptRoot -ChildPath "Private"
+# Define paths for Public and Private function files
+$ModulePath = $PSScriptRoot
+$PublicPath = Join-Path -Path $ModulePath -ChildPath "Public"
+$PrivatePath = Join-Path -Path $ModulePath -ChildPath "Private"
 
-# Dot-source all public function files.
-Get-ChildItem -Path $publicPath -Filter "*.ps1" -ErrorAction SilentlyContinue | ForEach-Object {
+# Import private functions first (they may be used by public functions)
+$PrivateFunctions = Get-ChildItem -Path $PrivatePath -Filter "*.ps1" -ErrorAction SilentlyContinue
+foreach ($Function in $PrivateFunctions) {
     try {
-        . $_.FullName
-        Write-Verbose "Imported public function file: $($_.FullName)"
+        . $Function.FullName
+        Write-Verbose "Imported private function file: $($Function.FullName)"
     }
     catch {
-        Write-Error "Failed to import public function file $($_.FullName): $_"
+        Write-Error "Failed to import private function file $($Function.FullName): $_"
     }
 }
 
-# Dot-source all private function files (if needed).
-Get-ChildItem -Path $privatePath -Filter "*.ps1" -ErrorAction SilentlyContinue | ForEach-Object {
+# Import public functions
+$PublicFunctions = Get-ChildItem -Path $PublicPath -Filter "*.ps1" -ErrorAction SilentlyContinue
+foreach ($Function in $PublicFunctions) {
     try {
-        . $_.FullName
-        Write-Verbose "Imported private function file: $($_.FullName)"
+        . $Function.FullName
+        Write-Verbose "Imported public function file: $($Function.FullName)"
     }
     catch {
-        Write-Error "Failed to import private function file $($_.FullName): $_"
+        Write-Error "Failed to import public function file $($Function.FullName): $_"
     }
 }
 
-# Export public functions.
-# (Using '*' here since our manifest lists all public functions for export.)
-Export-ModuleMember -Function $publicPath.BaseName
+# Log module load
+Write-Log -Message "HomeLab.Azure module loaded successfully" -Level Info
+
+# Export public functions
+Export-ModuleMember -Function $PublicFunctions.BaseName

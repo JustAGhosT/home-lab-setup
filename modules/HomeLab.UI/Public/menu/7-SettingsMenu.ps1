@@ -10,12 +10,15 @@
       5. Reset to Default Settings
       0. Return to Main Menu
 .EXAMPLE
-    $selection = Show-SettingsMenu
+    Show-SettingsMenu
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 function Show-SettingsMenu {
+    [CmdletBinding()]
+    param()
+    
     $config = Get-Configuration
     $menuItems = @{
         "1" = "Change Environment (Current: $($config.env))"
@@ -24,7 +27,6 @@ function Show-SettingsMenu {
         "4" = "Change Azure Location (Current: $($config.location))"
         "5" = "Reset to Default Settings"
     }
-    return Show-Menu -Title "SETTINGS MENU" -MenuItems $menuItems -ExitOption "0"
+    
+    Show-Menu -Title "SETTINGS MENU" -MenuItems $menuItems -ExitOption "0"
 }
-
-Export-ModuleMember -Function Show-SettingsMenu

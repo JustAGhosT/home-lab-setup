@@ -1,23 +1,44 @@
 <#
 .SYNOPSIS
+    Prerequisites functions for HomeLab environment.
+.DESCRIPTION
+    Provides functions for installing and checking prerequisites for the HomeLab environment.
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
+#>
+
+<#
+.SYNOPSIS
     Installs the prerequisites for the HomeLab setup.
 .DESCRIPTION
     Installs the required tools (Azure CLI and Az PowerShell module) if they are not already present.
-    Provides a function to test whether these prerequisites are installed.
+.PARAMETER Force
+    If specified, reinstalls prerequisites even if they are already installed.
+.EXAMPLE
+    Install-Prerequisites -Force
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
-
 function Install-Prerequisites {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$Force
+    )
     
-    Write-Log -Message "Installing prerequisites..." -Level INFO
+    Write-Log -Message "Installing prerequisites..." -Level Info
     
-    # Install Azure CLI if not installed
-    if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-        Write-Log -Message "Azure CLI not found. Installing Azure CLI..." -Level INFO
+    # Install Azure CLI if not installed or Force is specified
+    $azCliInstalled = $null -ne (Get-Command az -ErrorAction SilentlyContinue)
+    if (-not $azCliInstalled -or $Force) {
+        if ($azCliInstalled -and $Force) {
+            Write-Log -Message "Azure CLI is already installed, but Force parameter is specified. Reinstalling..." -Level Info
+        }
+        else {
+            Write-Log -Message "Azure CLI not found. Installing Azure CLI..." -Level Info
+        }
         
         try {
             # Use a temporary MSI path
@@ -28,60 +49,85 @@ function Install-Prerequisites {
             
             # Refresh PATH environment variable
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-            Write-Log -Message "Azure CLI installed successfully." -Level SUCCESS
+            Write-Log -Message "Azure CLI installed successfully." -Level Success
         }
         catch {
-            Write-Log -Message "Failed to install Azure CLI: $_" -Level ERROR
+            Write-Log -Message "Failed to install Azure CLI: $_" -Level Error
             return $false
         }
     }
     else {
-        Write-Log -Message "Azure CLI is already installed." -Level INFO
+        Write-Log -Message "Azure CLI is already installed." -Level Info
     }
     
-    # Install Az PowerShell module if not installed
-    if (-not (Get-Module -ListAvailable Az.Accounts)) {
-        Write-Log -Message "Az PowerShell module not found. Installing Az PowerShell module..." -Level INFO
+    # Install Az PowerShell module if not installed or Force is specified
+    $azPowerShellInstalled = $null -ne (Get-Module -ListAvailable Az.Accounts)
+    if (-not $azPowerShellInstalled -or $Force) {
+        if ($azPowerShellInstalled -and $Force) {
+            Write-Log -Message "Az PowerShell module is already installed, but Force parameter is specified. Reinstalling..." -Level Info
+        }
+        else {
+            Write-Log -Message "Az PowerShell module not found. Installing Az PowerShell module..." -Level Info
+        }
         
         try {
             Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force
-            Write-Log -Message "Az PowerShell module installed successfully." -Level SUCCESS
+            Write-Log -Message "Az PowerShell module installed successfully." -Level Success
         }
         catch {
-            Write-Log -Message "Failed to install Az PowerShell module: $_" -Level ERROR
+            Write-Log -Message "Failed to install Az PowerShell module: $_" -Level Error
             return $false
         }
     }
     else {
-        Write-Log -Message "Az PowerShell module is already installed." -Level INFO
+        Write-Log -Message "Az PowerShell module is already installed." -Level Info
     }
     
-    Write-Log -Message "All prerequisites installed successfully." -Level SUCCESS
+    Write-Log -Message "All prerequisites installed successfully." -Level Success
     return $true
 }
 
+<#
+.SYNOPSIS
+    Tests if the prerequisites for the HomeLab setup are installed.
+.DESCRIPTION
+    Checks if the required tools (Azure CLI and Az PowerShell module) are installed.
+.PARAMETER Silent
+    If specified, suppresses log messages.
+.EXAMPLE
+    if (-not (Test-Prerequisites)) { Install-Prerequisites }
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
+#>
 function Test-Prerequisites {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$Silent
+    )
     
-    Write-Log -Message "Checking prerequisites..." -Level INFO
+    if (-not $Silent) {
+        Write-Log -Message "Checking prerequisites..." -Level Info
+    }
     
     # Check if Azure CLI is installed
     $azCliInstalled = $null -ne (Get-Command az -ErrorAction SilentlyContinue)
-    if (-not $azCliInstalled) {
-        Write-Log -Message "Azure CLI is not installed." -Level WARNING
-        return $false
+    if (-not $azCliInstalled -and -not $Silent) {
+        Write-Log -Message "Azure CLI is not installed." -Level Warning
     }
     
     # Check if Az PowerShell module is installed
     $azPowerShellInstalled = $null -ne (Get-Module -ListAvailable Az.Accounts)
-    if (-not $azPowerShellInstalled) {
-        Write-Log -Message "Az PowerShell module is not installed." -Level WARNING
-        return $false
+    if (-not $azPowerShellInstalled -and -not $Silent) {
+        Write-Log -Message "Az PowerShell module is not installed." -Level Warning
     }
     
-    Write-Log -Message "All prerequisites are installed." -Level SUCCESS
-    return $true
+    $allInstalled = $azCliInstalled -and $azPowerShellInstalled
+    
+    if ($allInstalled -and -not $Silent) {
+        Write-Log -Message "All prerequisites are installed." -Level Success
+    }
+    
+    return $allInstalled
 }
-
-Export-ModuleMember -Function Install-Prerequisites, Test-Prerequisites

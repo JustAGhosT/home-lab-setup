@@ -1,43 +1,82 @@
 ﻿<#
 .SYNOPSIS
-    HomeLab Core Module
+    Core functionality for HomeLab including configuration management, logging, setup, and prerequisites.
 .DESCRIPTION
-    Provides core functionality for HomeLab including configuration management,
-    logging, and prerequisite testing. This module aggregates functions such as:
-      - Get-Configuration
-      - Initialize-HomeLab
-      - Install-Prerequisites
-      - Reset-Configuration
-      - Set-Configuration
-      - Test-Prerequisites
-      - Test-SetupComplete
-      - Update-ConfigurationParameter
-      - Write-Log
+    This module provides the core functionality for HomeLab including configuration
+    management, logging, setup, prerequisites, and other essential utilities.
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 
-# Dot-source all public functions from the Public folder.
-$publicPath = Join-Path -Path $PSScriptRoot -ChildPath "Public"
-Get-ChildItem -Path $publicPath -Filter "*.ps1" | ForEach-Object {
-    . $_.FullName
+# Initialize the global configuration if it doesn't exist
+if (-not $Global:Config) {
+    $Global:Config = @{
+        # Default configuration values
+        env = "dev"
+        loc = "saf"
+        project = "homelab"
+        location = "Bela Bela"
+        LogFile = "$env:USERPROFILE\.homelab\logs\homelab.log"
+        ConfigFile = "$env:USERPROFILE\.homelab\config.json"
+    }
 }
 
-# Optionally, dot-source Private functions if needed:
-#$privatePath = Join-Path -Path $PSScriptRoot -ChildPath "Private"
-#Get-ChildItem -Path $privatePath -Filter "*.ps1" | ForEach-Object {
-#    . $_.FullName
-#}
+# Get the module path
+$ModulePath = $PSScriptRoot
 
-# Export key functions for module consumers.
-Export-ModuleMember -Function `
-    Get-Configuration, `
-    Initialize-HomeLab, `
-    Install-Prerequisites, `
-    Reset-Configuration, `
-    Set-Configuration, `
-    Test-Prerequisites, `
-    Test-SetupComplete, `
-    Update-ConfigurationParameter, `
-    Write-Log
+# Load private functions
+$PrivateFunctions = Get-ChildItem -Path "$ModulePath\Private\*.ps1" -ErrorAction SilentlyContinue
+foreach ($Function in $PrivateFunctions) {
+    try {
+        . $Function.FullName
+    }
+    catch {
+        Write-Error -Message "Failed to import private function $($Function.FullName): $_"
+    }
+}
+
+# Load public functions
+$PublicFunctions = Get-ChildItem -Path "$ModulePath\Public\*.ps1" -ErrorAction SilentlyContinue
+foreach ($Function in $PublicFunctions) {
+    try {
+        . $Function.FullName
+    }
+    catch {
+        Write-Error -Message "Failed to import public function $($Function.FullName): $_"
+    }
+}
+
+# Load the configuration if it exists
+try {
+    # Check if setup is complete
+    if (Test-SetupComplete -Silent) {
+        Load-Configuration -Silent
+    }
+}
+catch {
+    # If loading fails, we'll use the default configuration
+    Write-Warning "Failed to load configuration: $_. Using default configuration."
+}
+
+# Initialize the log file
+try {
+    # Create the log directory if it doesn't exist
+    $logDir = Split-Path -Path $Global:Config.LogFile -Parent
+    if (-not (Test-Path -Path $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+    
+    # Initialize the log file if it doesn't exist
+    if (-not (Test-Path -Path $Global:Config.LogFile)) {
+        Initialize-LogFile
+    }
+    
+    Write-Log -Message "HomeLab.Core module loaded successfully" -Level Info
+}
+catch {
+    Write-Warning "Failed to initialize log file: $_"
+}
+
+# Export public functions
+Export-ModuleMember -Function $PublicFunctions.BaseName

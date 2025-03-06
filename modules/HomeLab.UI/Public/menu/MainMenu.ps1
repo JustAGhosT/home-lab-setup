@@ -13,12 +13,15 @@
       7. Configure Settings
       0. Exit
 .EXAMPLE
-    $selection = Show-MainMenu
+    Show-MainMenu
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 function Show-MainMenu {
+    [CmdletBinding()]
+    param()
+    
     # Retrieve configuration if needed (for display, we can show current settings, etc.)
     $config = Get-Configuration
 
@@ -32,7 +35,5 @@ function Show-MainMenu {
         "7" = "Configure Settings"
     }
 
-    return Show-Menu -Title "HOME LAB SETUP - MAIN MENU" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "HOME LAB SETUP - MAIN MENU" -MenuItems $menuItems -ExitOption "0"
 }
-
-Export-ModuleMember -Function Show-MainMenu

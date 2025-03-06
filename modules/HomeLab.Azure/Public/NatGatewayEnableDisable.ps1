@@ -20,7 +20,7 @@
     NatGatewayEnableDisable -Enable -ResourceGroup "dev-saf-rg-homelab"
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 function NatGatewayEnableDisable {
     [CmdletBinding()]
@@ -39,6 +39,12 @@ function NatGatewayEnableDisable {
         [string[]]$SubnetNames
     )
 
+    # Ensure we're connected to Azure
+    if (-not (Connect-AzureAccount)) {
+        Write-Log -Message "Failed to connect to Azure. Operation aborted." -Level Error
+        return @{ Success = $false; Message = "Failed to connect to Azure." }
+    }
+
     # Retrieve configuration if needed
     $config = Get-Configuration
     if (-not $NatGatewayName) {
@@ -51,42 +57,52 @@ function NatGatewayEnableDisable {
         $SubnetNames = @("$($config.env)-$($config.project)-snet-default", "$($config.env)-$($config.project)-snet-app")
     }
     
+    # Check if resource group exists
+    if (-not (Test-ResourceGroup -ResourceGroupName $ResourceGroup)) {
+        Write-Log -Message "Resource group '$ResourceGroup' does not exist. Operation aborted." -Level Error
+        return @{ Success = $false; Message = "Resource group does not exist." }
+    }
+    
     if ($Enable) {
-        Write-Log -Message "Enabling NAT Gateway '$NatGatewayName' in resource group '$ResourceGroup'" -Level INFO
+        Write-Log -Message "Enabling NAT Gateway '$NatGatewayName' in resource group '$ResourceGroup'" -Level Info
         try {
             foreach ($subnet in $SubnetNames) {
                 $cmd = "az network vnet subnet update --resource-group $ResourceGroup --vnet-name $VnetName --name $subnet --nat-gateway $NatGatewayName"
-                Write-Log -Message "Executing: $cmd" -Level DEBUG
+                Write-Log -Message "Executing: $cmd" -Level Debug
                 $result = Invoke-Expression $cmd
+                if (-not $?) {
+                    throw "Command execution failed for subnet $subnet"
+                }
             }
-            Write-Log -Message "NAT Gateway enabled successfully." -Level SUCCESS
+            Write-Log -Message "NAT Gateway enabled successfully." -Level Success
             return @{ Success = $true; Message = "NAT Gateway enabled." }
         }
         catch {
-            Write-Log -Message "Error enabling NAT Gateway: $_" -Level ERROR
-            return @{ Success = $false; Message = "Failed to enable NAT Gateway." }
+            Write-Log -Message "Error enabling NAT Gateway: $_" -Level Error
+            return @{ Success = $false; Message = "Failed to enable NAT Gateway: $_" }
         }
     }
     elseif ($Disable) {
-        Write-Log -Message "Disabling NAT Gateway '$NatGatewayName' in resource group '$ResourceGroup'" -Level INFO
+        Write-Log -Message "Disabling NAT Gateway '$NatGatewayName' in resource group '$ResourceGroup'" -Level Info
         try {
             foreach ($subnet in $SubnetNames) {
                 $cmd = "az network vnet subnet update --resource-group $ResourceGroup --vnet-name $VnetName --name $subnet --remove natGateway"
-                Write-Log -Message "Executing: $cmd" -Level DEBUG
+                Write-Log -Message "Executing: $cmd" -Level Debug
                 $result = Invoke-Expression $cmd
+                if (-not $?) {
+                    throw "Command execution failed for subnet $subnet"
+                }
             }
-            Write-Log -Message "NAT Gateway disabled successfully." -Level SUCCESS
+            Write-Log -Message "NAT Gateway disabled successfully." -Level Success
             return @{ Success = $true; Message = "NAT Gateway disabled." }
         }
         catch {
-            Write-Log -Message "Error disabling NAT Gateway: $_" -Level ERROR
-            return @{ Success = $false; Message = "Failed to disable NAT Gateway." }
+            Write-Log -Message "Error disabling NAT Gateway: $_" -Level Error
+            return @{ Success = $false; Message = "Failed to disable NAT Gateway: $_" }
         }
     }
     else {
-        Write-Log -Message "No valid operation specified. Use -Enable or -Disable." -Level ERROR
+        Write-Log -Message "No valid operation specified. Use -Enable or -Disable." -Level Error
         return @{ Success = $false; Message = "No operation specified." }
     }
 }
-
-Export-ModuleMember -Function NatGatewayEnableDisable

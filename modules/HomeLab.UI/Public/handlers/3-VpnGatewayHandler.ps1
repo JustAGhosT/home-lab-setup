@@ -9,7 +9,7 @@
     Invoke-VpnGatewayMenu
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 function Invoke-VpnGatewayMenu {
     [CmdletBinding()]
@@ -53,7 +53,25 @@ function Invoke-VpnGatewayMenu {
                 Write-Host "Generating VPN client configuration..." -ForegroundColor Cyan
                 
                 $outputPath = Join-Path -Path $PWD -ChildPath "vpnclientconfiguration.zip"
-                Get-VpnClientConfiguration -ResourceGroupName $resourceGroup -GatewayName $gatewayName -OutputPath $outputPath
+                
+                # Assuming Get-VpnClientConfiguration is defined in another module
+                if (Get-Command Get-VpnClientConfiguration -ErrorAction SilentlyContinue) {
+                    Get-VpnClientConfiguration -ResourceGroupName $resourceGroup -GatewayName $gatewayName -OutputPath $outputPath
+                }
+                else {
+                    Write-Host "Function Get-VpnClientConfiguration not found. Make sure the required module is imported." -ForegroundColor Red
+                    
+                    # Fallback to direct Azure CLI command
+                    Write-Host "Attempting to use Azure CLI directly..." -ForegroundColor Yellow
+                    $result = az network vnet-gateway vpn-client generate --resource-group $resourceGroup --name $gatewayName --output-path $outputPath
+                    
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host "VPN client configuration generated successfully at: $outputPath" -ForegroundColor Green
+                    }
+                    else {
+                        Write-Host "Failed to generate VPN client configuration." -ForegroundColor Red
+                    }
+                }
                 
                 Pause
             }
@@ -66,7 +84,25 @@ function Invoke-VpnGatewayMenu {
                 
                 if (Test-Path $certFile) {
                     $certData = Get-Content $certFile -Raw
-                    Add-VpnGatewayCertificate -ResourceGroupName $resourceGroup -GatewayName $gatewayName -CertificateName $certName -CertificateData $certData
+                    
+                    # Assuming Add-VpnGatewayCertificate is defined in another module
+                    if (Get-Command Add-VpnGatewayCertificate -ErrorAction SilentlyContinue) {
+                        Add-VpnGatewayCertificate -ResourceGroupName $resourceGroup -GatewayName $gatewayName -CertificateName $certName -CertificateData $certData
+                    }
+                    else {
+                        Write-Host "Function Add-VpnGatewayCertificate not found. Make sure the required module is imported." -ForegroundColor Red
+                        
+                        # Fallback to direct Azure CLI command
+                        Write-Host "Attempting to use Azure CLI directly..." -ForegroundColor Yellow
+                        $result = az network vnet-gateway root-cert create --resource-group $resourceGroup --gateway-name $gatewayName --name $certName --public-cert-data $certData
+                        
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host "Certificate uploaded successfully." -ForegroundColor Green
+                        }
+                        else {
+                            Write-Host "Failed to upload certificate." -ForegroundColor Red
+                        }
+                    }
                 }
                 else {
                     Write-Host "Certificate file not found." -ForegroundColor Red
@@ -86,7 +122,7 @@ function Invoke-VpnGatewayMenu {
                     $certToRemove = Read-Host "Enter certificate name to remove"
                     
                     if (-not [string]::IsNullOrWhiteSpace($certToRemove)) {
-                        az network vnet-gateway root-cert delete --resource-group $resourceGroup --gateway-name $gatewayName --name $certToRemove
+                        $result = az network vnet-gateway root-cert delete --resource-group $resourceGroup --gateway-name $gatewayName --name $certToRemove
                         
                         if ($LASTEXITCODE -eq 0) {
                             Write-Host "Certificate removed successfully." -ForegroundColor Green
@@ -112,5 +148,3 @@ function Invoke-VpnGatewayMenu {
         }
     } while ($selection -ne "0")
 }
-
-Export-ModuleMember -Function Invoke-VpnGatewayMenu

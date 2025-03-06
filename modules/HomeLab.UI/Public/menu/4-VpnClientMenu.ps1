@@ -9,19 +9,21 @@
       4. Check VPN Connection Status
       0. Return to Main Menu
 .EXAMPLE
-    $selection = Show-VpnClientMenu
+    Show-VpnClientMenu
 .NOTES
     Author: Jurie Smit
-    Date: March 5, 2025
+    Date: March 6, 2025
 #>
 function Show-VpnClientMenu {
+    [CmdletBinding()]
+    param()
+    
     $menuItems = @{
         "1" = "Add Computer to VPN"
         "2" = "Connect to VPN"
         "3" = "Disconnect from VPN"
         "4" = "Check VPN Connection Status"
     }
-    return Show-Menu -Title "VPN CLIENT MANAGEMENT" -MenuItems $menuItems -ExitOption "0"
+    
+    Show-Menu -Title "VPN CLIENT MANAGEMENT" -MenuItems $menuItems -ExitOption "0"
 }
-
-Export-ModuleMember -Function Show-VpnClientMenu

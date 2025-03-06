@@ -26,13 +26,29 @@
     # This module depends on HomeLab.Core.
     RequiredModules    = @('HomeLab.Core')
     
-    # Export all functions from the Public folder.
-    FunctionsToExport  = '*'
+    # Functions to export
+    FunctionsToExport  = @(
+        'Deploy-Infrastructure',
+        'NatGatewayEnableDisable',
+        'Connect-AzureAccount',
+        'Test-ResourceGroup',
+        'Reset-ResourceGroup'
+    )
+    
+    # Cmdlets to export
+    CmdletsToExport    = @()
+    
+    # Variables to export
+    VariablesToExport  = @()
+    
+    # Aliases to export
+    AliasesToExport    = @()
     
     # Private data to pass to the module specified in RootModule/ModuleToProcess.
     PrivateData = @{
         PSData = @{
             Tags         = @('HomeLab', 'Azure', 'Infrastructure')
+            ProjectUri   = 'https://github.com/JustAGhosT/homelab'
             ReleaseNotes = 'Initial release of HomeLab.Azure module'
         }
     }

@@ -1,0 +1,26 @@
+# Ignore log files and folders
+logs/
+*.log
+
+# Ignore temporary files and folders
+*.tmp
+*.temp
+temp/
+*.zip
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore backup files
+*~
+
+# Optionally ignore user-specific configuration files
+# (Uncomment if you prefer not to track actual config files)
+# config/config.json
+
+# Ignore PowerShell module temporary or backup files
+*.psm1~
+*.psd1~
+
+# Ignore any other files you don't want to track

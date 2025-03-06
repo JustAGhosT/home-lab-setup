@@ -1,45 +1,60 @@
 ﻿@{
-    # The script module file associated with this manifest.
-    RootModule         = 'HomeLab.Core.psm1'
+    RootModule = 'HomeLab.Core.psm1'
+    ModuleVersion = '1.0.0'
+    GUID = 'e9c9b24d-6c07-4f6d-82e9-ffd481a5f9e2'
+    Author = 'Jurie Smit'
+    CompanyName = 'HomeLab'
+    Copyright = '(c) 2025 Jurie Smit. All rights reserved.'
+    Description = 'Core functionality for HomeLab including configuration management, logging, setup, and prerequisites'
+    PowerShellVersion = '5.1'
     
-    # Version number of this module.
-    ModuleVersion      = '1.0.0'
-    
-    # ID used to uniquely identify this module.
-    GUID               = '12345678-1234-1234-1234-123456789abc'
-    
-    # Author of this module.
-    Author             = 'Jurie Smit'
-    
-    # Company or vendor of this module.
-    CompanyName        = 'HomeLab'
-    
-    # Copyright statement for this module.
-    Copyright          = '(c) 2025 Jurie Smit. All rights reserved.'
-    
-    # Description of the functionality provided by this module.
-    Description        = 'Core configuration and logging functions for HomeLab Setup.'
-    
-    # Minimum version of the PowerShell engine required by this module.
-    PowerShellVersion  = '5.1'
-    
-    # Functions to export from this module.
-    FunctionsToExport  = @(
+    # Functions to export
+    FunctionsToExport = @(
+        # Configuration functions
         'Get-Configuration',
-        'Initialize-HomeLab',
-        'Install-Prerequisites',
+        'Update-ConfigurationParameter',
+        'Load-Configuration',
+        'Save-Configuration',
         'Reset-Configuration',
         'Set-Configuration',
-        'Test-Prerequisites',
+        'Test-Configuration',
+        'Backup-Configuration',
+        'Restore-Configuration',
+        'Export-HomelabConfiguration',
+        'Import-HomelabConfiguration',
+        
+        # Logging functions
+        'Initialize-LogFile',
+        'Write-Log',
+        'Set-LogLevel',
+        'Rotate-LogFile',
+        'Get-LogEntries',
+        'Get-LogPath',
+        'Set-LogPath',
+        
+        # Setup functions
+        'Initialize-HomeLab',
         'Test-SetupComplete',
-        'Update-ConfigurationParameter',
-        'Write-Log'
+        
+        # Prerequisites functions
+        'Install-Prerequisites',
+        'Test-Prerequisites'
     )
     
-    # Private data to pass to the module specified in RootModule/ModuleToProcess.
+    # Cmdlets to export
+    CmdletsToExport = @()
+    
+    # Variables to export
+    VariablesToExport = @()
+    
+    # Aliases to export
+    AliasesToExport = @()
+    
+    # Private data
     PrivateData = @{
         PSData = @{
-            Tags         = @('HomeLab', 'Configuration', 'Logging', 'Core')
+            Tags = @('HomeLab', 'Configuration', 'Logging', 'Setup', 'Azure')
+            ProjectUri = 'https://github.com/JustAGhosT/homelab'
             ReleaseNotes = 'Initial release of HomeLab.Core module'
         }
     }

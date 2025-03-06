@@ -17,6 +17,9 @@
         "2" = "Option 2"
     }
     $selection = Show-Menu -Title "Main Menu" -MenuItems $menuItems
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
 #>
 function Show-Menu {
     [CmdletBinding()]
@@ -49,10 +52,4 @@ function Show-Menu {
     Write-Host ""
     Write-Host "$ExitOption. Exit" -ForegroundColor Yellow
     Write-Host ""
-    
-    # Prompt for and return user selection
-    $selection = Read-Host "Select an option"
-    return $selection
 }
-
-Export-ModuleMember -Function Show-Menu

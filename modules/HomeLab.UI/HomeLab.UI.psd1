@@ -30,12 +30,14 @@
          'Get-UserConfirmation',
          'Show-Menu',
          'Show-MainMenu',
+         'Show-DeployMenu',
          'Show-VpnCertMenu',
          'Show-VpnGatewayMenu',
          'Show-VpnClientMenu',
          'Show-NatGatewayMenu',
          'Show-DocumentationMenu',
          'Show-SettingsMenu',
+         'Show-DeploymentSummary',
          'Invoke-DeployMenu',
          'Invoke-VpnCertMenu',
          'Invoke-VpnGatewayMenu',
@@ -49,6 +51,7 @@
     PrivateData = @{
         PSData = @{
             Tags         = @('HomeLab', 'UI', 'Menu', 'User Interface')
+            ProjectUri   = 'https://github.com/JustAGhosT/homelab'
             ReleaseNotes = 'Initial release of HomeLab.UI module'
         }
     }
