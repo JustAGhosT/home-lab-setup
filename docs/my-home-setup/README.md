@@ -217,7 +217,7 @@ The current setup uses a hardware KVM (Keyboard, Video, Mouse) switch that allow
 
 > For a comprehensive guide on KVM switch options, including entry-level to premium devices,
 > pricing information, and detailed setup instructions, see the dedicated document at
-> `kvm-switch-implementation.md`. This guide includes specific product recommendations
+> [KVM Switch Implementation](kvm-switch-implementation.md). This guide includes specific product recommendations
 > optimized for our multi-device setup with separate video connections.
 
 #### Software Alternative: Synergy/Barrier
@@ -231,7 +231,7 @@ As an alternative to the hardware KVM, a software solution like Synergy or Barri
 - Introduces minimal latency depending on network conditions
 
 > Explore software-based KVM alternatives in detail by referring to
-> `software-kvm-alternatives.md`. This document provides step-by-step setup
+> [Software Alternatives](software-kvm-alternatives.md). This document provides step-by-step setup
 > instructions for Barrier (free) and Synergy (commercial), performance considerations,
 > troubleshooting tips, and a comparative analysis against hardware KVM solutions for
 > our specific multi-device environment.
@@ -263,7 +263,7 @@ A universal docking station approach would provide:
 - Simplified cable management
 
 > For an in-depth analysis of universal docking station options, see
-> `centralized-docking-station.md`. This guide evaluates options from basic USB-C
+> [Centralized docking station](centralized-docking-station.md). This guide evaluates options from basic USB-C
 > hubs to premium Thunderbolt 4 docking stations with KVM functionality, including
 > connection diagrams, cost-benefit analysis, and specific recommendations tailored to
 > our multi-device home lab configuration.
