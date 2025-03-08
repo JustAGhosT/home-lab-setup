@@ -100,9 +100,9 @@ This document provides detailed information about hardware KVM (Keyboard, Video,
 - **Best For**: Advanced home labs with multiple systems and displays
 - **Where to Buy**: [Amazon](https://www.amazon.com/TESmart-Matrix-Switch-Support-Control/dp/B07CKXD9SM/)
 
-## Input-Only KVM Options (Recommended for Your Setup)
+## Input-Only KVM Options (Recommended for my specific Setup)
 
-Since your current setup maintains direct video connections from each device to its own monitor, an input-only KVM switch is ideal.
+Since my current setup maintains direct video connections from each device to its own monitor, an input-only KVM switch is ideal.
 
 ### ATEN CS64U 4-Port USB KVM Switch
 
