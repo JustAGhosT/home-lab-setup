@@ -3,8 +3,6 @@ layout: default
 title: Home Lab Setup
 ---
 
-# Azure HomeLab VPN Setup
-
 This repository contains scripts and documentation for setting up and managing an Azure virtual network with VPN connectivity for a home lab environment.
 
 ## Overview
