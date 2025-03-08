@@ -33,18 +33,20 @@ flowchart TD
       NSG3 --> DataSubnet
   end
   
-  VPNGw["VPN Gateway"] -- "RDP (3389)<br>SSH (22)" --> NSG1
+  VPNGw["VPN Gateway"]
+  VPNGw -- "RDP (3389)<br>SSH (22)" --> NSG1
   VPNGw -- "HTTP(S) (80/443)<br>Custom App Ports" --> NSG2
   
   ManagementSubnet -- "Restricted Access<br>to Data Tier" --> NSG3
   WorkloadSubnet -- "SQL (1433)<br>Storage API" --> NSG3
   
-  Internet((Internet)) -- "Blocked Direct Access" -.-> NSG1
-  Internet -- "Blocked Direct Access" -.-> NSG2
-  Internet -- "Blocked Direct Access" -.-> NSG3
+  Internet((Internet))
+  Internet -. "Blocked Direct Access" .-> NSG1
+  Internet -. "Blocked Direct Access" .-> NSG2
+  Internet -. "Blocked Direct Access" .-> NSG3
   
   classDef blocked stroke:#f00,stroke-width:2px,color:#f00
-  class "Blocked Direct Access" blocked
+  class Internet blocked
 ```
 
 ## Network Security Group Configurations
