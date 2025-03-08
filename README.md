@@ -86,7 +86,7 @@ This repository includes comprehensive documentation to help you deploy, manage,
 To better understand the network architecture and components, refer to these diagrams:
 
 - [High-Level Architecture](docs/diagrams/high-level-architecture.md) - Overview of the entire system
-- [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection.md) - VPN connection process
+- [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection-flow.md) - VPN connection process
 - [Network Security Implementation](docs/diagrams/network-security.md) - Security components and configurations
 - [NAT Gateway Configuration](docs/diagrams/nat-gateway-configuration.md) - Outbound internet access setup
 - [Certificate Management Flow](docs/diagrams/certificate-management-flow.md) - Certificate creation and management
