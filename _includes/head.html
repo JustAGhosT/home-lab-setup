@@ -7,5 +7,19 @@
       theme: "default",
       securityLevel: "loose",
     });
+    
+    // Force mermaid to render all code blocks with class 'language-mermaid'
+    document.querySelectorAll('pre code.language-mermaid').forEach(function(el) {
+      // Create a div with class mermaid
+      var div = document.createElement('div');
+      div.className = 'mermaid';
+      div.innerHTML = el.textContent;
+      
+      // Replace the code element with the mermaid div
+      el.parentNode.parentNode.replaceChild(div, el.parentNode);
+      
+      // Re-run mermaid
+      mermaid.init(undefined, div);
+    });
   });
 </script>
