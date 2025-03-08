@@ -269,7 +269,7 @@ function Invoke-DocumentationMenu {
                     catch {
                         Write-Host "Error reading documentation: $_" -ForegroundColor Red
                         if ($canLog) {
-                            Write-Log -Message "Error reading documentation from $path: $_" -Level ERROR
+                            Write-Log -Message ("Error reading documentation from $path" + ": $_") -Level ERROR
                         }
                     }
                     

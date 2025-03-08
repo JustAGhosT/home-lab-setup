@@ -96,7 +96,7 @@ function Invoke-VpnClientMenu {
                         }
                         else {
                             return @{
-                                Success = $false,
+                                Success = $false;
                                 UsedFunction = $false
                             }
                         }

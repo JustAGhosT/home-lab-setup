@@ -84,7 +84,7 @@ function Invoke-NatGatewayMenu {
                         
                         if (-not $natGwExists) {
                             return @{
-                                Success = $false,
+                                Success = $false;
                                 ErrorMessage = "NAT Gateway '$natGatewayName' does not exist in resource group '$resourceGroup'."
                             }
                         }
@@ -393,7 +393,7 @@ function Invoke-NatGatewayMenu {
                         
                         if (-not $natGatewayExists) {
                             return @{
-                                Success = $false,
+                                Success = $false;
                                 ErrorMessage = "NAT Gateway not found or error retrieving status."
                             }
                         }
