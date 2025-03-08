@@ -1,3 +1,8 @@
+---
+layout: default
+title: High-Level Architecture
+---
+
 # High-Level Architecture
 
 ## Overview
@@ -49,7 +54,49 @@ flowchart TD
   Internet((Internet)) -- "Outbound Traffic" --> NATGw
 ```
 
-## Core Components
+## Key Components
+
+### Client Access
+- **Client Devices**: Connect to the Azure network via Point-to-Site (P2S) VPN connections
+- **VPN Gateway**: Provides secure encrypted tunnels for client connections
+- **Key Vault**: Stores and manages certificates used for VPN authentication
+
+### Network Segmentation
+- **Gateway Subnet**: Dedicated subnet for the VPN Gateway
+- **Management Subnet**: Contains the Jump Box VM that serves as the entry point for administrative access
+- **Application Subnet**: Hosts application servers
+- **Database Subnet**: Contains database servers with restricted access
+
+### Security
+- **Network Security Groups (NSGs)**: Control traffic flow between subnets and resources
+- **Jump Box**: Provides a secure entry point for administrative access to other resources
+
+### Internet Connectivity
+- **NAT Gateway**: Provides outbound internet connectivity for internal resources with a single shared IP address
+- **VPN Gateway**: Provides internet connectivity for client VPN connections
+
+### Monitoring & Management
+- **Azure Monitor**: Provides comprehensive monitoring of all Azure resources
+- **Log Analytics**: Centralizes logs for analysis and troubleshooting
+
+## Design Principles
+
+1. **Defense in Depth**: Multiple security layers including VPN, NSGs, and subnet isolation
+2. **Least Privilege**: Resources are placed in separate subnets with appropriate access controls
+3. **Centralized Management**: Jump Box VM provides a single point for administrative access
+4. **Comprehensive Monitoring**: All components are monitored for security and performance
+
+## Implementation Considerations
+
+When implementing this architecture, consider:
+
+1. Sizing the VPN Gateway based on expected client connections and bandwidth requirements
+2. Implementing proper certificate rotation procedures for VPN authentication
+3. Configuring NSGs with the minimum required rules to reduce the attack surface
+4. Setting up proper logging and alerting for security events
+5. Implementing backup and disaster recovery procedures for critical VMs
+
+## All Components
 
 ### Azure Virtual Network
 - **Address Space**: 10.0.0.0/16 (65,536 IP addresses)
