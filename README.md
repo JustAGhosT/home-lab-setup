@@ -1,15 +1,17 @@
-# Azure Home Lab VPN Setup
+# Azure HomeLab VPN Setup
 
-This repository contains scripts for setting up and managing an Azure virtual network with VPN connectivity for a home lab environment.
+This repository contains scripts and documentation for setting up and managing an Azure virtual network with VPN connectivity for a home lab environment.
 
 ## Overview
 
-The setup includes:
+This HomeLab environment is designed to provide a comprehensive learning and testing platform for Azure services, with a focus on networking and secure remote connectivity. The setup includes:
 
 - Azure Virtual Network with multiple subnets
 - Azure VPN Gateway for secure remote access
 - Azure NAT Gateway for outbound internet connectivity
 - PowerShell module for managing the entire environment
+- Certificate management for secure authentication
+- Modular deployment scripts for easy customization
 
 ## Architecture
 
@@ -21,12 +23,18 @@ The HomeLab system uses a modular architecture with the following components:
 - **[HomeLab.UI](./modules/HomeLab.UI/README.md)**: User interface components including menus and handlers
 - **[HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md)**: Monitoring and alerting capabilities
 
+For a visual overview of the system architecture, see the [High-Level Architecture Diagram](docs/diagrams/high-level-architecture.md).
+
 ## Prerequisites
 
+Before deploying the HomeLab environment, ensure you have all the necessary tools and permissions. See the [Prerequisites Guide](docs/PREREQUISITES.MD) for detailed requirements.
+
+Key requirements include:
+- Active Azure subscription with sufficient permissions
+- PowerShell 7.2 or higher
+- Az PowerShell Module installed (`Install-Module -Name Az -AllowClobber -Force`)
 - Azure CLI installed and configured
-- Azure subscription with sufficient permissions
-- PowerShell 5.1 or later
-- Az PowerShell module installed (`Install-Module -Name Az -AllowClobber -Force`)
+- Administrator access on your local machine
 
 ## Getting Started
 
@@ -54,6 +62,38 @@ This will launch the interactive menu system where you can:
 - Enable/disable NAT Gateway
 - Access documentation
 
+### Deployment Process
+
+Follow the [Setup Guide](docs/SETUP.md) for step-by-step instructions on deploying the HomeLab environment.
+
+The deployment process includes:
+1. Setting up the network infrastructure
+2. Creating and configuring the VPN gateway
+3. Managing certificates for secure authentication
+4. Configuring client VPN access
+
+## Documentation
+
+This repository includes comprehensive documentation to help you deploy, manage, and understand your HomeLab environment:
+
+- [Prerequisites Guide](docs/PREREQUISITES.MD) - Requirements before starting
+- [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
+- [VPN Gateway Guide](docs/VPN-GATEWAY.README.md) - Advanced VPN configuration options
+- [Certificate Management Guide](docs/client-certificate-management.md) - Managing certificates for VPN authentication
+
+### Network Diagrams
+
+To better understand the network architecture and components, refer to these diagrams:
+
+- [High-Level Architecture](docs/diagrams/high-level-architecture.md) - Overview of the entire system
+- [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection.md) - VPN connection process
+- [Network Security Implementation](docs/diagrams/network-security.md) - Security components and configurations
+- [NAT Gateway Configuration](docs/diagrams/nat-gateway-configuration.md) - Outbound internet access setup
+- [Certificate Management Flow](docs/diagrams/certificate-management-flow.md) - Certificate creation and management
+- [Subnet Layout](docs/diagrams/subnet-layout.md) - Detailed subnet configuration
+- [Traffic Flow and Routing](docs/diagrams/traffic-flow-and-routing.md) - Network traffic patterns
+- [Cost Optimization Strategy](docs/diagrams/cost-optimization-strategy.md) - Managing Azure costs
+
 ## Features
 
 ### Infrastructure Deployment
@@ -65,6 +105,24 @@ The deployment menu allows you to:
 
 > **Note:** The VPN Gateway deployment can take 30-45 minutes to complete.
 
+### Network Infrastructure
+
+- Virtual Network with multiple subnets
+- Network Security Groups for traffic control
+- Gateway subnet for VPN connectivity
+- Optional NAT Gateway for outbound internet access
+
+See the [Subnet Layout](docs/diagrams/subnet-layout.md) diagram for details on the network structure.
+
+### VPN Connectivity
+
+- Point-to-Site VPN for secure remote access
+- Multiple authentication methods (Certificate, Azure AD, RADIUS)
+- Split tunneling options
+- Custom DNS and routing configurations
+
+For details on the VPN connection process, see the [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection.md) diagram.
+
 ### VPN Certificate Management
 
 Easily manage certificates for your VPN connections:
@@ -72,6 +130,10 @@ Easily manage certificates for your VPN connections:
 - Generate client certificates
 - Add certificates to the VPN Gateway
 - List all certificates
+- Certificate lifecycle management
+- Secure certificate storage and distribution
+
+The [Certificate Management Flow](docs/diagrams/certificate-management-flow.md) diagram illustrates this process.
 
 ### VPN Client Management
 
@@ -87,6 +149,8 @@ Control the NAT Gateway to manage costs:
 - Disable NAT Gateway when not in use to save costs
 - Check NAT Gateway status
 
+See the [NAT Gateway Configuration](docs/diagrams/nat-gateway-configuration.md) diagram for details.
+
 ### Monitoring & Alerting
 
 Keep track of your environment:
@@ -95,6 +159,16 @@ Keep track of your environment:
 - Perform health checks on your HomeLab environment
 - Set up alerts for important events or thresholds
 
+## Usage Scenarios
+
+This HomeLab environment is ideal for:
+
+- Learning Azure networking concepts
+- Testing secure remote access solutions
+- Developing and testing cloud applications
+- Simulating hybrid cloud scenarios
+- Practicing Azure administration tasks
+
 ## Cost Management
 
 - **VPN Gateway**: ~$27/month (Basic SKU)
@@ -102,6 +176,8 @@ Keep track of your environment:
 - **Public IP addresses**: ~$3-5/month each
 
 By keeping the NAT Gateway disabled when not in use, you can significantly reduce costs.
+
+For detailed cost optimization strategies, see the [Cost Optimization Strategy](docs/diagrams/cost-optimization-strategy.md) diagram.
 
 ## Configuration Settings
 
@@ -126,6 +202,20 @@ HomeLab/
 │   ├── HomeLab.Security/
 │   ├── HomeLab.UI/
 │   └── HomeLab.Monitoring/
+├── docs/
+│   ├── diagrams/
+│   │   ├── certificate-management-flow.md
+│   │   ├── cost-optimization-strategy.md
+│   │   ├── high-level-architecture.md
+│   │   ├── nat-gateway-configuration.md
+│   │   ├── network-security.md
+│   │   ├── point-to-site-vpn-connection.md
+│   │   ├── subnet-layout.md
+│   │   └── traffic-flow-and-routing.md
+│   ├── PREREQUISITES.MD
+│   ├── SETUP.md
+│   ├── VPN-GATEWAY.README.md
+│   └── client-certificate-management.md
 ├── HomeLab.psd1
 ├── HomeLab.psm1
 └── README.md
@@ -149,6 +239,8 @@ HomeLab/
    - On Windows, check Event Viewer under "Applications and Services Logs > Microsoft > Windows > VPN"
    - Check the HomeLab log file specified in your configuration
 
+For a detailed view of the network traffic flow, see the [Traffic Flow and Routing](docs/diagrams/traffic-flow-and-routing.md) diagram.
+
 ### NAT Gateway Issues
 
 1. Verify subnet associations:
@@ -170,13 +262,37 @@ Each module in the HomeLab system has its own README with detailed information:
 - [HomeLab.UI](./modules/HomeLab.UI/README.md) - User interface components including menus and handlers
 - [HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md) - Monitoring and alerting capabilities
 
+## PowerShell Module
+
+This repository includes a PowerShell module with functions for:
+
+- Deploying and managing Azure resources
+- Creating and managing certificates
+- Configuring VPN clients
+- Monitoring and troubleshooting
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions to improve the HomeLab environment are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Microsoft Azure Documentation
+- PowerShell Community
+- Contributors to this project
+
+## Support
+
+For issues, questions, or suggestions, please open an issue in the GitHub repository.
 
 ## Author
 

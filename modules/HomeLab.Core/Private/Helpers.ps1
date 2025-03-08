@@ -125,3 +125,74 @@ function Get-ModuleVersion {
         return "Unknown"
     }
 }
+
+<#
+.SYNOPSIS
+    Writes log messages using available logging functions.
+.DESCRIPTION
+    Writes log messages using either Write-Log or Write-SimpleLog, depending on what's available.
+.PARAMETER Message
+    The message to log.
+.PARAMETER Level
+    The log level (Info, Warning, Error, Success).
+.PARAMETER NoOutput
+    If specified, suppresses output.
+.EXAMPLE
+    Write-SafeLog -Message "Operation completed" -Level Success
+.NOTES
+    Author: Jurie Smit
+    Date: March 7, 2025
+#>
+function Write-SafeLog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$Level = "Info",
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$NoOutput
+    )
+    
+    if ($NoOutput) {
+        return
+    }
+    
+    # Use Write-SimpleLog if Write-Log is not available
+    $logFunction = Get-Command -Name Write-Log -ErrorAction SilentlyContinue
+    if (-not $logFunction) {
+        $logFunction = Get-Command -Name Write-SimpleLog -ErrorAction SilentlyContinue
+    }
+    
+    if ($logFunction -and $logFunction.Name -eq 'Write-Log') {
+        & $logFunction -Message $Message -Level $Level
+    }
+    elseif ($logFunction -and $logFunction.Name -eq 'Write-SimpleLog') {
+        # Map log levels to Write-SimpleLog format
+        $simpleLevel = switch ($Level) {
+            'Info' { 'INFO' }
+            'Warning' { 'WARN' }
+            'Error' { 'ERROR' }
+            'Success' { 'SUCCESS' }
+            default { 'INFO' }
+        }
+        & $logFunction -Message $Message -Level $simpleLevel
+    }
+    else {
+        # Fallback if no logging function is available
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $color = switch ($Level) {
+            'Info' { 'White' }
+            'Warning' { 'Yellow' }
+            'Error' { 'Red' }
+            'Success' { 'Green' }
+            default { 'White' }
+        }
+        Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $color
+    }
+}
+
+# Export the functions
+Export-ModuleMember -Function 'Write-SafeLog'

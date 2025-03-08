@@ -5,7 +5,7 @@
     Provides functions for installing and checking prerequisites for the HomeLab environment.
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 7, 2025
 #>
 
 <#
@@ -19,7 +19,7 @@
     Install-Prerequisites -Force
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 7, 2025
 #>
 function Install-Prerequisites {
     [CmdletBinding()]
@@ -28,16 +28,16 @@ function Install-Prerequisites {
         [switch]$Force
     )
     
-    Write-Log -Message "Installing prerequisites..." -Level Info
+    Write-SafeLog -Message "Installing prerequisites..." -Level Info
     
     # Install Azure CLI if not installed or Force is specified
     $azCliInstalled = $null -ne (Get-Command az -ErrorAction SilentlyContinue)
     if (-not $azCliInstalled -or $Force) {
         if ($azCliInstalled -and $Force) {
-            Write-Log -Message "Azure CLI is already installed, but Force parameter is specified. Reinstalling..." -Level Info
+            Write-SafeLog -Message "Azure CLI is already installed, but Force parameter is specified. Reinstalling..." -Level Info
         }
         else {
-            Write-Log -Message "Azure CLI not found. Installing Azure CLI..." -Level Info
+            Write-SafeLog -Message "Azure CLI not found. Installing Azure CLI..." -Level Info
         }
         
         try {
@@ -49,41 +49,41 @@ function Install-Prerequisites {
             
             # Refresh PATH environment variable
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-            Write-Log -Message "Azure CLI installed successfully." -Level Success
+            Write-SafeLog -Message "Azure CLI installed successfully." -Level Success
         }
         catch {
-            Write-Log -Message "Failed to install Azure CLI: $_" -Level Error
+            Write-SafeLog -Message "Failed to install Azure CLI: $_" -Level Error
             return $false
         }
     }
     else {
-        Write-Log -Message "Azure CLI is already installed." -Level Info
+        Write-SafeLog -Message "Azure CLI is already installed." -Level Info
     }
     
     # Install Az PowerShell module if not installed or Force is specified
     $azPowerShellInstalled = $null -ne (Get-Module -ListAvailable Az.Accounts)
     if (-not $azPowerShellInstalled -or $Force) {
         if ($azPowerShellInstalled -and $Force) {
-            Write-Log -Message "Az PowerShell module is already installed, but Force parameter is specified. Reinstalling..." -Level Info
+            Write-SafeLog -Message "Az PowerShell module is already installed, but Force parameter is specified. Reinstalling..." -Level Info
         }
         else {
-            Write-Log -Message "Az PowerShell module not found. Installing Az PowerShell module..." -Level Info
+            Write-SafeLog -Message "Az PowerShell module not found. Installing Az PowerShell module..." -Level Info
         }
         
         try {
             Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force
-            Write-Log -Message "Az PowerShell module installed successfully." -Level Success
+            Write-SafeLog -Message "Az PowerShell module installed successfully." -Level Success
         }
         catch {
-            Write-Log -Message "Failed to install Az PowerShell module: $_" -Level Error
+            Write-SafeLog -Message "Failed to install Az PowerShell module: $_" -Level Error
             return $false
         }
     }
     else {
-        Write-Log -Message "Az PowerShell module is already installed." -Level Info
+        Write-SafeLog -Message "Az PowerShell module is already installed." -Level Info
     }
     
-    Write-Log -Message "All prerequisites installed successfully." -Level Success
+    Write-SafeLog -Message "All prerequisites installed successfully." -Level Success
     return $true
 }
 
@@ -98,7 +98,7 @@ function Install-Prerequisites {
     if (-not (Test-Prerequisites)) { Install-Prerequisites }
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 7, 2025
 #>
 function Test-Prerequisites {
     [CmdletBinding()]
@@ -107,26 +107,24 @@ function Test-Prerequisites {
         [switch]$Silent
     )
     
-    if (-not $Silent) {
-        Write-Log -Message "Checking prerequisites..." -Level Info
-    }
+    Write-SafeLog -Message "Checking prerequisites..." -Level Info -NoOutput:$Silent
     
     # Check if Azure CLI is installed
     $azCliInstalled = $null -ne (Get-Command az -ErrorAction SilentlyContinue)
-    if (-not $azCliInstalled -and -not $Silent) {
-        Write-Log -Message "Azure CLI is not installed." -Level Warning
+    if (-not $azCliInstalled) {
+        Write-SafeLog -Message "Azure CLI is not installed." -Level Warning -NoOutput:$Silent
     }
     
     # Check if Az PowerShell module is installed
     $azPowerShellInstalled = $null -ne (Get-Module -ListAvailable Az.Accounts)
-    if (-not $azPowerShellInstalled -and -not $Silent) {
-        Write-Log -Message "Az PowerShell module is not installed." -Level Warning
+    if (-not $azPowerShellInstalled) {
+        Write-SafeLog -Message "Az PowerShell module is not installed." -Level Warning -NoOutput:$Silent
     }
     
     $allInstalled = $azCliInstalled -and $azPowerShellInstalled
     
-    if ($allInstalled -and -not $Silent) {
-        Write-Log -Message "All prerequisites are installed." -Level Success
+    if ($allInstalled) {
+        Write-SafeLog -Message "All prerequisites are installed." -Level Success -NoOutput:$Silent
     }
     
     return $allInstalled

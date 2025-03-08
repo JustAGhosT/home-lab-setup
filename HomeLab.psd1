@@ -2,6 +2,15 @@
     # The script module file associated with this manifest.
     RootModule         = 'HomeLab.psm1'
     
+    # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
+    NestedModules      = @(
+        'modules\HomeLab.Core\HomeLab.Core.psm1'
+        'modules\HomeLab.Azure\HomeLab.Azure.psm1'
+        'modules\HomeLab.Security\HomeLab.Security.psm1'
+        'modules\HomeLab.UI\HomeLab.UI.psm1'
+        'modules\HomeLab.Monitoring\HomeLab.Monitoring.psm1'
+        )
+
     # Version number of this module.
     ModuleVersion      = '1.0.0'
     

@@ -17,18 +17,23 @@
         'New-VpnClientCertificate',
         'New-AdditionalClientCertificate',
         'Add-VpnGatewayCertificate',
-        'Get-VpnCertificate',  # Added missing comma here
+        'Get-VpnCertificate',
         'Add-VpnComputer',
         'Connect-Vpn',
         'Disconnect-Vpn',
         'Get-VpnConnectionStatus'
     )
     
+    # Aliases to export
+    AliasesToExport = @(
+        'New-AdditionalClientCertificate'
+    )
+    
     PrivateData = @{
         PSData = @{
             Tags = @('HomeLab', 'Security', 'VPN')
-            LicenseUri = 'https://github.com/JustAGhosT/homelab/LICENSE'  # Optional: Add if you have a license
-            ProjectUri = 'https://github.com/JustAGhosT/homelab'  # Optional: Add if you have a repo
+            LicenseUri = 'https://github.com/JustAGhosT/homelab/LICENSE'
+            ProjectUri = 'https://github.com/JustAGhosT/homelab'
             ReleaseNotes = 'Initial release of HomeLab.Security module'
         }
     }

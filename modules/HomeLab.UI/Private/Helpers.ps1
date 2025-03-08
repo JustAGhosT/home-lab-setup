@@ -27,7 +27,8 @@ function Clear-CurrentLine {
     
     $cursorTop = [Console]::CursorTop
     [Console]::SetCursorPosition(0, $cursorTop)
-    [Console]::Write(new-object string(' ', [Console]::WindowWidth))
+    # Fixed line - using .NET syntax for string creation
+    [Console]::Write(([string]::new(' ', [Console]::WindowWidth)))
     [Console]::SetCursorPosition(0, $cursorTop)
 }
 

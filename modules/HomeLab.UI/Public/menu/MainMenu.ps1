@@ -12,15 +12,22 @@
       6. View Documentation
       7. Configure Settings
       0. Exit
+.PARAMETER ShowProgress
+    If specified, shows a progress bar while loading the menu.
 .EXAMPLE
     Show-MainMenu
+.EXAMPLE
+    Show-MainMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 8, 2025
 #>
 function Show-MainMenu {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
+    )
     
     # Retrieve configuration if needed (for display, we can show current settings, etc.)
     $config = Get-Configuration
@@ -35,5 +42,5 @@ function Show-MainMenu {
         "7" = "Configure Settings"
     }
 
-    Show-Menu -Title "HOME LAB SETUP - MAIN MENU" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "HOME LAB SETUP - MAIN MENU" -MenuItems $menuItems -ShowProgress:$ShowProgress
 }

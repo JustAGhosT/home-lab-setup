@@ -12,7 +12,9 @@
 #>
 
 function Initialize-LogFile {
-    param (
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
         [string]$LogFilePath = $Global:Config.LogFile
     )
     
@@ -157,7 +159,7 @@ function Write-Log {
     }
 }
 
-function Rotate-LogFile {
+function Set-LogFileRotation {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $false)]
@@ -313,6 +315,3 @@ function Set-LogPath {
     
     Write-Log -Message "Log path updated to $Path" -Level Info
 }
-
-# Export all the logging functions
-Export-ModuleMember -Function Initialize-LogFile, Write-Log, Set-LogLevel, Rotate-LogFile, Get-LogEntries, Get-LogPath, Set-LogPath

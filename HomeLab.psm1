@@ -10,33 +10,25 @@
     Version: 1.0.0
 #>
 
-# Check and import required modules
-$requiredModules = @('Az')
+# ===== CRITICAL SECTION: PREVENT INFINITE LOOPS =====
+# Disable automatic module loading to prevent recursive loading
+$PSModuleAutoLoadingPreference = 'None'
+# Disable function discovery debugging which can cause infinite loops
+$DebugPreference = 'SilentlyContinue'
 
-foreach ($module in $requiredModules) {
-    if (-not (Get-Module -Name $module -ListAvailable)) {
-        Write-Warning "Required module '$module' is not installed. Attempting to install..."
-        
-        try {
-            Install-Module -Name $module -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
-            Write-Verbose "Module '$module' installed successfully."
-        }
-        catch {
-            throw "Failed to install required module '$module'. Please install it manually using: Install-Module -Name $module -Scope CurrentUser"
-        }
-    }
-    
-    # Import the module if it's not already loaded
-    if (-not (Get-Module -Name $module)) {
-        Write-Verbose "Importing module '$module'..."
-        Import-Module -Name $module -ErrorAction Stop
-    }
+# Save the original PSDefaultParameterValues at the start to prevent infinite loops
+$originalPSDefaultParameterValues = $null
+if ($global:PSDefaultParameterValues) {
+    $originalPSDefaultParameterValues = $global:PSDefaultParameterValues.Clone()
+    # Clear it to prevent infinite loops during module loading
+    $global:PSDefaultParameterValues = @{}
 }
 
 # Use $PSScriptRoot if available; otherwise, fall back to the current directory.
 if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
     [string]$scriptDirectory = (Get-Location).Path
-} else {
+}
+else {
     [string]$scriptDirectory = $PSScriptRoot
 }
 Write-Verbose "Using script directory: $scriptDirectory"
@@ -45,97 +37,116 @@ Write-Verbose "Using script directory: $scriptDirectory"
 [string]$modulesRoot = Join-Path -Path $scriptDirectory -ChildPath "modules"
 Write-Verbose "Modules root set to: $modulesRoot"
 
+# Function to safely check if a command exists
+function Test-CommandExists {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName
+    )
+    
+    try {
+        $cmd = Get-Command -Name $CommandName -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+# Function to safely load a module
+function Import-SafeModule {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ModulePath,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ModuleName = (Split-Path -Path $ModulePath -Leaf)
+    )
+    
+    # Check if the module is already loaded
+    if (Get-Module -Name $ModuleName) {
+        Write-Verbose "Module $ModuleName is already loaded."
+        return $true
+    }
+    
+    if (-not (Test-Path $ModulePath)) {
+        Write-Warning "Module path not found: $ModulePath"
+        return $false
+    }
+    
+    try {
+        # Import the module with DisableNameChecking to prevent automatic function discovery
+        Import-Module -Name $ModulePath -Global -Force -DisableNameChecking -ErrorAction Stop
+        
+        Write-Verbose "Loaded module: $ModuleName from $ModulePath"
+        return $true
+    }
+    catch {
+        Write-Warning "Failed to load module: $ModulePath. Error: $_"
+        return $false
+    }
+}
+
+# Ensure Core module is loaded first and functions are available
+$coreModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Core\HomeLab.Core.psm1"
+if (Test-Path $coreModulePath) {
+    Import-Module $coreModulePath -Force -Global -DisableNameChecking
+    
+    # Verify core functions are available
+    $requiredFunctions = @(
+        "Import-Configuration", 
+        "Initialize-LogFile", 
+        "Write-Log",
+        "Write-SimpleLog",
+        "Test-Prerequisites",
+        "Install-Prerequisites",
+        "Test-SetupComplete",
+        "Initialize-HomeLab"
+    )
+    
+    $missingFunctions = @()
+    foreach ($function in $requiredFunctions) {
+        if (-not (Get-Command -Name $function -ErrorAction SilentlyContinue)) {
+            $missingFunctions += $function
+        }
+    }
+    
+    if ($missingFunctions.Count -gt 0) {
+        Write-Warning "Some core functions are not available: $($missingFunctions -join ', ')"
+        Write-Warning "This will likely cause HomeLab to fail. Please check HomeLab.Core module exports."
+    }
+    else {
+        Write-Verbose "All required Core functions verified as available."
+    }
+}
+else {
+    Write-Error "HomeLab.Core module not found at expected path: $coreModulePath"
+}
+
 # List paths for each submodule's main PSM1.
-[string]$coreModulePath      = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Core\HomeLab.Core.psm1"
-[string]$azureModulePath     = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Azure\HomeLab.Azure.psm1"
-[string]$securityModulePath  = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Security\HomeLab.Security.psm1"
-[string]$uiModulePath        = Join-Path -Path $modulesRoot -ChildPath "HomeLab.UI\HomeLab.UI.psm1"
+[string]$azureModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Azure\HomeLab.Azure.psm1"
+[string]$securityModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Security\HomeLab.Security.psm1"
+[string]$uiModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.UI\HomeLab.UI.psm1"
 [string]$monitoringModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Monitoring\HomeLab.Monitoring.psm1"
 
-$submodules = @(
-    # Load Core first as other modules depend on it
-    $coreModulePath,
-    # Load other modules
-    $azureModulePath,
-    $securityModulePath,
-    $monitoringModulePath,
+# Track which modules were successfully loaded
+$loadedModules = @{}
+
+# Load Core module first as other modules depend on it
+$loadedModules["Core"] = (Get-Module -Name "HomeLab.Core") -ne $null
+
+# Only proceed with other modules if Core was loaded successfully
+if ($loadedModules["Core"]) {
+    # Now load other modules
+    $loadedModules["Azure"] = Import-SafeModule -ModulePath $azureModulePath -ModuleName "HomeLab.Azure"
+    $loadedModules["Security"] = Import-SafeModule -ModulePath $securityModulePath -ModuleName "HomeLab.Security"
+    $loadedModules["Monitoring"] = Import-SafeModule -ModulePath $monitoringModulePath -ModuleName "HomeLab.Monitoring"
+    
     # Load UI last as it depends on other modules
-    $uiModulePath
-)
-
-# Import each submodule
-foreach ($path in $submodules) {
-    if (Test-Path $path) {
-        try {
-            . $path
-            Write-Verbose "Loaded submodule: $path"
-            # Log that the submodule was loaded (if Write-Log is available)
-            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-                Write-Log -Message "Loaded submodule: $path" -Level INFO
-            }
-        }
-        catch {
-            Write-Warning "Failed to load submodule: $path. Error: $_"
-            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-                Write-Log -Message "Failed to load submodule: $path. Error: $_" -Level ERROR
-            }
-        }
-    } else {
-        Write-Warning "Submodule path not found: $path"
-        if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-            Write-Log -Message "Submodule path not found: $path" -Level WARN
-        }
-    }
+    $loadedModules["UI"] = Import-SafeModule -ModulePath $uiModulePath -ModuleName "HomeLab.UI"
 }
-
-# Additionally, load UI menu functions from HomeLab.UI\Public\menu.
-[string]$uiMenuPath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.UI\Public\menu"
-if (Test-Path $uiMenuPath) {
-    Get-ChildItem -Path $uiMenuPath -Filter "*.ps1" | ForEach-Object {
-        try {
-            . $_.FullName
-            Write-Verbose "Loaded UI menu file: $($_.FullName)"
-            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-                Write-Log -Message "Loaded UI menu file: $($_.FullName)" -Level INFO
-            }
-        }
-        catch {
-            Write-Warning "Failed to load UI menu file: $($_.FullName). Error: $_"
-            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-                Write-Log -Message "Failed to load UI menu file: $($_.FullName). Error: $_" -Level ERROR
-            }
-        }
-    }
-} else {
-    Write-Warning "UI menu folder not found: $uiMenuPath"
-    if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-        Write-Log -Message "UI menu folder not found: $uiMenuPath" -Level WARN
-    }
-}
-
-# Additionally, load UI handler functions from HomeLab.UI\Public\handlers.
-[string]$uiHandlersPath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.UI\Public\handlers"
-if (Test-Path $uiHandlersPath) {
-    Get-ChildItem -Path $uiHandlersPath -Filter "*.ps1" | ForEach-Object {
-        try {
-            . $_.FullName
-            Write-Verbose "Loaded UI handler file: $($_.FullName)"
-            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-                Write-Log -Message "Loaded UI handler file: $($_.FullName)" -Level INFO
-            }
-        }
-        catch {
-            Write-Warning "Failed to load UI handler file: $($_.FullName). Error: $_"
-            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-                Write-Log -Message "Failed to load UI handler file: $($_.FullName). Error: $_" -Level ERROR
-            }
-        }
-    }
-} else {
-    Write-Warning "UI handlers folder not found: $uiHandlersPath"
-    if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-        Write-Log -Message "UI handlers folder not found: $uiHandlersPath" -Level WARN
-    }
+else {
+    Write-Warning "Core module could not be loaded. HomeLab functionality will be limited."
 }
 
 # Define the high-level Start-HomeLab function.
@@ -154,17 +165,43 @@ function Start-HomeLab {
     #>
     [CmdletBinding()]
     param()
-
-    # Check if Core module functions are available
-    if (-not (Get-Command Load-Configuration -ErrorAction SilentlyContinue)) {
-        Write-Host "Load-Configuration function not found. Ensure HomeLab.Core is loaded." -ForegroundColor Red
+    
+    # Check if required functions from Core module are available
+    $requiredFunctions = @(
+        "Import-Configuration", 
+        "Initialize-LogFile", 
+        "Write-Log",
+        "Write-SimpleLog",  # Now we have this function
+        "Test-Prerequisites",
+        "Install-Prerequisites",
+        "Test-SetupComplete",
+        "Initialize-HomeLab"
+    )
+    
+    $missingFunctions = @()
+    foreach ($function in $requiredFunctions) {
+        if (-not (Test-CommandExists -CommandName $function)) {
+            $missingFunctions += $function
+        }
+    }
+    
+    if ($missingFunctions.Count -gt 0) {
+        Write-Host "Required functions not found: $($missingFunctions -join ', ')" -ForegroundColor Red
+        Write-Host "Ensure HomeLab.Core module is loaded correctly." -ForegroundColor Red
+        
+        # List available functions for debugging
+        Write-Host "Available functions from HomeLab.Core:" -ForegroundColor Cyan
+        Get-Command -Module HomeLab.Core | ForEach-Object {
+            Write-Host "  - $($_.Name)" -ForegroundColor Cyan
+        }
+        
         return $false
     }
 
     # Initialize logging as early as possible
     try {
         # Create log directory if it doesn't exist
-        $defaultLogPath = Join-Path -Path $env:USERPROFILE -ChildPath "HomeLab\logs\homelab.log"
+        $defaultLogPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\logs\homelab.log"
         $logDir = Split-Path -Path $defaultLogPath -Parent
         if (-not (Test-Path -Path $logDir)) {
             New-Item -Path $logDir -ItemType Directory -Force | Out-Null
@@ -172,7 +209,7 @@ function Start-HomeLab {
         
         # Initialize log file with default path before configuration is loaded
         Initialize-LogFile -LogFilePath $defaultLogPath
-        Write-Log -Message "Starting HomeLab application..." -Level INFO
+        Write-SimpleLog -Message "Starting HomeLab application..." -Level INFO
     }
     catch {
         Write-Host "Failed to initialize logging: $_" -ForegroundColor Red
@@ -181,72 +218,97 @@ function Start-HomeLab {
 
     # Load configuration
     try {
-        if (-not (Load-Configuration)) {
+        if (-not (Import-Configuration)) {
             Write-Host "Failed to load configuration. Creating default configuration..." -ForegroundColor Yellow
-            Write-Log -Message "Configuration loading failed. Creating default." -Level WARN
+            Write-SimpleLog -Message "Configuration loading failed. Creating default." -Level WARN
             
             # Create default configuration
             Reset-Configuration
             Save-Configuration
             
-            if (-not (Load-Configuration)) {
+            if (-not (Import-Configuration)) {
                 Write-Host "Failed to create and load default configuration. Exiting." -ForegroundColor Red
-                Write-Log -Message "Default configuration creation failed." -Level ERROR
+                Write-SimpleLog -Message "Default configuration creation failed." -Level ERROR
                 return $false
             }
         }
-        Write-Log -Message "Configuration loaded successfully." -Level INFO
-        
-        # Re-initialize log file with configured path
-        Initialize-LogFile -LogFilePath (Get-Configuration).LogFile
-        Write-Log -Message "Log file initialized at: $((Get-Configuration).LogFile)" -Level INFO
+        Write-SimpleLog -Message "Configuration loaded successfully." -Level INFO
     }
     catch {
         Write-Host "Configuration error: $_" -ForegroundColor Red
-        Write-Log -Message "Configuration error: $_" -Level ERROR
+        Write-SimpleLog -Message "Configuration error: $_" -Level ERROR
         return $false
     }
 
     # Check prerequisites
     try {
         if (-not (Test-Prerequisites)) {
-            Write-Log -Message "Prerequisites missing; attempting installation." -Level INFO
+            Write-SimpleLog -Message "Prerequisites missing; attempting installation." -Level INFO
             Write-Host "Installing missing prerequisites..." -ForegroundColor Yellow
             Install-Prerequisites
             if (-not (Test-Prerequisites)) {
                 Write-Host "Prerequisites installation failed. Exiting." -ForegroundColor Red
-                Write-Log -Message "Prerequisites installation failed." -Level ERROR
+                Write-SimpleLog -Message "Prerequisites installation failed." -Level ERROR
                 return $false
             }
-            Write-Log -Message "Prerequisites verified after installation." -Level INFO
+            Write-SimpleLog -Message "Prerequisites verified after installation." -Level INFO
         }
     }
     catch {
         Write-Host "Prerequisites error: $_" -ForegroundColor Red
-        Write-Log -Message "Prerequisites error: $_" -Level ERROR
+        Write-SimpleLog -Message "Prerequisites error: $_" -Level ERROR
         return $false
     }
 
     # First-time setup if needed
     try {
         if (-not (Test-SetupComplete)) {
-            Write-Log -Message "First-time setup required. Initializing HomeLab." -Level INFO
+            Write-SimpleLog -Message "First-time setup required. Setting up HomeLab." -Level INFO
             Write-Host "Running first-time setup..." -ForegroundColor Yellow
             Initialize-HomeLab
         }
     }
     catch {
         Write-Host "Setup error: $_" -ForegroundColor Red
-        Write-Log -Message "Setup error: $_" -Level ERROR
+        Write-SimpleLog -Message "Setup error: $_" -Level ERROR
         return $false
+    }
+
+    # Check if UI functions exist before attempting to use them
+    $uiFunctions = @(
+        "Show-MainMenu",
+        "Invoke-DeployMenu",
+        "Invoke-VpnCertMenu",
+        "Invoke-VpnGatewayMenu",
+        "Invoke-VpnClientMenu",
+        "Invoke-NatGatewayMenu",
+        "Invoke-DocumentationMenu",
+        "Invoke-SettingsMenu"
+    )
+    
+    $missingUiFunctions = @()
+    foreach ($function in $uiFunctions) {
+        if (-not (Test-CommandExists -CommandName $function)) {
+            $missingUiFunctions += $function
+        }
+    }
+    
+    if ($missingUiFunctions.Count -gt 0) {
+        Write-Host "UI functions not found: $($missingUiFunctions -join ', ')" -ForegroundColor Red
+        Write-Host "HomeLab UI module may not be loaded correctly. Basic functionality only." -ForegroundColor Yellow
+        Write-SimpleLog -Message "Missing UI functions: $($missingUiFunctions -join ', ')" -Level WARN
+        
+        # Provide basic functionality without UI
+        Write-Host "HomeLab core modules loaded. For full functionality, ensure UI module is loaded." -ForegroundColor Cyan
+        return $true
     }
 
     # Main menu loop
     try {
-        Write-Log -Message "Entering main menu loop." -Level INFO
+        Write-SimpleLog -Message "Entering main menu loop." -Level INFO
         do {
             $selection = Show-MainMenu
-            Write-Log -Message "User selected menu option: $selection" -Level DEBUG
+            Write-SimpleLog -Message "User selected menu option: $selection" -Level DEBUG
             switch ($selection) {
                 "1" { Invoke-DeployMenu }
                 "2" { Invoke-VpnCertMenu }
@@ -255,10 +317,10 @@ function Start-HomeLab {
                 "5" { Invoke-NatGatewayMenu }
                 "6" { Invoke-DocumentationMenu }
                 "7" { Invoke-SettingsMenu }
-                "0" { Write-Host "Exiting Home Lab Setup..." -ForegroundColor Cyan; Write-Log -Message "User chose to exit HomeLab." -Level INFO }
+                "0" { Write-Host "Exiting Home Lab Setup..." -ForegroundColor Cyan; Write-SimpleLog -Message "User chose to exit HomeLab." -Level INFO }
                 default {
                     Write-Host "Invalid option. Please try again." -ForegroundColor Red
-                    Write-Log -Message "Invalid menu option selected: $selection" -Level WARN
+                    Write-SimpleLog -Message "Invalid menu option selected: $selection" -Level WARN
                     Start-Sleep -Seconds 2
                 }
             }
@@ -266,15 +328,23 @@ function Start-HomeLab {
     }
     catch {
         Write-Host "Error in main menu: $_" -ForegroundColor Red
-        Write-Log -Message "Error in main menu: $_" -Level ERROR
+        Write-SimpleLog -Message "Error in main menu: $_" -Level ERROR
         return $false
     }
     finally {
-        Write-Log -Message "Exiting HomeLab application." -Level INFO
+        Write-SimpleLog -Message "Exiting HomeLab application." -Level INFO
     }
     
     return $true
 }
 
+# Restore the original PSDefaultParameterValues
+if ($originalPSDefaultParameterValues) {
+    $global:PSDefaultParameterValues = $originalPSDefaultParameterValues
+}
+
 # Export only the main entry point function
 Export-ModuleMember -Function Start-HomeLab
+
+# Restore automatic module loading
+$PSModuleAutoLoadingPreference = 'All'

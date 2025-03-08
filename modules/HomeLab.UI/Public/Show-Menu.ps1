@@ -23,7 +23,7 @@
 #>
 function Show-Menu {
     [CmdletBinding()]
-    param (
+    param(
         [Parameter(Mandatory = $true)]
         [string]$Title,
         
@@ -31,25 +31,43 @@ function Show-Menu {
         [hashtable]$MenuItems,
         
         [Parameter(Mandatory = $false)]
-        [string]$ExitOption = "0"
+        [switch]$ReturnToMain,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
     )
     
-    Clear-Host
-    
-    # Build and display title bar
-    $titleBar = "═" * ($Title.Length + 10)
-    Write-Host "╔$titleBar╗" -ForegroundColor Blue
-    Write-Host "║    $Title    ║" -ForegroundColor Blue
-    Write-Host "╚$titleBar╝" -ForegroundColor Blue
-    Write-Host ""
-    
-    # Display menu items in sorted order of keys
-    foreach ($key in $MenuItems.Keys | Sort-Object) {
-        Write-Host "$key. $($MenuItems[$key])" -ForegroundColor Green
+    if ($ShowProgress) {
+        # Show a quick progress bar when loading the menu
+        for ($i = 0; $i -le 100; $i += 10) {
+            Show-ProgressBar -PercentComplete $i -Activity "Loading Menu" -Status "Please wait..." -Width 30
+            Start-Sleep -Milliseconds 50  # Quick animation
+        }
     }
     
-    # Display exit option
-    Write-Host ""
-    Write-Host "$ExitOption. Exit" -ForegroundColor Yellow
-    Write-Host ""
+    # Clear the screen
+    Clear-Host
+    
+    # Display the title
+    Write-ColorOutput "`n$Title`n" -ForegroundColor Cyan
+    
+    # Display menu items
+    foreach ($key in $MenuItems.Keys | Sort-Object) {
+        Write-ColorOutput "  [$key] $($MenuItems[$key])" -ForegroundColor White
+    }
+    
+    # Add return to main menu option if requested
+    if ($ReturnToMain) {
+        Write-ColorOutput "`n  [M] Return to Main Menu" -ForegroundColor Yellow
+        Write-ColorOutput "  [Q] Quit" -ForegroundColor Yellow
+    }
+    else {
+        Write-ColorOutput "`n  [Q] Quit" -ForegroundColor Yellow
+    }
+    
+    # Get user choice
+    Write-ColorOutput "`nSelect an option: " -ForegroundColor Cyan -NoNewLine
+    $choice = Read-Host
+    
+    return $choice
 }

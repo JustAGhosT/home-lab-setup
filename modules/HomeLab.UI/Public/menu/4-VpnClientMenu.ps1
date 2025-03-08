@@ -8,15 +8,22 @@
       3. Disconnect from VPN
       4. Check VPN Connection Status
       0. Return to Main Menu
+.PARAMETER ShowProgress
+    If specified, shows a progress bar while loading the menu.
 .EXAMPLE
     Show-VpnClientMenu
+.EXAMPLE
+    Show-VpnClientMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 8, 2025
 #>
 function Show-VpnClientMenu {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
+    )
     
     $menuItems = @{
         "1" = "Add Computer to VPN"
@@ -25,5 +32,5 @@ function Show-VpnClientMenu {
         "4" = "Check VPN Connection Status"
     }
     
-    Show-Menu -Title "VPN CLIENT MANAGEMENT" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "VPN CLIENT MANAGEMENT" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
 }

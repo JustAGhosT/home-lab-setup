@@ -8,15 +8,22 @@
       3. Upload Certificate to VPN Gateway
       4. Remove Certificate from VPN Gateway
       0. Return to Main Menu
+.PARAMETER ShowProgress
+    If specified, shows a progress bar while loading the menu.
 .EXAMPLE
     Show-VpnGatewayMenu
+.EXAMPLE
+    Show-VpnGatewayMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 8, 2025
 #>
 function Show-VpnGatewayMenu {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
+    )
     
     $menuItems = @{
         "1" = "Check VPN Gateway Status"
@@ -25,5 +32,5 @@ function Show-VpnGatewayMenu {
         "4" = "Remove Certificate from VPN Gateway"
     }
     
-    Show-Menu -Title "VPN GATEWAY MENU" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "VPN GATEWAY MENU" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
 }

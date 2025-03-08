@@ -9,15 +9,22 @@
       4. Upload Certificate to VPN Gateway
       5. List All Certificates
       0. Return to Main Menu
+.PARAMETER ShowProgress
+    If specified, shows a progress bar while loading the menu.
 .EXAMPLE
     Show-VpnCertMenu
+.EXAMPLE
+    Show-VpnCertMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 8, 2025
 #>
 function Show-VpnCertMenu {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
+    )
     
     $menuItems = @{
         "1" = "Create New Root Certificate"
@@ -27,5 +34,5 @@ function Show-VpnCertMenu {
         "5" = "List All Certificates"
     }
     
-    Show-Menu -Title "VPN CERTIFICATE MENU" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "VPN CERTIFICATE MENU" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
 }

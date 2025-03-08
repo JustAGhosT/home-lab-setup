@@ -9,15 +9,22 @@
       4. Deploy NAT Gateway Only
       5. Check Deployment Status
       0. Return to Main Menu
+.PARAMETER ShowProgress
+    If specified, shows a progress bar while loading the menu.
 .EXAMPLE
     Show-DeployMenu
+.EXAMPLE
+    Show-DeployMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 8, 2025
 #>
 function Show-DeployMenu {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
+    )
     
     $menuItems = @{
         "1" = "Full Deployment (All Resources)"
@@ -27,5 +34,5 @@ function Show-DeployMenu {
         "5" = "Check Deployment Status"
     }
     
-    Show-Menu -Title "DEPLOYMENT MENU" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "DEPLOYMENT MENU" -MenuItems $menuItems -ShowProgress:$ShowProgress
 }

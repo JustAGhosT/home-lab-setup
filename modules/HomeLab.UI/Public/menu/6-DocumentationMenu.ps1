@@ -7,15 +7,22 @@
       2. View VPN Gateway Documentation
       3. View Client Certificate Management Guide
       0. Return to Main Menu
+.PARAMETER ShowProgress
+    If specified, shows a progress bar while loading the menu.
 .EXAMPLE
     Show-DocumentationMenu
+.EXAMPLE
+    Show-DocumentationMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 8, 2025
 #>
 function Show-DocumentationMenu {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowProgress
+    )
     
     $menuItems = @{
         "1" = "View Main README"
@@ -23,5 +30,5 @@ function Show-DocumentationMenu {
         "3" = "View Client Certificate Management Guide"
     }
     
-    Show-Menu -Title "DOCUMENTATION" -MenuItems $menuItems -ExitOption "0"
+    Show-Menu -Title "DOCUMENTATION" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
 }

@@ -1,14 +1,17 @@
 <#
 .SYNOPSIS
-    Configuration Management Module for Home Lab Setup.
+    Configuration management for HomeLab environment.
 .DESCRIPTION
-    Provides functions for managing configuration settings for the Home Lab environment.
-    It uses a global configuration object ($Global:Config) to store settings and supports
-    loading and saving configuration to a JSON file.
+    Provides functions for managing configuration settings for the HomeLab environment,
+    including loading, saving, and modifying configuration values.
 .NOTES
     Author: Jurie Smit
     Date: March 6, 2025
 #>
+
+# Save original preferences at the beginning of the module
+$originalPSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference
+$PSModuleAutoLoadingPreference = 'None'
 
 <#
 .SYNOPSIS
@@ -29,60 +32,20 @@ function Get-Configuration {
 
 <#
 .SYNOPSIS
-    Updates a specific configuration parameter.
-.DESCRIPTION
-    Updates a specific parameter in the global configuration.
-.PARAMETER Name
-    The name of the parameter to update.
-.PARAMETER Value
-    The new value for the parameter.
-.PARAMETER Persist
-    If specified, saves the updated configuration to the configuration file.
-.EXAMPLE
-    Update-ConfigurationParameter -Name "env" -Value "prod" -Persist
-.OUTPUTS
-    None.
-#>
-function Update-ConfigurationParameter {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        
-        [Parameter(Mandatory = $true)]
-        [object]$Value,
-        
-        [Parameter(Mandatory = $false)]
-        [switch]$Persist
-    )
-    
-    # Update the parameter in the global configuration
-    $Global:Config[$Name] = $Value
-    
-    # Log the update
-    Write-Log -Message "Configuration parameter '$Name' updated to '$Value'" -Level Info
-    
-    # Save the configuration if requested
-    if ($Persist) {
-        Save-Configuration
-    }
-}
-
-<#
-.SYNOPSIS
     Loads configuration from a JSON file.
 .DESCRIPTION
-    Loads configuration settings from a JSON file into the global configuration.
+    Loads configuration settings from a JSON file and updates the global configuration.
 .PARAMETER ConfigFile
-    The path to the configuration file. Defaults to the path in the global configuration.
+    The path to the configuration file. If not specified, uses the default path from global configuration.
 .PARAMETER Silent
-    If specified, suppresses non-error messages.
+    If specified, suppresses log messages.
 .EXAMPLE
-    Load-Configuration -ConfigFile "C:\Config\homelab.json"
-.OUTPUTS
-    Boolean. Returns $true if the configuration was loaded successfully, $false otherwise.
+    Import-Configuration -ConfigFile "C:\config.json"
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
 #>
-function Load-Configuration {
+function Import-Configuration {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
@@ -92,32 +55,27 @@ function Load-Configuration {
         [switch]$Silent
     )
     
-    # Check if the configuration file exists
-    if (Test-Path -Path $ConfigFile) {
-        try {
-            # Load the configuration from the file
-            $configData = Get-Content -Path $ConfigFile -Raw | ConvertFrom-Json
-            
-            # Update the global configuration with the loaded data
-            foreach ($property in $configData.PSObject.Properties) {
-                $Global:Config[$property.Name] = $property.Value
-            }
-            
-            if (-not $Silent) {
-                Write-Log -Message "Configuration loaded from $ConfigFile" -Level Info
-            }
-            
-            return $true
-        }
-        catch {
-            Write-Log -Message "Error loading configuration from $ConfigFile: $_" -Level Error
-            return $false
-        }
+    Write-SafeLog -Message "Loading configuration from $ConfigFile" -Level Info -NoOutput:$Silent
+    
+    if (-not (Test-Path -Path $ConfigFile)) {
+        Write-SafeLog -Message "Configuration file not found: $ConfigFile" -Level Warning -NoOutput:$Silent
+        return $false
     }
-    else {
-        if (-not $Silent) {
-            Write-Log -Message "Configuration file not found at $ConfigFile. Using default configuration." -Level Warning
+    
+    try {
+        $configJson = Get-Content -Path $ConfigFile -Raw
+        $config = $configJson | ConvertFrom-Json -AsHashtable
+        
+        # Update global configuration
+        foreach ($key in $config.Keys) {
+            $Global:Config[$key] = $config[$key]
         }
+        
+        Write-SafeLog -Message "Configuration loaded successfully." -Level Success -NoOutput:$Silent
+        return $true
+    }
+    catch {
+        Write-SafeLog -Message "Failed to load configuration: $_" -Level Error -NoOutput:$Silent
         return $false
     }
 }
@@ -128,76 +86,229 @@ function Load-Configuration {
 .DESCRIPTION
     Saves the current global configuration to a JSON file.
 .PARAMETER ConfigFile
-    The path to the configuration file. Defaults to the path in the global configuration.
+    The path to the configuration file. If not specified, uses the default path from global configuration.
+.PARAMETER Silent
+    If specified, suppresses log messages.
 .EXAMPLE
-    Save-Configuration -ConfigFile "C:\Config\homelab.json"
-.OUTPUTS
-    Boolean. Returns $true if the configuration was saved successfully, $false otherwise.
+    Save-Configuration -ConfigFile "C:\config.json"
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
 #>
 function Save-Configuration {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [string]$ConfigFile = $Global:Config.ConfigFile
+        [string]$ConfigFile = $Global:Config.ConfigFile,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$Silent
     )
     
+    Write-SafeLog -Message "Saving configuration to $ConfigFile" -Level Info -NoOutput:$Silent
+    
     try {
-        # Create the directory if it doesn't exist
+        # Create directory if it doesn't exist
         $configDir = Split-Path -Path $ConfigFile -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
         }
         
-        # Save the configuration to the file
-        $Global:Config | ConvertTo-Json -Depth 5 | Out-File -FilePath $ConfigFile -Force
+        # Convert configuration to JSON and save
+        $configJson = $Global:Config | ConvertTo-Json -Depth 5
+        Set-Content -Path $ConfigFile -Value $configJson -Force
         
-        Write-Log -Message "Configuration saved to $ConfigFile" -Level Info
+        Write-SafeLog -Message "Configuration saved successfully." -Level Success -NoOutput:$Silent
         return $true
     }
     catch {
-        Write-Log -Message "Error saving configuration to $ConfigFile: $_" -Level Error
+        Write-SafeLog -Message "Failed to save configuration: $_" -Level Error -NoOutput:$Silent
         return $false
     }
 }
 
 <#
 .SYNOPSIS
-    Resets configuration to default values.
+    Gets a configuration value.
 .DESCRIPTION
-    Resets the global configuration to default values.
-.PARAMETER Persist
-    If specified, saves the reset configuration to the configuration file.
+    Gets a value from the global configuration.
+.PARAMETER Key
+    The key of the configuration value to get.
+.PARAMETER DefaultValue
+    The default value to return if the key is not found.
 .EXAMPLE
-    Reset-Configuration -Persist
-.OUTPUTS
-    None.
+    Get-ConfigValue -Key "env" -DefaultValue "dev"
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
+#>
+function Get-ConfigValue {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key,
+        
+        [Parameter(Mandatory = $false)]
+        $DefaultValue = $null
+    )
+    
+    if ($Global:Config.ContainsKey($Key)) {
+        return $Global:Config[$Key]
+    }
+    
+    return $DefaultValue
+}
+
+<#
+.SYNOPSIS
+    Sets a configuration value.
+.DESCRIPTION
+    Sets a value in the global configuration and optionally saves the configuration.
+.PARAMETER Key
+    The key of the configuration value to set.
+.PARAMETER Value
+    The value to set.
+.PARAMETER Save
+    If specified, saves the configuration after setting the value.
+.EXAMPLE
+    Set-ConfigValue -Key "env" -Value "prod" -Save
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
+#>
+function Set-ConfigValue {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key,
+        
+        [Parameter(Mandatory = $true)]
+        $Value,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$Save
+    )
+    
+    $oldValue = $null
+    if ($Global:Config.ContainsKey($Key)) {
+        $oldValue = $Global:Config[$Key]
+    }
+    
+    $Global:Config[$Key] = $Value
+    
+    Write-SafeLog -Message "Configuration value '$Key' updated: '$oldValue' -> '$Value'" -Level Info
+    
+    if ($Save) {
+        Save-Configuration
+    }
+    
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Removes a configuration value.
+.DESCRIPTION
+    Removes a value from the global configuration and optionally saves the configuration.
+.PARAMETER Key
+    The key of the configuration value to remove.
+.PARAMETER Save
+    If specified, saves the configuration after removing the value.
+.EXAMPLE
+    Remove-ConfigValue -Key "tempValue" -Save
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
+#>
+function Remove-ConfigValue {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$Save
+    )
+    
+    if (-not $Global:Config.ContainsKey($Key)) {
+        Write-SafeLog -Message "Configuration value '$Key' not found." -Level Warning
+        return $false
+    }
+    
+    $oldValue = $Global:Config[$Key]
+    $Global:Config.Remove($Key)
+    
+    Write-SafeLog -Message "Configuration value '$Key' removed. Old value: '$oldValue'" -Level Info
+    
+    if ($Save) {
+        Save-Configuration
+    }
+    
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Resets the configuration to default values.
+.DESCRIPTION
+    Resets the global configuration to default values and optionally saves the configuration.
+.PARAMETER Save
+    If specified, saves the configuration after resetting.
+.EXAMPLE
+    Reset-Configuration -Save
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
 #>
 function Reset-Configuration {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [switch]$Persist
+        [switch]$Save
     )
     
-    # Define default configuration values
-    $defaultConfig = @{
-        env = "dev"
-        loc = "saf"
-        project = "homelab"
-        location = "Bela Bela"
-        LogFile = "$env:USERPROFILE\.homelab\logs\homelab.log"
-        ConfigFile = "$env:USERPROFILE\.homelab\config.json"
+    Write-SafeLog -Message "Resetting configuration to default values." -Level Info
+    
+    # Save the current ConfigFile path
+    $configFile = $Global:Config.ConfigFile
+    $logFile = $Global:Config.LogFile
+    
+    # Create default configuration
+    $Global:Config = @{
+        env        = "dev"
+        loc        = "we"
+        project    = "homelab"
+        location   = "westeurope"
+        LogFile    = $logFile
+        ConfigFile = $configFile
+        LastSetup  = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     }
     
-    # Update the global configuration with default values
-    $Global:Config = $defaultConfig
+    Write-SafeLog -Message "Configuration reset to default values." -Level Success
     
-    Write-Log -Message "Configuration reset to default values" -Level Info
-    
-    # Save the configuration if requested
-    if ($Persist) {
+    if ($Save) {
         Save-Configuration
     }
+    
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Gets the path to the configuration file.
+.DESCRIPTION
+    Returns the path to the current configuration file.
+.EXAMPLE
+    $configPath = Get-ConfigPath
+.NOTES
+    Author: Jurie Smit
+    Date: March 6, 2025
+#>
+function Get-ConfigPath {
+    [CmdletBinding()]
+    param()
+    
+    return $Global:Config.ConfigFile
 }
 
 <#
@@ -229,7 +340,7 @@ function Set-Configuration {
         $Global:Config[$key] = $ConfigData[$key]
     }
     
-    Write-Log -Message "Configuration updated with $(($ConfigData.Keys -join ', '))" -Level Info
+    Write-SafeLog -Message "Configuration updated with $(($ConfigData.Keys -join ', '))" -Level Info
     
     # Save the configuration if requested
     if ($Persist) {
@@ -252,7 +363,7 @@ function Test-Configuration {
     param()
     
     $validationResults = @{
-        IsValid = $true
+        IsValid           = $true
         MissingParameters = @()
         InvalidParameters = @()
     }
@@ -280,8 +391,8 @@ function Test-Configuration {
             if ($validValues[$param] -notcontains $Global:Config[$param]) {
                 $validationResults.IsValid = $false
                 $validationResults.InvalidParameters += @{
-                    Parameter = $param
-                    Value = $Global:Config[$param]
+                    Parameter   = $param
+                    Value       = $Global:Config[$param]
                     ValidValues = $validValues[$param]
                 }
             }
@@ -322,16 +433,16 @@ function Backup-Configuration {
             $backupFile = Join-Path -Path $backupDir -ChildPath "config_$timestamp.json"
             Copy-Item -Path $ConfigFile -Destination $backupFile -Force
             
-            Write-Log -Message "Configuration backed up to $backupFile." -Level Info
+            Write-SafeLog -Message "Configuration backed up to $backupFile." -Level Info
             return $backupFile
         }
         catch {
-            Write-Log -Message "Error backing up configuration: $_" -Level Error
+            Write-SafeLog -Message "Error backing up configuration: ${_}" -Level Error
             return $null
         }
     }
     else {
-        Write-Log -Message "Configuration file not found at $ConfigFile." -Level Error
+        Write-SafeLog -Message "Configuration file not found at $ConfigFile." -Level Error
         return $null
     }
 }
@@ -369,95 +480,21 @@ function Restore-Configuration {
             Copy-Item -Path $BackupFile -Destination $ConfigFile -Force
             
             # Reload the configuration
-            Load-Configuration -ConfigFile $ConfigFile | Out-Null
+            Import-Configuration -ConfigFile $ConfigFile | Out-Null
             
-            Write-Log -Message "Configuration restored from $BackupFile." -Level Info
+            Write-SafeLog -Message "Configuration restored from $BackupFile." -Level Info
             return $true
         }
         catch {
-            Write-Log -Message "Error restoring configuration: $_" -Level Error
+            Write-SafeLog -Message "Error restoring configuration: $_" -Level Error
             return $false
         }
     }
     else {
-        Write-Log -Message "Backup file not found at $BackupFile." -Level Error
+        Write-SafeLog -Message "Backup file not found at $BackupFile." -Level Error
         return $false
     }
 }
 
-<#
-.SYNOPSIS
-    Exports configuration to a specified file.
-.DESCRIPTION
-    Exports the current configuration to a specified file in JSON format.
-.PARAMETER ExportPath
-    The path to export the configuration to.
-.EXAMPLE
-    Export-HomelabConfiguration -ExportPath "C:\Temp\homelab-config.json"
-.OUTPUTS
-    Boolean. Returns $true if the configuration was exported successfully, $false otherwise.
-#>
-function Export-HomelabConfiguration {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ExportPath
-    )
-    
-    try {
-        $config = Get-Configuration
-        $config | ConvertTo-Json -Depth 5 | Out-File -FilePath $ExportPath -Force
-        Write-Log -Message "Configuration exported to $ExportPath." -Level Info
-        return $true
-    }
-    catch {
-        Write-Log -Message "Error exporting configuration: $_" -Level Error
-        return $false
-    }
-}
-
-<#
-.SYNOPSIS
-    Imports configuration from a specified file.
-.DESCRIPTION
-    Imports configuration from a specified JSON file and updates the current configuration.
-.PARAMETER ImportPath
-    The path to import the configuration from.
-.EXAMPLE
-    Import-HomelabConfiguration -ImportPath "C:\Temp\homelab-config.json"
-.OUTPUTS
-    Boolean. Returns $true if the configuration was imported successfully, $false otherwise.
-#>
-function Import-HomelabConfiguration {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ImportPath
-    )
-    
-    if (Test-Path $ImportPath) {
-        try {
-            $importedConfig = Get-Content -Path $ImportPath -Raw | ConvertFrom-Json
-            
-            # Convert the imported JSON to a hashtable
-            $configData = @{}
-            $importedConfig.PSObject.Properties | ForEach-Object {
-                $configData[$_.Name] = $_.Value
-            }
-            
-            # Update the configuration
-            Set-Configuration -ConfigData $configData
-            
-            Write-Log -Message "Configuration imported from $ImportPath." -Level Info
-            return $true
-        }
-        catch {
-            Write-Log -Message "Error importing configuration: $_" -Level Error
-            return $false
-        }
-    }
-    else {
-        Write-Log -Message "Import file not found at $ImportPath." -Level Error
-        return $false
-    }
-}
+# Restore original preferences
+$PSModuleAutoLoadingPreference = $originalPSModuleAutoLoadingPreference

@@ -60,7 +60,7 @@ function Start-ResourceMonitoring {
                 Import-Module Az.Monitor
                 
                 # Load configuration
-                Load-Configuration -Path $ConfigPath
+                Import-Configuration -Path $ConfigPath
                 
                 while ($true) {
                     try {

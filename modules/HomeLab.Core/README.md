@@ -16,7 +16,7 @@ HomeLab.Core is the foundation module for the [HomeLab system](../../README.md).
 ### Configuration Functions
 
 - `Get-Configuration`: Retrieves the current configuration object
-- `Load-Configuration`: Loads configuration from the config file
+- `Import-Configuration`: Loads configuration from the config file
 - `Save-Configuration`: Saves current configuration to the config file
 - `Reset-Configuration`: Resets configuration to default values
 - `Update-ConfigurationParameter`: Updates a specific configuration parameter
@@ -61,7 +61,7 @@ The default configuration file is stored at `$env:USERPROFILE\HomeLab\config.jso
 
 ```powershell
 # Load configuration
-Load-Configuration
+Import-Configuration
 
 # Get current configuration
 $config = Get-Configuration
