@@ -22,6 +22,12 @@ param appSubnetPrefix string = '10.0.1.0/24'
 @description('Address prefix for the database subnet.')
 param dbSubnetPrefix string = '10.0.2.0/24'
 
+@description('Whether to enable NAT Gateway')
+param enableNatGateway bool = false
+
+@description('Whether to enable VPN Gateway')
+param enableVpnGateway bool = false
+
 // Variables for resource naming
 var prefix = '${env}-${loc}'
 var vnetName = '${prefix}-vnet-${project}'
@@ -183,7 +189,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2021-05-01' = {
 }
 
 // Call the nat-gateway.bicep script
-module natGateway 'nat-gateway.bicep' = {
+module natGateway 'nat-gateway.bicep' = if (enableNatGateway) {
   name: 'natGateway'
   params: {
     location: location
@@ -195,7 +201,7 @@ module natGateway 'nat-gateway.bicep' = {
       defaultSubnetName
       appSubnetName
     ]
-    enableNatGateway: false
+    enableNatGateway: true
   }
   dependsOn: [
     vnet // Ensure the VNET exists before trying to reference it
@@ -203,7 +209,7 @@ module natGateway 'nat-gateway.bicep' = {
 }
 
 // Call the VPN Gateway bicep script
-module vpnGateway 'vpn-gateway.bicep' = {
+module vpnGateway 'vpn-gateway.bicep' = if (enableVpnGateway) {
   name: 'vpnGateway'
   params: {
     location: location
@@ -226,3 +232,5 @@ output appSubnetName string = appSubnetName
 output appSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, appSubnetName)
 output dbSubnetName string = dbSubnetName
 output dbSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, dbSubnetName)
+output vpnGatewayName string = enableVpnGateway ? vpnGateway.outputs.vpnGatewayName : ''
+output natGatewayName string = enableNatGateway ? natGateway.outputs.natGatewayName : ''

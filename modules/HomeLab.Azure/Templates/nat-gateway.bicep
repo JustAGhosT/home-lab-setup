@@ -85,3 +85,4 @@ resource updatedSubnets 'Microsoft.Network/virtualNetworks/subnets@2021-05-01' =
 // Outputs
 output natGatewayId string = natGateway.id
 output natGatewayPublicIpId string = natGatewayPublicIP.id
+output natGatewayName string = natGatewayName

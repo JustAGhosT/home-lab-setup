@@ -1,15 +1,18 @@
-﻿@{
-    RootModule = 'HomeLab.Core.psm1'
+@{
+    RootModule = 'HomeLab.Utils.psm1'
     ModuleVersion = '0.1.0'
-    GUID = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'  # Generate a new GUID
+    GUID = ''
     Author = 'Jurie Smit'
     CompanyName = 'HomeLab'
     Copyright = '(c) 2025 Jurie Smit. All rights reserved.'
-    Description = 'Core functionality for HomeLab including configuration management, logging, setup, and prerequisites.'
+    Description = 'Utility functions for HomeLab environment'
     PowerShellVersion = '5.1'
     
-    # Functions to export from this module - use wildcard for automatic export
-    FunctionsToExport = '*'
+    # Functions to export from this module
+    FunctionsToExport = @(
+        'Get-Configuration',
+        'Split-FunctionsToFiles'
+    )
     
     # Cmdlets to export from this module
     CmdletsToExport = @()
@@ -24,7 +27,7 @@
     PrivateData = @{
         PSData = @{
             # Tags applied to this module
-            Tags = @('HomeLab', 'Configuration', 'Logging')
+            Tags = @('HomeLab', 'Utility', 'Tools')
             
             # A URL to the license for this module
             LicenseUri = ''
@@ -33,7 +36,7 @@
             ProjectUri = ''
             
             # ReleaseNotes of this module
-            ReleaseNotes = 'Initial release of HomeLab.Core module'
+            ReleaseNotes = 'Initial release of HomeLab.Utils module'
         }
     }
 }

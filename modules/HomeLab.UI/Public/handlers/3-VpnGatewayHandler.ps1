@@ -416,6 +416,9 @@ function Invoke-VpnGatewayMenu {
                 }
                 
                 Pause
+            }    
+            "5" {
+                Invoke-ConfigureVpnSplitTunneling
             }
             "0" {
                 # Return to main menu; do nothing.

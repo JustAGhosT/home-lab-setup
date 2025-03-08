@@ -177,34 +177,35 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
 
 ## Custom Client Configurations
 
-### Split Tunneling
+## Split Tunneling Configuration
 
-Split tunneling controls whether all client traffic or only VNet-destined traffic goes through the VPN tunnel.
+Split tunneling for the VPN Gateway is not directly configurable through the Bicep template. Instead, it is configured through one of these methods:
 
-```bicep
-param enableSplitTunneling bool = true
+1. **Post-deployment configuration**: After deploying the VPN Gateway, download the VPN client configuration package and modify it to enable split tunneling.
 
-resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
-  // ... other properties
-  properties: {
-    // ... other properties
-    vpnClientConfiguration: {
-      // ... other configurations
-      splitTunnel: enableSplitTunneling
-    }
-  }
-}
+2. **Custom route tables**: Configure route tables that only route traffic destined for the VNet address space through the VPN tunnel.
+
+### PowerShell Example for Post-Deployment Configuration
+
+```powershell
+# Download VPN client configuration package
+$ResourceGroupName = "dev-saf-rg-homelab"
+$GatewayName = "dev-saf-vpng-homelab"
+$ProfileName = "VpnClientProfile.zip"
+
+$vpnClientPackage = Get-AzVpnClientPackage -ResourceGroupName $ResourceGroupName -VirtualNetworkGatewayName $GatewayName -ProcessorArchitecture "Amd64"
+Invoke-WebRequest -Uri $vpnClientPackage.VpnProfileSasUrl -OutFile $ProfileName
+
+# Extract, modify for split tunneling, and distribute to clients
 ```
 
-#### Split Tunneling Options
+### Client Configuration
 
-- **True (Enabled)**: Only traffic destined for the VNet goes through the VPN
-  - Advantages: Better performance, reduced bandwidth on VPN gateway
-  - Use case: General access to internal resources while maintaining direct internet access
+Instructions for configuring split tunneling on client devices:
 
-- **False (Disabled)**: All client traffic goes through the VPN
-  - Advantages: Enhanced security, traffic inspection capabilities
-  - Use case: Strict security requirements, monitoring all user traffic
+- **Windows**: Modify the VPN connection properties to use only remote networks
+- **macOS**: Configure the VPN connection to only route specific subnets
+- **Mobile devices**: Use the Azure VPN Client app which supports split tunneling configuration
 
 ### Custom DNS Servers
 

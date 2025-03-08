@@ -1,0 +1,61 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "location": {
+        "value": "southafricanorth"
+      },
+      "env": {
+        "value": "dev"
+      },
+      "loc": {
+        "value": "saf"
+      },
+      "project": {
+        "value": "homelab"
+      },
+      "config": {
+        "value": {
+          "network": {
+            "vnetAddressPrefix": "10.0.0.0/16",
+            "defaultSubnetPrefix": "10.0.0.0/24",
+            "appSubnetPrefix": "10.0.1.0/24",
+            "dbSubnetPrefix": "10.0.2.0/24"
+          },
+          "natGateway": {
+            "enabled": true,
+            "idleTimeoutMinutes": 4,
+            "publicIpAddresses": 1,
+            "zones": ["1"]
+          },
+          "vpn": {
+            "enabled": true,
+            "enableSplitTunneling": true,
+            "splitTunnelingRoutes": [
+              "10.0.0.0/8",
+              "172.16.0.0/12",
+              "192.168.0.0/16"
+            ]
+          },
+          "monitoring": {
+            "enabled": true,
+            "dashboard": {
+              "enabled": true,
+              "refreshIntervalMinutes": 5,
+              "retentionDays": 30
+            },
+            "alerts": {
+              "enabled": true,
+              "natGatewaySnatPortUtilizationThreshold": 80,
+              "emailRecipients": ["admin@example.com"]
+            },
+            "diagnostics": {
+              "enabled": true,
+              "categories": ["MetricLogs", "AuditLogs"]
+            }
+          }
+        }
+      }
+    }
+  }
+  

@@ -7,6 +7,7 @@
       2. Generate VPN Client Configuration
       3. Upload Certificate to VPN Gateway
       4. Remove Certificate from VPN Gateway
+      5. Configure VPN Split Tunneling
       0. Return to Main Menu
 .PARAMETER ShowProgress
     If specified, shows a progress bar while loading the menu.
@@ -30,6 +31,7 @@ function Show-VpnGatewayMenu {
         "2" = "Generate VPN Client Configuration"
         "3" = "Upload Certificate to VPN Gateway"
         "4" = "Remove Certificate from VPN Gateway"
+        "5" = "Configure VPN Split Tunneling"
     }
     
     Show-Menu -Title "VPN GATEWAY MENU" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress

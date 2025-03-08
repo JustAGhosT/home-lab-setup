@@ -1,5 +1,4 @@
 // Helper module to get subnet information
-
 param vnetName string
 param subnetName string
 

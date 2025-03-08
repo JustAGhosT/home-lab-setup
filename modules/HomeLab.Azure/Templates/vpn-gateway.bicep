@@ -29,7 +29,7 @@ param gatewaySubnetPrefix string = '10.0.255.0/27'
   'VpnGw2'
   'VpnGw3'
 ])
-param gatewaySku string = 'Basic'
+param gatewaySku string = 'VpnGw1'
 
 @description('Type of VPN Gateway.')
 @allowed([
@@ -51,7 +51,13 @@ param deployVpnGateway bool = false
 @description('Address space for VPN clients (Point-to-Site connections).')
 param vpnClientAddressPoolPrefix string = '172.16.0.0/24'
 
-@description('Enable split tunneling for VPN clients. When true, only traffic to VNet addresses goes through VPN.')
+@description('Enable point-to-site VPN configuration.')
+param enablePointToSiteVpn bool = false
+
+@description('Enable split tunneling for VPN clients.')
+@metadata({
+  note: 'This parameter is for documentation only. Split tunneling must be configured post-deployment.'
+})
 param enableSplitTunneling bool = true
 
 // Variables for resource naming
@@ -78,8 +84,11 @@ resource gatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2021-05-01' = 
 resource gatewayPublicIP 'Microsoft.Network/publicIPAddresses@2021-05-01' = if(deployVpnGateway) {
   name: gatewayPublicIPName
   location: location
+  sku: {
+    name: 'Standard'
+  }
   properties: {
-    publicIPAllocationMethod: 'Dynamic'
+    publicIPAllocationMethod: 'Static'
   }
 }
 
@@ -109,17 +118,18 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = if(d
       name: gatewaySku
       tier: gatewaySku
     }
-    vpnClientConfiguration: {
+    vpnClientConfiguration: enablePointToSiteVpn ? {
       vpnClientAddressPool: {
         addressPrefixes: [
           vpnClientAddressPoolPrefix
         ]
       }
-      splitTunnel: enableSplitTunneling
-    }
+    } : null
+    vpnGatewayGeneration: gatewaySku == 'Basic' ? 'None' : 'Generation1'
   }
 }
 
 // Outputs - handle conditional deployment
 output vpnGatewayId string = deployVpnGateway ? vpnGateway.id : ''
-output vpnGatewayPipId string = deployVpnGateway ? gatewayPublicIP.id : ''
+output vpnGatewayName string = deployVpnGateway ? vpnGateway.name : ''
+output vpnGatewayPublicIpId string = deployVpnGateway ? gatewayPublicIP.id : ''
