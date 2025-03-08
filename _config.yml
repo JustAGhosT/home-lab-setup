@@ -1,3 +1,17 @@
+title: Azure HomeLab VPN Setup
+description: Documentation for setting up and managing an Azure virtual network with VPN connectivity
+theme: jekyll-theme-minimal
+
 markdown: kramdown
 kramdown:
   parse_block_html: true
+
+plugins:
+  - jekyll-seo-tag
+
+defaults:
+  -
+    scope:
+      path: ""
+    values:
+      layout: "default"

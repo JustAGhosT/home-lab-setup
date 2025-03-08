@@ -4,8 +4,13 @@
   document.addEventListener("DOMContentLoaded", function () {
     mermaid.initialize({
       startOnLoad: true,
-      theme: "default",
-      securityLevel: "loose",
+      theme: 'neutral',
+      fontFamily: 'sans-serif',
+      flowchart: {
+        curve: 'basis',
+        htmlLabels: true
+      },
+      securityLevel: 'loose',
     });
     
     // Force mermaid to render all code blocks with class 'language-mermaid'
