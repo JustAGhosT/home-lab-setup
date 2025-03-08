@@ -1,3 +1,8 @@
+---
+layout: default
+title: My Home Lab Setup
+---
+
 # My Home Lab Setup
 
 ## Overview
