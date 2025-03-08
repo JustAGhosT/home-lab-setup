@@ -7,23 +7,23 @@ This document outlines the high-level architecture of our Azure cloud environmen
 
 ```mermaid
 flowchart TD
-  subgraph "Azure Cloud"
+  subgraph AzureCloud["Azure Cloud"]
       VNet["Azure Virtual Network<br>10.0.0.0/16"]
       
-      subgraph "Network Components"
+      subgraph NetworkComponents["Network Components"]
           VPNGw["VPN Gateway<br>Point-to-Site"]
           NATGw["NAT Gateway<br>Outbound Internet"]
           NSG["Network Security Groups"]
       end
       
-      subgraph "Subnets"
+      subgraph Subnets["Subnets"]
           GwSubnet["GatewaySubnet<br>10.0.0.0/24"]
           WorkloadSubnet["Workload Subnet<br>10.0.1.0/24"]
           ManagementSubnet["Management Subnet<br>10.0.2.0/24"]
           DataSubnet["Data Subnet<br>10.0.3.0/24"]
       end
       
-      VNet --> Network Components
+      VNet --> NetworkComponents
       VNet --> Subnets
       
       VPNGw --> GwSubnet
@@ -36,7 +36,7 @@ flowchart TD
       NSG --> DataSubnet
   end
   
-  subgraph "On-Premises / Home"
+  subgraph OnPremises["On-Premises / Home"]
       Client1["Client Computer 1"]
       Client2["Client Computer 2"]
       MobileDevice["Mobile Device"]
