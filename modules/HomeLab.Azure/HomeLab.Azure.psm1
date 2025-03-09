@@ -6,7 +6,7 @@
 .NOTES
     Author: Jurie Smit
     Date: March 9, 2025
-    Version: 1.0.4
+    Version: 1.0.6
 #>
 
 #region Initialization
@@ -137,19 +137,43 @@ if (Test-Path -Path $publicPath) {
     
     foreach ($file in $publicFiles) {
         try {
+            # Get function names before loading the file
+            $beforeFunctions = Get-ChildItem function: | Select-Object -ExpandProperty Name
+            
+            # Load the file
             . $file.FullName
             $publicCount++
-            Write-Verbose "Loaded public function: $($file.BaseName)"
             
-            # Extract function name from file content
-            $fileContent = Get-Content -Path $file.FullName -Raw
-            if ($fileContent -match 'function\s+([A-Za-z0-9\-_]+)') {
-                $functionName = $matches[1]
-                $publicFunctions += $functionName
-                Write-Verbose "Added function to export list: $functionName"
-            }
-            else {
-                Write-Warning "No function definition found in file: $($file.Name)"
+            # Get function names after loading the file
+            $afterFunctions = Get-ChildItem function: | Select-Object -ExpandProperty Name
+            
+            # Find new functions that were added by this file
+            $newFunctions = $afterFunctions | Where-Object { $beforeFunctions -notcontains $_ }
+            
+            if ($newFunctions) {
+                foreach ($fn in $newFunctions) {
+                    # Verify this is a valid function name (not 'returns' or other keywords)
+                    if ($fn -match '^[a-zA-Z0-9\-_]+$' -and $fn -ne 'returns') {
+                        $publicFunctions += $fn
+                        Write-Verbose "Added function to export list: $fn"
+                    } else {
+                        Write-Warning "Skipping invalid function name: $fn"
+                    }
+                }
+            } else {
+                # Fallback to regex parsing if no new functions were detected
+                $fileContent = Get-Content -Path $file.FullName -Raw
+                if ($fileContent -match 'function\s+([A-Za-z0-9\-_]+)') {
+                    $functionName = $matches[1]
+                    if ($functionName -ne 'returns') {
+                        $publicFunctions += $functionName
+                        Write-Verbose "Added function to export list (regex): $functionName"
+                    } else {
+                        Write-Warning "Skipping invalid function name (regex): $functionName"
+                    }
+                } else {
+                    Write-Warning "No function definition found in file: $($file.Name)"
+                }
             }
         }
         catch {
@@ -161,6 +185,18 @@ if (Test-Path -Path $publicPath) {
 }
 else {
     Write-Warning "Public directory not found: $publicPath"
+}
+
+# Check for problematic function definitions
+Write-Host "Checking for problematic function definitions..." -ForegroundColor Cyan
+foreach ($file in $publicFiles) {
+    $content = Get-Content -Path $file.FullName -Raw
+    if ($content -match 'function\s+returns\b' -or 
+        $content -match '\breturns\s*\(' -or 
+        $content -match '\breturns\s*\{') {
+        Write-Warning "Potential problematic 'returns' reference found in: $($file.FullName)"
+        Write-Host "  Context: $($matches[0])" -ForegroundColor Red
+    }
 }
 #endregion
 
@@ -175,18 +211,75 @@ Write-Verbose "Available functions in module: $($availableFunctions -join ', ')"
 # Remove any duplicates from the public functions list
 $publicFunctions = $publicFunctions | Select-Object -Unique
 
-# Export all public functions
-if ($publicFunctions.Count -gt 0) {
-    Export-ModuleMember -Function $publicFunctions
+# Filter out any problematic function names
+$validPublicFunctions = $publicFunctions | Where-Object { 
+    $_ -match '^[a-zA-Z0-9\-_]+$' -and 
+    $_ -ne 'returns' -and
+    $_ -ne 'if' -and
+    $_ -ne 'else' -and
+    $_ -ne 'elseif' -and
+    $_ -ne 'switch' -and
+    $_ -ne 'while' -and
+    $_ -ne 'for' -and
+    $_ -ne 'foreach' -and
+    $_ -ne 'do' -and
+    $_ -ne 'until' -and
+    $_ -ne 'break' -and
+    $_ -ne 'continue' -and
+    $_ -ne 'return'
+}
+
+# Export all valid public functions
+if ($validPublicFunctions.Count -gt 0) {
+    Export-ModuleMember -Function $validPublicFunctions
     
     # Display exported functions for verification
     Write-Host "Exported functions from $ModuleName module:" -ForegroundColor Cyan
-    foreach ($function in $publicFunctions | Sort-Object) {
+    foreach ($function in $validPublicFunctions | Sort-Object) {
         Write-Host "  - $function" -ForegroundColor Yellow
     }
 }
 else {
     Write-Warning "No functions exported from $ModuleName module"
+}
+#endregion
+
+#region Export vs Available Functions Comparison
+# Get the list of functions that are available but not exported
+$availableButNotExported = $availableFunctions | Where-Object { $validPublicFunctions -notcontains $_ }
+
+# Display export validation summary
+Write-Host "`n===== EXPORT VALIDATION SUMMARY =====" -ForegroundColor Cyan
+Write-Host "  - Total available functions: $($availableFunctions.Count)" -ForegroundColor Cyan
+Write-Host "  - Functions being exported: $($validPublicFunctions.Count)" -ForegroundColor Cyan
+Write-Host "  - Available but not exported: $($availableButNotExported.Count)" -ForegroundColor $(if ($availableButNotExported.Count -eq 0) { 'Green' } else { 'Yellow' })
+
+if ($availableButNotExported.Count -gt 0) {
+    Write-Host "`nFunctions available but not exported:" -ForegroundColor Yellow
+    foreach ($fn in $availableButNotExported | Sort-Object) {
+        # Check if this is likely a private function (based on path)
+        $fnInfo = Get-Command $fn -ErrorAction SilentlyContinue
+        $isPrivate = $false
+        if ($fnInfo -and $fnInfo.ScriptBlock.File -like "*\Private\*") {
+            $isPrivate = $true
+        }
+        
+        Write-Host "  - $fn" -ForegroundColor $(if ($isPrivate) { 'Gray' } else { 'Yellow' }) -NoNewline
+        if ($isPrivate) {
+            Write-Host " (private function)" -ForegroundColor Gray
+        } else {
+            Write-Host " (consider exporting)" -ForegroundColor Yellow
+        }
+    }
+}
+
+# Check for functions that are being exported but not available
+$exportedButNotAvailable = $validPublicFunctions | Where-Object { $availableFunctions -notcontains $_ }
+if ($exportedButNotAvailable.Count -gt 0) {
+    Write-Host "`nWARNING: Attempting to export functions that don't exist:" -ForegroundColor Red
+    foreach ($fn in $exportedButNotAvailable | Sort-Object) {
+        Write-Host "  - $fn" -ForegroundColor Red
+    }
 }
 #endregion
 

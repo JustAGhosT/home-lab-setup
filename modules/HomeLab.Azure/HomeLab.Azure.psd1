@@ -28,18 +28,8 @@
     )
     
     # Functions to export
-    FunctionsToExport  = @(
-        'Deploy-Infrastructure',
-        'NatGatewayEnableDisable',
-        'Connect-AzureAccount',
-        'Test-ResourceGroup',
-        'Reset-ResourceGroup',
-        'Set-VpnSplitTunneling',
-        'Format-AzureCliOutput',
-        'Get-BackgroundMonitoringJobs',
-        'Show-BackgroundMonitoringDetails',
-        'Start-BackgroundMonitoring'
-    )
+    # FunctionsToExport  = @(
+    # )
     
     # Cmdlets to export
     CmdletsToExport    = @()

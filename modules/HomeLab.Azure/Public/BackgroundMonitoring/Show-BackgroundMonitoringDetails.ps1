@@ -1,68 +1,168 @@
 <#
 .SYNOPSIS
-    Displays the status of background monitoring jobs in the console.
+    Shows details of background monitoring jobs.
 .DESCRIPTION
-    Shows a formatted list of all background monitoring jobs with their current status.
+    Displays information about currently running background monitoring jobs
+    including resource type, name, status, and elapsed time.
+.PARAMETER CleanupCompleted
+    If specified, automatically removes completed jobs without prompting.
 .EXAMPLE
     Show-BackgroundMonitoringDetails
-.NOTES
-    Author: Jurie Smit
-    Date: March 9, 2025
+    
+    Shows all background monitoring jobs and prompts to clean up completed jobs.
+.EXAMPLE
+    Show-BackgroundMonitoringDetails -CleanupCompleted
+    
+    Shows all background monitoring jobs and automatically cleans up completed ones.
 #>
 function Show-BackgroundMonitoringDetails {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$CleanupCompleted
+    )
     
-    $jobs = Get-BackgroundMonitoringJobs
-    
-    if ($jobs.Count -eq 0) {
-        Write-ColorOutput "No background monitoring jobs found." -ForegroundColor Yellow
+    # Get job directory path
+    $jobDir = Join-Path -Path $env:TEMP -ChildPath "HomeLab\Jobs"
+    if (-not (Test-Path -Path $jobDir)) {
+        Write-Host "`nNo background monitoring jobs found.`n" -ForegroundColor Yellow
         return
     }
     
-    Write-ColorOutput "`nBackground Monitoring Jobs:" -ForegroundColor Cyan
-    Write-ColorOutput "=========================" -ForegroundColor Cyan
+    # Get all job files
+    $jobFiles = Get-ChildItem -Path $jobDir -Filter "job_*.xml" -ErrorAction SilentlyContinue
+    if (-not $jobFiles -or $jobFiles.Count -eq 0) {
+        Write-Host "`nNo background monitoring jobs found.`n" -ForegroundColor Yellow
+        return
+    }
+    
+    # Process job files
+    $jobs = @()
+    foreach ($file in $jobFiles) {
+        try {
+            $jobInfo = Import-Clixml -Path $file.FullName
+            $jobs += [PSCustomObject]@{
+                JobId = $jobInfo.JobId
+                Path = $file.FullName
+                Info = $jobInfo
+            }
+        }
+        catch {
+            Write-Warning "Failed to read job file: $($file.FullName)"
+        }
+    }
+    
+    if ($jobs.Count -eq 0) {
+        Write-Host "`nNo valid background monitoring jobs found.`n" -ForegroundColor Yellow
+        return
+    }
+    
+    Write-Host "`nBackground Monitoring Jobs:" -ForegroundColor Cyan
+    Write-Host "=========================" -ForegroundColor Cyan
     
     foreach ($job in $jobs) {
-        $elapsedTime = if ($job.EndTime) {
-            $timeSpan = $job.EndTime - $job.StartTime
-            "{0:hh\:mm\:ss}" -f $timeSpan
-        } else {
-            $timeSpan = (Get-Date) - $job.StartTime
-            "{0:hh\:mm\:ss}" -f $timeSpan
+        $jobInfo = $job.Info
+        $elapsedTime = [DateTime]::Now - $jobInfo.StartTime
+        $formattedTime = "{0:hh\:mm\:ss}" -f $elapsedTime
+        
+        # Extract resource information
+        $resourceType = $jobInfo.ResourceType ?? "Unknown Resource"
+        $resourceName = $jobInfo.ResourceName ?? "Unknown Name"
+        $resourceGroup = $jobInfo.ResourceGroupName ?? "Unknown Group"
+        
+        # Get job status
+        $status = "Unknown"
+        if ($jobInfo.Job -and (Get-Job -Id $jobInfo.Job.Id -ErrorAction SilentlyContinue)) {
+            $jobStatus = Get-Job -Id $jobInfo.Job.Id
+            $status = $jobStatus.State
+            
+            # Check for completed job with results
+            if ($status -eq "Completed") {
+                try {
+                    $result = Receive-Job -Id $jobInfo.Job.Id -Keep -ErrorAction SilentlyContinue
+                    if ($result -and $result.Status) {
+                        $status = $result.Status
+                    }
+                }
+                catch {
+                    # Ignore errors in receiving job results
+                }
+            }
+        }
+        else {
+            $status = "Not Found"
         }
         
-        $statusColor = switch ($job.Status) {
-            "Running" { "Yellow" }
-            "Completed" { 
-                if ($job.Result.Status -eq "Succeeded") { "Green" } 
-                elseif ($job.Result.Status -eq "Failed") { "Red" }
-                else { "Yellow" }
-            }
+        # Display job info with better formatting
+        Write-Host "  Job ID: $($job.JobId)" -ForegroundColor Yellow
+        Write-Host "  Resource: $resourceType '$resourceName'" -ForegroundColor Cyan
+        Write-Host "  Resource Group: $resourceGroup" -ForegroundColor Cyan
+        if ($jobInfo.DeploymentName) {
+            Write-Host "  Deployment: $($jobInfo.DeploymentName)" -ForegroundColor Cyan
+        }
+        
+        # Color-code status
+        $statusColor = switch ($status) {
+            "Running" { "Green" }
+            "Completed" { "Green" }
+            "Succeeded" { "Green" }
             "Failed" { "Red" }
+            "Stopped" { "Yellow" }
+            "Timeout" { "Yellow" }
+            "Not Found" { "Red" }
             default { "White" }
         }
         
-        # Display job information
-        Write-ColorOutput "  Job ID: $($job.JobId)" -ForegroundColor White
-        Write-ColorOutput "  Resource: $($job.ResourceType) '$($job.ResourceName)'" -ForegroundColor Cyan
-        Write-ColorOutput "  Status: " -ForegroundColor White -NoNewline
+        Write-Host "  Status: $status" -ForegroundColor $statusColor
+        Write-Host "  Elapsed Time: $formattedTime" -ForegroundColor White
         
-        if ($job.Status -eq "Completed" -and $job.Result) {
-            Write-ColorOutput "$($job.Result.Status)" -ForegroundColor $statusColor
-        } else {
-            Write-ColorOutput "$($job.Status)" -ForegroundColor $statusColor
-        }
-        
-        Write-ColorOutput "  Elapsed Time: $elapsedTime" -ForegroundColor White
-        
-        # For completed jobs with results, show additional information
-        if ($job.Status -eq "Completed" -and $job.Result) {
-            if ($job.Result.LogFile -and (Test-Path $job.Result.LogFile)) {
-                Write-ColorOutput "  Log File: $($job.Result.LogFile)" -ForegroundColor White
+        # Show log file if available
+        if ($jobInfo.LogFile -or ($result -and $result.LogFile)) {
+            $logFile = $jobInfo.LogFile ?? $result.LogFile
+            if (Test-Path $logFile) {
+                Write-Host "  Log File: $logFile" -ForegroundColor Gray
             }
         }
         
-        Write-ColorOutput "" # Empty line between jobs
+        Write-Host ""
+    }
+    
+    # Handle cleanup of completed jobs
+    $completedJobs = $jobs | Where-Object { 
+        $jobInfo = $_.Info
+        if (-not $jobInfo.Job) { return $false }
+        
+        $jobId = $jobInfo.Job.Id
+        $job = Get-Job -Id $jobId -ErrorAction SilentlyContinue
+        return ($job -and $job.State -ne "Running") -or (-not $job)
+    }
+    
+    if ($completedJobs.Count -gt 0) {
+        $cleanupJobs = $false
+        
+        if ($CleanupCompleted) {
+            $cleanupJobs = $true
+        } else {
+            $response = Read-Host "Would you like to clean up completed monitoring jobs? (Y/N)"
+            $cleanupJobs = $response -like "Y*"
+        }
+        
+        if ($cleanupJobs) {
+            foreach ($job in $completedJobs) {
+                $jobInfo = $job.Info
+                
+                # Remove the job if it exists
+                if ($jobInfo.Job) {
+                    $jobId = $jobInfo.Job.Id
+                    Get-Job -Id $jobId -ErrorAction SilentlyContinue | Remove-Job -Force
+                }
+                
+                # Remove the job file
+                Remove-Item -Path $job.Path -Force
+                
+                Write-Host "Cleaned up job $($job.JobId)" -ForegroundColor Green
+            }
+            
+            Write-Host "Completed jobs have been cleaned up." -ForegroundColor Green
+        }
     }
 }
