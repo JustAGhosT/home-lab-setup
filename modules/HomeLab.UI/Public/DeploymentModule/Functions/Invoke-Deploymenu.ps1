@@ -68,7 +68,7 @@ function Invoke-DeployMenu {
                 Show-DeploymentStatus -Config $config -TargetInfo $targetInfo -ResourceGroup $resourceGroup -Location $location
             }
             "7" {
-                Show-BackgroundMonitoringDetails -Config $config -TargetInfo $targetInfo
+                Show-BackgroundMonitoringStatus -Config $config -TargetInfo $targetInfo
             }
             default {
                 Write-ColorOutput "Invalid option. Please try again." -ForegroundColor Red

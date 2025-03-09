@@ -154,4 +154,3 @@ function Start-BackgroundMonitoring {
         StartTime = Get-Date
     }
 }
-

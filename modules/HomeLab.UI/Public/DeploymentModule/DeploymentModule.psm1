@@ -13,4 +13,4 @@ Export-ModuleMember -Function Invoke-DeployMenu,
                              Invoke-VPNGatewayDeployment, 
                              Invoke-NATGatewayDeployment, 
                              Show-DeploymentStatus, 
-                             Show-BackgroundMonitoringDetails
+                             Show-BackgroundMonitoringStatus

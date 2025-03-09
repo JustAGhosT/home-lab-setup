@@ -113,8 +113,15 @@ function Invoke-VPNGatewayDeployment {
     $useMonitor = $monitorConfirmation -eq "F" -or $monitorConfirmation -eq "f"
     $useBackgroundMonitor = $monitorConfirmation -eq "B" -or $monitorConfirmation -eq "b"
     
-    # Start the progress task; variables from the parent scope are used directly.
-    $result = Start-ProgressTask -Activity "VPN Gateway Deployment $TargetInfo" -TotalSteps 4 -ScriptBlock {
+    # Capture variables to be used in the script block
+    $localUseForce = $useForce
+    $localUseMonitor = $useMonitor
+    $localUseBackgroundMonitor = $useBackgroundMonitor
+    
+    # Create the script block
+    $deploymentScriptBlock = {
+        param($useForce, $useMonitor, $useBackgroundMonitor)
+        
         # Step 1: Verify Prerequisites
         $Global:syncHash.Status = "Verifying prerequisites..."
         $Global:syncHash.CurrentStep = 1
@@ -160,6 +167,9 @@ function Invoke-VPNGatewayDeployment {
             return "Error deploying VPN Gateway: $_"
         }
     }
+    
+    # Start the progress task with proper variable passing
+    $result = Start-ProgressTask -Activity "VPN Gateway Deployment $TargetInfo" -TotalSteps 4 -ScriptBlock $deploymentScriptBlock -ArgumentList @($localUseForce, $localUseMonitor, $localUseBackgroundMonitor)
     
     if ($result -like "Error*") {
         Write-ColorOutput $result -ForegroundColor Red

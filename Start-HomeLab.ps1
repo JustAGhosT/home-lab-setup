@@ -67,6 +67,25 @@ $script:State = @{
 #endregion
 
 #region Helper Functions
+function Pause-BeforeSplash {
+    [CmdletBinding()]
+    param(
+        [int]$Seconds = 2
+    )
+    Write-Host "Press any key to continue, or wait $Seconds seconds..."
+    
+    # We can wait for either a key press or for $Seconds to elapse
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    while (!$Host.UI.RawUI.KeyAvailable -and $stopwatch.Elapsed.TotalSeconds -lt $Seconds) {
+        Start-Sleep -Milliseconds 200
+    }
+    
+    # If a key was pressed, consume it
+    if ($Host.UI.RawUI.KeyAvailable) {
+        [void]$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+}
+
 function Initialize-Environment {
     [CmdletBinding()]
     param()
@@ -471,7 +490,15 @@ function Start-MainLoop {
         Write-Log -Message "Main menu loop ended" -Level "Info"
     }
     catch {
-        Write-Log -Message "Error in main loop: $_" -Level "Error"
+        $errorMessage = $_.Exception.Message
+        $errorLine = $_.InvocationInfo.ScriptLineNumber
+        $errorScript = $_.InvocationInfo.ScriptName
+        $errorPosition = $_.InvocationInfo.PositionMessage
+        
+        Write-Log -Message "Error in main loop: $errorMessage" -Level Error
+        Write-Log -Message "Script: $errorScript, Line: $errorLine" -Level Error
+        Write-Log -Message "Position: $errorPosition" -Level Error
+        Write-Log -Message "Stack Trace: $($_.ScriptStackTrace)" -Level Error
     }
 }
 
@@ -501,6 +528,9 @@ function Show-StartupSummary {
 #region Main Script
 # Initialize environment
 Initialize-Environment
+
+# Pause briefly before showing the splash screen
+Pause-BeforeSplash -Seconds 10
 
 # Show splash screen
 Show-SplashScreen

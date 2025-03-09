@@ -4,12 +4,12 @@
 .DESCRIPTION
     Shows a formatted list of all background monitoring jobs with their current status.
 .EXAMPLE
-    Show-BackgroundMonitoringStatus
+    Show-BackgroundMonitoringDetails
 .NOTES
     Author: Jurie Smit
     Date: March 9, 2025
 #>
-function Show-BackgroundMonitoringStatus {
+function Show-BackgroundMonitoringDetails {
     [CmdletBinding()]
     param()
     

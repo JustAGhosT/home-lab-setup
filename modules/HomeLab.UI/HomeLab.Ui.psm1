@@ -83,7 +83,7 @@ try {
         'Invoke-VPNGatewayDeployment',
         'Invoke-NATGatewayDeployment',
         'Show-DeploymentStatus',
-        'Show-BackgroundMonitoringDetails'
+        'Show-BackgroundMonitoringStatus'
     )
 
     # Load private functions

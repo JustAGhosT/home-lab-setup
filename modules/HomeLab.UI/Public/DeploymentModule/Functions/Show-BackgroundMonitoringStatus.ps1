@@ -8,12 +8,12 @@
 .PARAMETER TargetInfo
     A formatted string describing the deployment target
 .EXAMPLE
-    Show-BackgroundMonitoringDetails -Config $config -TargetInfo "[Target: dev-saf-homelab]"
+    Show-BackgroundMonitoringStatus -Config $config -TargetInfo "[Target: dev-saf-homelab]"
 .NOTES
     Author: Jurie Smit
     Date: March 9, 2025
 #>
-function Show-BackgroundMonitoringDetails {
+function Show-BackgroundMonitoringStatus {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -25,8 +25,27 @@ function Show-BackgroundMonitoringDetails {
     
     Write-ColorOutput "Background Monitoring Status... $TargetInfo" -ForegroundColor Cyan
     
-    # Display all background monitoring jobs
-    Show-BackgroundMonitoringStatus
+    # Make sure the function exists before calling it
+    if (Get-Command -Name Show-BackgroundMonitoringDetails -ErrorAction SilentlyContinue) {
+        # Display all background monitoring jobs
+        Show-BackgroundMonitoringDetails
+    }
+    else {
+        Write-ColorOutput "Error: The Show-BackgroundMonitoringDetails function is not available." -ForegroundColor Red
+        Write-ColorOutput "This may indicate an issue with module loading or function exports." -ForegroundColor Red
+        
+        # Fallback implementation - directly get and display jobs
+        $jobs = Get-Job | Where-Object { $_.Name -like "Monitor_*" }
+        if ($jobs.Count -gt 0) {
+            Write-ColorOutput "`nFound $($jobs.Count) monitoring jobs:" -ForegroundColor Yellow
+            foreach ($job in $jobs) {
+                Write-ColorOutput "  Job ID: $($job.Id), Name: $($job.Name), Status: $($job.State)" -ForegroundColor White
+            }
+        }
+        else {
+            Write-ColorOutput "No background monitoring jobs found." -ForegroundColor Yellow
+        }
+    }
     
     # Option to clean up completed jobs
     $cleanupConfirmation = Read-Host "`nWould you like to clean up completed monitoring jobs? (Y/N)"
@@ -42,3 +61,4 @@ function Show-BackgroundMonitoringDetails {
     
     Pause
 }
+ 

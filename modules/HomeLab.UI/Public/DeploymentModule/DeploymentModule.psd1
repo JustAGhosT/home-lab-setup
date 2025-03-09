@@ -14,7 +14,7 @@
         'Invoke-VPNGatewayDeployment',
         'Invoke-NATGatewayDeployment',
         'Show-DeploymentStatus',
-        'Show-BackgroundMonitoringDetails'
+        'Show-BackgroundMonitoringStatus'
     )
     CmdletsToExport = @()
     VariablesToExport = '*'

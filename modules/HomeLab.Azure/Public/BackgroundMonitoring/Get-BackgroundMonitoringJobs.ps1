@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Gets the status of all background monitoring jobs.
+    Retrieves all background monitoring jobs.
 .DESCRIPTION
-    Retrieves information about all running and completed background monitoring jobs.
+    Gets information about all background monitoring jobs, including their status and results.
 .EXAMPLE
-    Get-BackgroundMonitoringJobs
+    $jobs = Get-BackgroundMonitoringJobs
 .NOTES
     Author: Jurie Smit
     Date: March 9, 2025
@@ -13,40 +13,43 @@ function Get-BackgroundMonitoringJobs {
     [CmdletBinding()]
     param()
     
-    # Get all jobs with names starting with "Monitor_"
-    $jobs = Get-Job | Where-Object { $_.Name -like "Monitor_*" }
+    # Get all jobs with the Monitor_ prefix
+    $monitorJobs = Get-Job | Where-Object { $_.Name -like "Monitor_*" }
+    $jobDetails = @()
     
-    $results = @()
-    
-    foreach ($job in $jobs) {
-        $status = $job.State
-        $result = $null
-        
-        # For completed jobs, get the result
-        if ($status -eq "Completed") {
-            $result = Receive-Job -Job $job -Keep
-        }
-        
-        # Extract resource info from job name
-        $resourceInfo = $job.Name -replace "Monitor_", ""
-        $resourceParts = $resourceInfo -split "_"
-        $resourceType = $resourceParts[0]
-        $resourceName = $resourceParts[1]
-        
-        # Create result object
+    foreach ($job in $monitorJobs) {
         $jobInfo = [PSCustomObject]@{
             JobId = $job.Id
             JobName = $job.Name
-            ResourceType = $resourceType
-            ResourceName = $resourceName
-            Status = $status
+            Status = $job.State
+            ResourceType = "Unknown"
+            ResourceName = "Unknown"
             StartTime = $job.PSBeginTime
             EndTime = $job.PSEndTime
-            Result = $result
+            Result = $null
         }
         
-        $results += $jobInfo
+        # Try to extract resource information from job name
+        if ($job.Name -match "Monitor_(.+?)_(.+?)_\d+") {
+            $jobInfo.ResourceType = $matches[1]
+            $jobInfo.ResourceName = $matches[2]
+        }
+        
+        # For completed jobs, try to get the result
+        if ($job.State -eq "Completed") {
+            try {
+                $jobResult = Receive-Job -Id $job.Id -Keep
+                if ($jobResult) {
+                    $jobInfo.Result = $jobResult
+                }
+            }
+            catch {
+                # Just continue if we can't get the result
+            }
+        }
+        
+        $jobDetails += $jobInfo
     }
     
-    return $results
+    return $jobDetails
 }

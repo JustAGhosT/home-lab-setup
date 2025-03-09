@@ -6,7 +6,7 @@
 .NOTES
     Author: Jurie Smit
     Date: March 9, 2025
-    Version: 1.0.3
+    Version: 1.0.4
 #>
 
 #region Initialization
@@ -102,7 +102,7 @@ $privatePath = Join-Path -Path $ModulePath -ChildPath 'Private'
 $privateCount = 0
 
 if (Test-Path -Path $privatePath) {
-    $privateFiles = Get-ChildItem -Path "$privatePath\*.ps1" -ErrorAction SilentlyContinue
+    $privateFiles = Get-ChildItem -Path "$privatePath\*.ps1" -Recurse -ErrorAction SilentlyContinue
     
     Write-Host "Loading private functions from $privatePath..." -ForegroundColor Cyan
     Write-Verbose "Found $($privateFiles.Count) private function files"
@@ -126,11 +126,11 @@ else {
 
 # Load public functions (to be exported)
 $publicPath = Join-Path -Path $ModulePath -ChildPath 'Public'
-$exportFunctions = @()
+$publicFunctions = @()
 $publicCount = 0
 
 if (Test-Path -Path $publicPath) {
-    $publicFiles = Get-ChildItem -Path "$publicPath\*.ps1" -ErrorAction SilentlyContinue
+    $publicFiles = Get-ChildItem -Path "$publicPath\*.ps1" -Recurse -ErrorAction SilentlyContinue
     
     Write-Host "Loading public functions from $publicPath..." -ForegroundColor Cyan
     Write-Verbose "Found $($publicFiles.Count) public function files"
@@ -138,13 +138,14 @@ if (Test-Path -Path $publicPath) {
     foreach ($file in $publicFiles) {
         try {
             . $file.FullName
+            $publicCount++
+            Write-Verbose "Loaded public function: $($file.BaseName)"
             
             # Extract function name from file content
             $fileContent = Get-Content -Path $file.FullName -Raw
-            if ($fileContent -match 'function\s+([A-Za-z0-9\-]+)') {
+            if ($fileContent -match 'function\s+([A-Za-z0-9\-_]+)') {
                 $functionName = $matches[1]
-                $exportFunctions += $functionName
-                $publicCount++
+                $publicFunctions += $functionName
                 Write-Verbose "Added function to export list: $functionName"
             }
             else {
@@ -163,47 +164,31 @@ else {
 }
 #endregion
 
-#region Module Finalization
-# Create module-specific wrapper functions if dependencies are missing
-if ($missingModules -contains 'HomeLab.Logging') {
-    function Write-ModuleLog {
-        param(
-            [string]$Message,
-            [string]$Level = 'Info'
-        )
-        
-        $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-        $color = switch ($Level) {
-            'Info'    { 'White' }
-            'Warning' { 'Yellow' }
-            'Error'   { 'Red' }
-            'Success' { 'Green' }
-            default   { 'White' }
-        }
-        
-        Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $color
-    }
-    
-    # Use the fallback function
-    Write-ModuleLog -Level Success -Message "$ModuleName module loaded successfully"
-} else {
-    # Use the actual Write-Log function from HomeLab.Logging
-    Write-Log -Level Success -Message "$ModuleName module loaded successfully"
-}
+#region Export Functions
+# Get all available functions in the module
+$availableFunctions = Get-ChildItem function: | 
+    Where-Object { $_.ScriptBlock.File -like "*$ModulePath*" } | 
+    Select-Object -ExpandProperty Name
 
-# Export the functions
-if ($exportFunctions.Count -gt 0) {
-    Export-ModuleMember -Function $exportFunctions
+Write-Verbose "Available functions in module: $($availableFunctions -join ', ')"
+
+# Remove any duplicates from the public functions list
+$publicFunctions = $publicFunctions | Select-Object -Unique
+
+# Export all public functions
+if ($publicFunctions.Count -gt 0) {
+    Export-ModuleMember -Function $publicFunctions
     
     # Display exported functions for verification
     Write-Host "Exported functions from $ModuleName module:" -ForegroundColor Cyan
-    foreach ($function in $exportFunctions | Sort-Object) {
+    foreach ($function in $publicFunctions | Sort-Object) {
         Write-Host "  - $function" -ForegroundColor Yellow
     }
 }
 else {
     Write-Warning "No functions exported from $ModuleName module"
 }
+#endregion
 
 # Display diagnostic information
 Write-Host "`n===== DIAGNOSTIC INFORMATION =====" -ForegroundColor Magenta
@@ -227,4 +212,3 @@ Get-Module | Where-Object { $_.Name -like "HomeLab.*" } |
 $VerbosePreference = $originalVerbosePreference
 $ErrorActionPreference = $originalErrorActionPreference
 $WarningPreference = $originalWarningPreference
-#endregion

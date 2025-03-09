@@ -36,7 +36,9 @@
         'Reset-ResourceGroup',
         'Set-VpnSplitTunneling',
         'Format-AzureCliOutput',
-        'Test-AzureResourceName'
+        'Get-BackgroundMonitoringJobs',
+        'Show-BackgroundMonitoringDetails',
+        'Start-BackgroundMonitoring'
     )
     
     # Cmdlets to export
