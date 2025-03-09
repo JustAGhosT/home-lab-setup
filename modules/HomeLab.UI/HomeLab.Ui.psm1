@@ -45,7 +45,7 @@ try {
     $FunctionsToExport = @(
         # Main functions
         'Show-MainMenu',
-        'Show-Menu',
+        'Show-MainMenu',
         'Show-DeploymentSummary',
         
         # Menu display functions
@@ -56,8 +56,10 @@ try {
         'Show-NatGatewayMenu',
         'Show-DocumentationMenu',
         'Show-SettingsMenu',
+        'Show-MainMenu',
         
         # Menu handler functions
+        'Invoke-MainMenu',
         'Invoke-DeployMenu',
         'Invoke-VpnCertMenu',
         'Invoke-VpnGatewayMenu',
@@ -133,170 +135,6 @@ try {
         catch {
             Write-Error "Failed to import public function file: $($file.FullName): $_"
         }
-    }
-
-    # Define essential UI functions if they don't exist
-    if (-not (Get-Command -Name 'Write-ColorOutput' -ErrorAction SilentlyContinue)) {
-        function Write-ColorOutput {
-            [CmdletBinding()]
-            param(
-                [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
-                [string]$Message,
-                
-                [Parameter(Mandatory = $false)]
-                [System.ConsoleColor]$ForegroundColor = [System.ConsoleColor]::White,
-                
-                [Parameter(Mandatory = $false)]
-                [System.ConsoleColor]$BackgroundColor = [System.ConsoleColor]::Black,
-                
-                [Parameter(Mandatory = $false)]
-                [switch]$NoNewLine
-            )
-            
-            $originalFgColor = [Console]::ForegroundColor
-            $originalBgColor = [Console]::BackgroundColor
-            
-            try {
-                [Console]::ForegroundColor = $ForegroundColor
-                [Console]::BackgroundColor = $BackgroundColor
-                
-                if ($NoNewLine) {
-                    Write-Host $Message -NoNewline
-                }
-                else {
-                    Write-Host $Message
-                }
-            }
-            finally {
-                [Console]::ForegroundColor = $originalFgColor
-                [Console]::BackgroundColor = $originalBgColor
-            }
-        }
-        Write-Verbose "Created essential function: Write-ColorOutput"
-    }
-    
-    if (-not (Get-Command -Name 'Clear-CurrentLine' -ErrorAction SilentlyContinue)) {
-        function Clear-CurrentLine {
-            [CmdletBinding()]
-            param()
-            
-            $cursorPosition = $host.UI.RawUI.CursorPosition
-            $cursorPosition.X = 0
-            $host.UI.RawUI.CursorPosition = $cursorPosition
-            
-            $windowSize = $host.UI.RawUI.WindowSize
-            $clearLine = " " * ($windowSize.Width - 1)
-            
-            Write-Host $clearLine -NoNewline
-            $host.UI.RawUI.CursorPosition = $cursorPosition
-        }
-        Write-Verbose "Created essential function: Clear-CurrentLine"
-    }
-    
-    if (-not (Get-Command -Name 'Get-WindowSize' -ErrorAction SilentlyContinue)) {
-        function Get-WindowSize {
-            [CmdletBinding()]
-            param()
-            
-            return $host.UI.RawUI.WindowSize
-        }
-        Write-Verbose "Created essential function: Get-WindowSize"
-    }
-
-    # Define menu display functions if they don't exist
-    $menuDisplayFunctions = @(
-        'Show-MainMenu',
-        'Show-DeployMenu',
-        'Show-VpnCertMenu',
-        'Show-VpnGatewayMenu',
-        'Show-VpnClientMenu',
-        'Show-NatGatewayMenu',
-        'Show-DocumentationMenu',
-        'Show-SettingsMenu',
-        'Show-DeploymentSummary',
-        'Show-Menu'
-    )
-    
-    foreach ($functionName in $menuDisplayFunctions) {
-        if (-not (Get-Command -Name $functionName -ErrorAction SilentlyContinue)) {
-            # Create a placeholder menu function
-            $scriptBlock = [ScriptBlock]::Create(@"
-                function $functionName {
-                    [CmdletBinding()]
-                    param(
-                        [Parameter(Mandatory = `$false)]
-                        [hashtable]`$Options,
-                        
-                        [Parameter(Mandatory = `$false)]
-                        [string]`$Title = "$functionName",
-                        
-                        [Parameter(Mandatory = `$false)]
-                        [switch]`$ReturnToMain
-                    )
-                    
-                    Write-ColorOutput "$functionName - Placeholder function" -ForegroundColor Yellow
-                    Write-Warning "Function $functionName is a placeholder. Implement the actual function in Public/menu/$functionName.ps1"
-                }
-"@)
-            . $scriptBlock
-            Write-Verbose "Created placeholder for menu function: $functionName"
-        }
-    }
-    
-    # Define menu handler functions if they don't exist
-    $menuHandlerFunctions = @(
-        'Invoke-DeployMenu',
-        'Invoke-VpnCertMenu',
-        'Invoke-VpnGatewayMenu',
-        'Invoke-VpnClientMenu',
-        'Invoke-NatGatewayMenu',
-        'Invoke-DocumentationMenu',
-        'Invoke-SettingsMenu'
-    )
-    
-    foreach ($functionName in $menuHandlerFunctions) {
-        if (-not (Get-Command -Name $functionName -ErrorAction SilentlyContinue)) {
-            # Create a placeholder handler function
-            $scriptBlock = [ScriptBlock]::Create(@"
-                function $functionName {
-                    [CmdletBinding()]
-                    param(
-                        [Parameter(Mandatory = `$false)]
-                        [string]`$Selection,
-                        
-                        [Parameter(Mandatory = `$false)]
-                        [hashtable]`$State
-                    )
-                    
-                    Write-ColorOutput "$functionName - Placeholder handler for selection: `$Selection" -ForegroundColor Yellow
-                    Write-Warning "Function $functionName is a placeholder. Implement the actual function in Public/handlers/$functionName.ps1"
-                    
-                    return `$State
-                }
-"@)
-            . $scriptBlock
-            Write-Verbose "Created placeholder for handler function: $functionName"
-        }
-    }
-
-    # Check if Write-Log function is available
-    $canLog = $false
-    try {
-        if (Get-Command -Name "Write-SimpleLog" -ErrorAction SilentlyContinue) {
-            $canLog = $true
-            Write-SimpleLog -Message "$ModuleName module loaded successfully" -Level SUCCESS
-        }
-        elseif (Get-Command -Name "Write-Log" -ErrorAction SilentlyContinue) {
-            $canLog = $true
-            Write-Log -Message "$ModuleName module loaded successfully" -Level INFO
-        }
-    }
-    catch {
-        # Silently continue if logging fails
-    }
-
-    if (-not $canLog) {
-        Write-Host "$ModuleName module loaded successfully" -ForegroundColor Green
     }
 
     # Display functions defined in this module

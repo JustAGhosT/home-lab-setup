@@ -15,7 +15,7 @@
     Show-DocumentationMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Show-DocumentationMenu {
     [CmdletBinding()]
@@ -30,5 +30,10 @@ function Show-DocumentationMenu {
         "3" = "View Client Certificate Management Guide"
     }
     
-    Show-Menu -Title "DOCUMENTATION" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
+    $result = Show-Menu -Title "DOCUMENTATION" -MenuItems $menuItems `
+                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                        -ShowProgress:$ShowProgress -ValidateInput
+    
+
+    return $result
 }

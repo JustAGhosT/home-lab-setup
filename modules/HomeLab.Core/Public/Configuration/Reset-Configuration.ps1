@@ -14,9 +14,9 @@ function Reset-Configuration {
     # Create default configuration
     $Global:Config = @{
         env        = "dev"
-        loc        = "we"
+        loc        = "saf"
         project    = "homelab"
-        location   = "westeurope"
+        location   = "southafricanorth"
         LogFile    = $logFile
         ConfigFile = $configFile
         LastSetup  = Get-Date -Format "yyyy-MM-dd HH:mm:ss"

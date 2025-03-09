@@ -31,7 +31,7 @@ function Setup-HomeLab {
                 # Map log levels to Write-SimpleLog format
                 $simpleLevel = switch ($Level) {
                     'Info' { 'INFO' }
-                    'Warning' { 'WARN' }
+                    'Warning' { 'Warning' }
                     'Error' { 'ERROR' }
                     'Success' { 'SUCCESS' }
                     default { 'INFO' }
@@ -51,8 +51,8 @@ function Setup-HomeLab {
             
             # Initialize the log file if it doesn't exist
             if ($Global:Config -and $Global:Config.LogFile -and -not (Test-Path -Path $Global:Config.LogFile)) {
-                if (Get-Command -Name Initialize-LogFile -ErrorAction SilentlyContinue) {
-                    Initialize-LogFile
+                if (Get-Command -Name Initialize-Logging -ErrorAction SilentlyContinue) {
+                    Initialize-Logging
                 }
             }
             
@@ -79,9 +79,9 @@ function Setup-HomeLab {
         $configFile = Join-Path -Path $configDir -ChildPath "config.json"
         $defaultConfig = @{
             env        = "dev"
-            loc        = "we"
+            loc        = "saf"
             project    = "homelab"
-            location   = "westeurope"
+            location   = "southafricanorth"
             LogFile    = Join-Path -Path $logsDir -ChildPath "homelab_$(Get-Date -Format 'yyyyMMdd').log"
             ConfigFile = $configFile
             LastSetup  = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -102,8 +102,8 @@ function Setup-HomeLab {
         }
         
         # Initialize the log file if the function exists
-        if (Get-Command -Name Initialize-LogFile -ErrorAction SilentlyContinue) {
-            Initialize-LogFile -LogFilePath $Global:Config.LogFile
+        if (Get-Command -Name Initialize-Logging -ErrorAction SilentlyContinue) {
+            Initialize-Logging -LogFilePath $Global:Config.LogFile
         }
         
         Write-SafeLog -Message "HomeLab setup completed successfully." -Level Success

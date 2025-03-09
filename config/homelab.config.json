@@ -1,0 +1,34 @@
+{
+  "VPN": {
+    "GatewaySku": "VpnGw1",
+    "ClientAddressPool": "172.16.0.0/24",
+    "GatewayName": "HomeLab-VPNGateway",
+    "EnableBgp": false
+  },
+  "NAT": {
+    "IdleTimeoutMinutes": 10,
+    "PublicIpCount": 1,
+    "GatewayName": "HomeLab-NATGateway"
+  },
+  "General": {
+    "DefaultResourceGroup": "HomeLab",
+    "DefaultLocation": "eastus",
+    "DefaultVNetName": "HomeLab-VNet",
+    "DefaultSubnetName": "default",
+    "DefaultVNetAddressPrefix": "10.0.0.0/16",
+    "DefaultSubscription": "",
+    "DefaultSubnetAddressPrefix": "10.0.0.0/24"
+  },
+  "UI": {
+    "Theme": "Default",
+    "ConfirmDeployments": true,
+    "ShowSplashScreen": true,
+    "AutoSaveConfig": true
+  },
+  "Logging": {
+    "EnableFileLogging": true,
+    "EnableConsoleLogging": true,
+    "MaxLogAgeDays": 30,
+    "DefaultLogLevel": "Info"
+  }
+}

@@ -69,8 +69,9 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Write-Log', 'Get-LogEntries', 'Get-LogPath', 'Initialize-LogFile', 
-               'Set-LogFileRotation', 'Set-LogLevel', 'Set-LogPath'
+FunctionsToExport = 'Write-Log', 'Get-LogEntries', 'Get-LogPath', 'Initialize-Logging', 
+               'Set-LogFileRotation', 'Set-LogLevel', 'Set-LogPath', 
+               'Write-ColorOutput'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

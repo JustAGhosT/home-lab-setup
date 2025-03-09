@@ -532,7 +532,7 @@ function Invoke-NatGatewayMenu {
             }
             default {
                 Write-Host "Invalid option. Please try again." -ForegroundColor Red
-                if ($canLog) { Write-Log -Message "User selected invalid option: $selection" -Level WARN }
+                if ($canLog) { Write-Log -Message "User selected invalid option: $selection" -Level Warning }
                 Start-Sleep -Seconds 2
             }
         }

@@ -17,7 +17,7 @@
     Show-VpnCertMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Show-VpnCertMenu {
     [CmdletBinding()]
@@ -34,5 +34,9 @@ function Show-VpnCertMenu {
         "5" = "List All Certificates"
     }
     
-    Show-Menu -Title "VPN CERTIFICATE MENU" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
+    $result = Show-Menu -Title "VPN CERTIFICATE MENU" -MenuItems $menuItems `
+                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                        -ShowProgress:$ShowProgress -ValidateInput
+    
+    return $result
 }

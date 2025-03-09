@@ -5,7 +5,7 @@ function Write-Log {
         [string]$Message,
         
         [Parameter(Mandatory = $false)]
-        [ValidateSet('Info','Warning','Error','Success')]
+        [ValidateSet('Info','Warning','Error','Success', 'Debug', IgnoreCase = $true)]
         [string]$Level = 'Info',
         
         [Parameter(Mandatory = $false)]
@@ -30,6 +30,7 @@ function Write-Log {
         'Warning' = 'Yellow'
         'Error'   = 'Red'
         'Success' = 'Green'
+        'Debug' = 'Cyan'
     }
     
     # Define log level priorities if not already defined

@@ -101,12 +101,18 @@ $functionsToExport = @(
     'Write-Log', 
     'Get-LogEntries', 
     'Get-LogPath', 
-    'Initialize-LogFile', 
+    'Initialize-Logging', 
     'Set-LogFileRotation', 
     'Set-LogLevel', 
     'Set-LogPath',
+    'Write-ColorOutput',
     'Write-SafeLog',
-    'Write-SimpleLog'
+    'Write-SimpleLog',
+    'Write-InfoLog',
+    'Write-WarningLog',
+    'Write-SuccessLog',
+    'Write-ErrorLog',
+    'Write-DebugLog'
 )
 
 # Export the functions

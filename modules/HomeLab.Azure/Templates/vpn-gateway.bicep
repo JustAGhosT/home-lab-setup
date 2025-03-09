@@ -54,12 +54,6 @@ param vpnClientAddressPoolPrefix string = '172.16.0.0/24'
 @description('Enable point-to-site VPN configuration.')
 param enablePointToSiteVpn bool = false
 
-@description('Enable split tunneling for VPN clients.')
-@metadata({
-  note: 'This parameter is for documentation only. Split tunneling must be configured post-deployment.'
-})
-param enableSplitTunneling bool = true
-
 // Variables for resource naming
 var prefix = '${env}-${loc}'
 var gatewayName = '${prefix}-vpng-${project}'

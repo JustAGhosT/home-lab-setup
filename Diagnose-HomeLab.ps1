@@ -37,7 +37,7 @@ function Write-DiagLog {
             [Console]::WriteLine($logMessage)
             [Console]::ForegroundColor = $originalColor
         }
-        "WARN"  { 
+        "Warning"  { 
             $originalColor = [Console]::ForegroundColor
             [Console]::ForegroundColor = [ConsoleColor]::Yellow
             [Console]::WriteLine($logMessage)
@@ -158,8 +158,8 @@ function global:Get-Command {
     # Check for excessive calls
     if ($script:FunctionCallCounts[$key] -gt 20) {
         $stackTrace = Get-SimpleStackTrace
-        Write-DiagLog -Message "EXCESSIVE COMMAND LOOKUP: $Name (Count: $($script:FunctionCallCounts[$key]))" -Level WARN
-        Write-DiagLog -Message "Stack trace: $stackTrace" -Level WARN
+        Write-DiagLog -Message "EXCESSIVE COMMAND LOOKUP: $Name (Count: $($script:FunctionCallCounts[$key]))" -Level Warning
+        Write-DiagLog -Message "Stack trace: $stackTrace" -Level Warning
         
         if ($script:LastStackTraces[$key] -eq $stackTrace) {
             Write-DiagLog -Message "RECURSIVE COMMAND LOOKUP DETECTED: $Name" -Level ERROR
@@ -201,8 +201,8 @@ function global:Get-ChildItem {
     # Check for excessive calls
     if ($script:FunctionCallCounts[$key] -gt 10) {
         $stackTrace = Get-SimpleStackTrace
-        Write-DiagLog -Message "EXCESSIVE DIRECTORY LISTING: $Path (Count: $($script:FunctionCallCounts[$key]))" -Level WARN
-        Write-DiagLog -Message "Stack trace: $stackTrace" -Level WARN
+        Write-DiagLog -Message "EXCESSIVE DIRECTORY LISTING: $Path (Count: $($script:FunctionCallCounts[$key]))" -Level Warning
+        Write-DiagLog -Message "Stack trace: $stackTrace" -Level Warning
         
         if ($script:LastStackTraces[$key] -eq $stackTrace) {
             Write-DiagLog -Message "RECURSIVE DIRECTORY LISTING DETECTED: $Path" -Level ERROR

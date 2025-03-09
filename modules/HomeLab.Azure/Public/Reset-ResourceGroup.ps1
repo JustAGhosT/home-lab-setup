@@ -11,7 +11,7 @@
 .PARAMETER Force
     Optional. If specified, skips the confirmation prompt.
 .EXAMPLE
-    Reset-ResourceGroup -ResourceGroupName "my-resource-group" -Location "westeurope" -Force
+    Reset-ResourceGroup -ResourceGroupName "my-resource-group" -Location "southafricanorth" -Force
 .OUTPUTS
     Boolean. Returns $true if the resource group was reset successfully, $false otherwise.
 .NOTES

@@ -13,7 +13,7 @@ function Set-LogPath {
     
     # Initialize the new log file if requested
     if ($Initialize) {
-        Initialize-LogFile -LogFilePath $Path
+        Initialize-Logging -LogFilePath $Path
     }
     
     Write-Log -Message "Log path updated to $Path" -Level Info

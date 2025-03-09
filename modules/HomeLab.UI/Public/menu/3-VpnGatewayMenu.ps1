@@ -17,7 +17,7 @@
     Show-VpnGatewayMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Show-VpnGatewayMenu {
     [CmdletBinding()]
@@ -34,5 +34,9 @@ function Show-VpnGatewayMenu {
         "5" = "Configure VPN Split Tunneling"
     }
     
-    Show-Menu -Title "VPN GATEWAY MENU" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
+    $result = Show-Menu -Title "VPN GATEWAY MENU" -MenuItems $menuItems `
+                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                        -ShowProgress:$ShowProgress -ValidateInput
+    
+    return $result
 }

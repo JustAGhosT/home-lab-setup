@@ -13,13 +13,13 @@
     Show-SettingsMenu
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 9, 2025
 #>
 function Show-SettingsMenu {
     [CmdletBinding()]
     param()
     
-    $config = Get-Configuration
+    $config = Get-Configuration -ErrorAction SilentlyContinue
     $menuItems = @{
         "1" = "Change Environment (Current: $($config.env))"
         "2" = "Change Location Code (Current: $($config.loc))"
@@ -28,5 +28,10 @@ function Show-SettingsMenu {
         "5" = "Reset to Default Settings"
     }
     
-    Show-Menu -Title "SETTINGS MENU" -MenuItems $menuItems -ExitOption "0"
+    $result = Show-Menu -Title "SETTINGS MENU" -MenuItems $menuItems `
+                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                        -ValidateInput
+    
+
+    return $result
 }

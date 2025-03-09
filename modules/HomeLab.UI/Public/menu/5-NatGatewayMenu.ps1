@@ -15,7 +15,7 @@
     Show-NatGatewayMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Show-NatGatewayMenu {
     [CmdletBinding()]
@@ -30,5 +30,10 @@ function Show-NatGatewayMenu {
         "3" = "Check NAT Gateway Status"
     }
     
-    Show-Menu -Title "NAT GATEWAY MENU" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
+    $result = Show-Menu -Title "NAT GATEWAY MENU" -MenuItems $menuItems `
+                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                        -ShowProgress:$ShowProgress -ValidateInput
+    
+
+    return $result
 }

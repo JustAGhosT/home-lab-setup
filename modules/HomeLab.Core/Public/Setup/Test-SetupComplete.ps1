@@ -26,7 +26,7 @@ function Test-SetupComplete {
             # Map log levels to Write-SimpleLog format
             $simpleLevel = switch ($Level) {
                 'Info' { 'INFO' }
-                'Warning' { 'WARN' }
+                'Warning' { 'Warning' }
                 'Error' { 'ERROR' }
                 'Success' { 'SUCCESS' }
                 default { 'INFO' }

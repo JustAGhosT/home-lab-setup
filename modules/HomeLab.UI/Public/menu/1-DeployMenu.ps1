@@ -1,23 +1,17 @@
 <#
 .SYNOPSIS
-    Displays the Deployment Menu for HomeLab Setup.
+    Displays the deployment menu
 .DESCRIPTION
-    Presents options for deploying Azure infrastructure:
-      1. Full Deployment (All Resources)
-      2. Deploy Network Only
-      3. Deploy VPN Gateway Only
-      4. Deploy NAT Gateway Only
-      5. Check Deployment Status
-      0. Return to Main Menu
+    Shows the deployment menu options and returns the user's selection
 .PARAMETER ShowProgress
-    If specified, shows a progress bar while loading the menu.
+    If specified, shows a progress bar while loading the menu
 .EXAMPLE
     Show-DeployMenu
 .EXAMPLE
     Show-DeployMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Show-DeployMenu {
     [CmdletBinding()]
@@ -26,13 +20,72 @@ function Show-DeployMenu {
         [switch]$ShowProgress
     )
     
-    $menuItems = @{
-        "1" = "Full Deployment (All Resources)"
-        "2" = "Deploy Network Only"
-        "3" = "Deploy VPN Gateway Only"
-        "4" = "Deploy NAT Gateway Only"
-        "5" = "Check Deployment Status"
+    # Get configuration for displaying in the menu
+    $config = Get-Configuration -ErrorAction SilentlyContinue
+    $targetInfo = if ($config) { "$($config.env)-$($config.loc)-$($config.project)" } else { "Not configured" }
+    
+    if ($ShowProgress) {
+        # Show a progress bar while loading the menu
+        $progressParams = @{
+            Activity = "Loading Deployment Menu"
+            Status = "Preparing options..."
+            PercentComplete = 0
+        }
+        
+        Write-Progress @progressParams
+        Start-Sleep -Milliseconds 300
+        
+        $progressParams.Status = "Loading configuration..."
+        $progressParams.PercentComplete = 30
+        Write-Progress @progressParams
+        Start-Sleep -Milliseconds 300
+        
+        $progressParams.Status = "Checking Azure connection..."
+        $progressParams.PercentComplete = 60
+        Write-Progress @progressParams
+        Start-Sleep -Milliseconds 300
+        
+        $progressParams.Status = "Ready"
+        $progressParams.PercentComplete = 100
+        Write-Progress @progressParams
+        Start-Sleep -Milliseconds 300
+        
+        # Complete the progress bar
+        Write-Progress -Activity "Loading Deployment Menu" -Completed
     }
     
-    Show-Menu -Title "DEPLOYMENT MENU" -MenuItems $menuItems -ShowProgress:$ShowProgress
+    Clear-Host
+    
+    # Display the menu header with ASCII art
+    Write-ColorOutput @"
+    
+╔══════════════════════════════════════════════════════════════════╗
+║                      AZURE DEPLOYMENT MENU                       ║
+╚══════════════════════════════════════════════════════════════════╝
+"@ -ForegroundColor Cyan
+    
+    # Display current target
+    Write-ColorOutput "  Current Target: " -ForegroundColor White -NoNewline
+    Write-ColorOutput $targetInfo -ForegroundColor $(if ($config) { "Green" } else { "Red" })
+    Write-ColorOutput ""
+    
+    # Display menu options
+    Write-ColorOutput "  1. Deploy Full Infrastructure" -ForegroundColor White
+    Write-ColorOutput "  2. Deploy Network Only" -ForegroundColor White
+    Write-ColorOutput "  3. Deploy VPN Gateway Only" -ForegroundColor White
+    Write-ColorOutput "  4. Deploy NAT Gateway Only" -ForegroundColor White
+    Write-ColorOutput "  5. Check Deployment Status" -ForegroundColor White
+    Write-ColorOutput "  6. VPN Gateway Management (Enable/Disable)" -ForegroundColor White
+    Write-ColorOutput "  7. View Background Monitoring Status" -ForegroundColor White
+    Write-ColorOutput "  0. Return to Main Menu" -ForegroundColor White
+    Write-ColorOutput ""
+    
+    # Get user selection
+    $choice = Read-Host "Select an option"
+    
+    # Return the user's choice and whether they chose to exit
+    return @{
+        Choice = $choice
+        IsExit = ($choice -eq "0")
+    }
 }

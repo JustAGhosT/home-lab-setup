@@ -23,7 +23,7 @@ HomeLab.Core is the foundation module for the [HomeLab system](../../README.md).
 
 ### Logging Functions
 
-- `Initialize-LogFile`: Sets up the log file for the application
+- `Initialize-Logging`: Sets up the log file for the application
 - `Write-Log`: Writes a log entry with specified severity level
 - `Get-LogPath`: Returns the current log file path
 

@@ -31,7 +31,7 @@ function Set-LogFileRotation {
         Rename-Item -Path $LogFilePath -NewName $rotatedLogPath
         
         # Create a new log file
-        Initialize-LogFile -LogFilePath $LogFilePath
+        Initialize-Logging -LogFilePath $LogFilePath
         
         # Write a message to the new log file
         Write-Log -Message "Log file rotated. Previous log: $rotatedLogPath" -Level Info

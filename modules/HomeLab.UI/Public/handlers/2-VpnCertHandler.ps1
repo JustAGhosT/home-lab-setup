@@ -12,7 +12,7 @@
     Invoke-VpnCertMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Invoke-VpnCertMenu {
     [CmdletBinding()]
@@ -78,7 +78,7 @@ function Invoke-VpnCertMenu {
         }
         
         Write-Host "Using default configuration values." -ForegroundColor Yellow
-        if ($canLog) { Write-Log -Message "Using default configuration values" -Level WARN }
+        if ($canLog) { Write-Log -Message "Using default configuration values" -Level Warning }
     }
     
     # Define certificate store path with a default that can be overridden
@@ -99,20 +99,21 @@ function Invoke-VpnCertMenu {
     }
     
     # Main menu loop
-    $selection = 0
+    $exitMenu = $false
+    
     do {
-        try {
-            Show-VpnCertMenu -ShowProgress:$ShowProgress
-        }
-        catch {
-            Write-Host "Error displaying VPN Certificate Menu: $_" -ForegroundColor Red
-            if ($canLog) { Write-Log -Message "Error displaying VPN Certificate Menu: $_" -Level ERROR }
-            break
+        # Show menu and get result
+        $result = Show-VpnCertMenu -ShowProgress:$ShowProgress
+        
+        if ($result.IsExit) {
+            $exitMenu = $true
+            Write-Host "Returning to main menu..." -ForegroundColor Cyan
+            if ($canLog) { Write-Log -Message "User exited VPN Certificate Menu" -Level INFO }
+            continue
         }
         
-        $selection = Read-Host "Select an option"
-        
-        switch ($selection) {
+        # Process the user's choice
+        switch ($result.Choice) {
             "1" {
                 Write-Host "Creating new root certificate..." -ForegroundColor Cyan
                 if ($canLog) { Write-Log -Message "User selected: Create new root certificate" -Level INFO }
@@ -261,7 +262,7 @@ function Invoke-VpnCertMenu {
                 
                 if ([string]::IsNullOrWhiteSpace($newClientName)) {
                     Write-Host "Client name cannot be empty." -ForegroundColor Red
-                    if ($canLog) { Write-Log -Message "User provided empty client name" -Level WARN }
+                    if ($canLog) { Write-Log -Message "User provided empty client name" -Level Warning }
                     Pause
                     continue
                 }
@@ -330,7 +331,7 @@ function Invoke-VpnCertMenu {
                 
                 if ([string]::IsNullOrWhiteSpace($certFile)) {
                     Write-Host "Certificate file path cannot be empty." -ForegroundColor Red
-                    if ($canLog) { Write-Log -Message "User provided empty certificate file path" -Level WARN }
+                    if ($canLog) { Write-Log -Message "User provided empty certificate file path" -Level Warning }
                     Pause
                     continue
                 }
@@ -341,7 +342,7 @@ function Invoke-VpnCertMenu {
                     $extension = [System.IO.Path]::GetExtension($certFile)
                     if ($extension -ne ".txt" -and $extension -ne ".cer" -and $extension -ne ".pem") {
                         Write-Host "Warning: File does not have a standard certificate extension (.txt, .cer, .pem)" -ForegroundColor Yellow
-                        if ($canLog) { Write-Log -Message "Non-standard certificate file extension: $extension" -Level WARN }
+                        if ($canLog) { Write-Log -Message "Non-standard certificate file extension: $extension" -Level Warning }
                         
                         $confirmContinue = Get-UserConfirmation -Message "Continue anyway?" -DefaultYes:$false
                         if (-not $confirmContinue) {
@@ -356,7 +357,7 @@ function Invoke-VpnCertMenu {
                         # Basic validation that it looks like a Base64 certificate
                         if (-not ($certData -match "-----BEGIN CERTIFICATE-----" -or $certData -match "^[A-Za-z0-9+/=]+$")) {
                             Write-Host "Warning: File does not appear to contain a valid Base64 certificate" -ForegroundColor Yellow
-                            if ($canLog) { Write-Log -Message "File does not appear to contain a valid Base64 certificate" -Level WARN }
+                            if ($canLog) { Write-Log -Message "File does not appear to contain a valid Base64 certificate" -Level Warning }
                             
                             $confirmContinue = Get-UserConfirmation -Message "Continue anyway?" -DefaultYes:$false
                             if (-not $confirmContinue) {
@@ -494,9 +495,13 @@ function Invoke-VpnCertMenu {
             }
             default {
                 Write-Host "Invalid option. Please try again." -ForegroundColor Red
-                if ($canLog) { Write-Log -Message "User selected invalid option: $selection" -Level WARN }
+                if ($canLog) { Write-Log -Message "User selected invalid option: $($result.Choice)" -Level Warning }
                 Start-Sleep -Seconds 2
             }
         }
-    } while ($selection -ne "0")
+        
+        # Only show progress on first display
+        $ShowProgress = $false
+        
+    } while (-not $exitMenu)
 }

@@ -16,7 +16,7 @@
     Show-VpnClientMenu -ShowProgress
 .NOTES
     Author: Jurie Smit
-    Date: March 8, 2025
+    Date: March 9, 2025
 #>
 function Show-VpnClientMenu {
     [CmdletBinding()]
@@ -32,5 +32,9 @@ function Show-VpnClientMenu {
         "4" = "Check VPN Connection Status"
     }
     
-    Show-Menu -Title "VPN CLIENT MANAGEMENT" -MenuItems $menuItems -ExitOption "0" -ShowProgress:$ShowProgress
+    $result = Show-Menu -Title "VPN CLIENT MANAGEMENT" -MenuItems $menuItems `
+                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                        -ShowProgress:$ShowProgress -ValidateInput
+    
+    return $result
 }

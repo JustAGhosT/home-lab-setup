@@ -27,7 +27,7 @@
     FunctionsToExport = @(
         # Main functions
         'Show-MainMenu',
-        'Show-Menu',
+        'Show-MainMenu',
         'Show-DeploymentSummary',
         
         # Menu display functions
