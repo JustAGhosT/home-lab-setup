@@ -5,7 +5,7 @@
     A PowerShell module for managing HomeLab Azure infrastructure through a text-based UI.
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 9, 2025
 #>
 
 # ===== CRITICAL SECTION: PREVENT INFINITE LOOPS =====
@@ -45,7 +45,6 @@ try {
     $FunctionsToExport = @(
         # Main functions
         'Show-MainMenu',
-        'Show-MainMenu',
         'Show-DeploymentSummary',
         
         # Menu display functions
@@ -76,7 +75,15 @@ try {
         # Progress bar functions
         'Show-ProgressBar',
         'Start-ProgressTask',
-        'Update-ProgressBar'
+        'Update-ProgressBar',
+        
+        # Deployment module functions
+        'Invoke-FullDeployment',
+        'Invoke-NetworkDeployment',
+        'Invoke-VPNGatewayDeployment',
+        'Invoke-NATGatewayDeployment',
+        'Show-DeploymentStatus',
+        'Show-BackgroundMonitoringDetails'
     )
 
     # Load private functions
@@ -95,7 +102,7 @@ try {
     }
 
     # Load public functions - handlers
-    $handlersPath = Join-Path -Path $ModulePath -ChildPath "Public\handlers"
+    $handlersPath = Join-Path -Path $ModulePath -ChildPath "Public\Handlers"
     if (Test-Path -Path $handlersPath) {
         $handlerFiles = Get-ChildItem -Path $handlersPath -Filter "*.ps1" -Recurse
         foreach ($file in $handlerFiles) {
@@ -110,7 +117,7 @@ try {
     }
 
     # Load public functions - menu
-    $menuPath = Join-Path -Path $ModulePath -ChildPath "Public\menu"
+    $menuPath = Join-Path -Path $ModulePath -ChildPath "Public\Menu"
     if (Test-Path -Path $menuPath) {
         $menuFiles = Get-ChildItem -Path $menuPath -Filter "*.ps1" -Recurse
         foreach ($file in $menuFiles) {
@@ -123,10 +130,25 @@ try {
             }
         }
     }
+    
+    # Load deployment module functions
+    $deploymentModulePath = Join-Path -Path $ModulePath -ChildPath "Public\DeploymentModule"
+    if (Test-Path -Path $deploymentModulePath) {
+        $deploymentFiles = Get-ChildItem -Path $deploymentModulePath -Filter "*.ps1" -Recurse
+        foreach ($file in $deploymentFiles) {
+            try {
+                . $file.FullName
+                Write-Verbose "Imported deployment module function file: $($file.Name)"
+            }
+            catch {
+                Write-Error "Failed to import deployment module function file: $($file.FullName): $_"
+            }
+        }
+    }
 
     # Load other public functions
     $publicPath = Join-Path -Path $ModulePath -ChildPath "Public"
-    $otherPublicFiles = Get-ChildItem -Path $publicPath -Filter "*.ps1" -Exclude "handlers", "menu" -Recurse
+    $otherPublicFiles = Get-ChildItem -Path $publicPath -Filter "*.ps1" -Exclude "Handlers", "Menu", "DeploymentModule" -Recurse
     foreach ($file in $otherPublicFiles) {
         try {
             . $file.FullName

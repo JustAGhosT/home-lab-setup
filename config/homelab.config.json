@@ -1,4 +1,7 @@
 {
+  "env": "dev",
+  "loc": "saf",
+  "proj": "homelab" ,
   "VPN": {
     "GatewaySku": "VpnGw1",
     "ClientAddressPool": "172.16.0.0/24",
@@ -12,7 +15,7 @@
   },
   "General": {
     "DefaultResourceGroup": "HomeLab",
-    "DefaultLocation": "eastus",
+    "DefaultLocation": "southafricanorth",
     "DefaultVNetName": "HomeLab-VNet",
     "DefaultSubnetName": "default",
     "DefaultVNetAddressPrefix": "10.0.0.0/16",

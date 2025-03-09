@@ -2,7 +2,8 @@
 .SYNOPSIS
     Displays the Main Menu for Home Lab Setup.
 .DESCRIPTION
-    Presents the primary options for the Home Lab Setup application.
+    Presents the primary options for the Home Lab Setup application. In addition to the original
+    deployment and management options, a new option is added to launch the Software KVM Setup menu.
     Options include:
       1. Deploy Azure Infrastructure
       2. VPN Certificate Management
@@ -11,6 +12,7 @@
       5. NAT Gateway Management
       6. View Documentation
       7. Configure Settings
+      8. Software KVM Setup
       0. Exit
 .PARAMETER ShowProgress
     If specified, shows a progress bar while loading the menu.
@@ -34,34 +36,35 @@ function Show-MainMenu {
         [hashtable]$State
     )
     
-    # Retrieve configuration for display
+    # Retrieve configuration for display.
     $config = Get-Configuration -ErrorAction SilentlyContinue
     
-    # Create status message if config is available
+    # Build status message from provided state or from config.
     $statusMessage = $null
-    
-    # If State parameter is provided, use it for status message
     if ($State -and $State.Count -gt 0) {
         $statusInfo = @()
         if ($State.ContainsKey('User')) { $statusInfo += "User: $($State.User)" }
         if ($State.ContainsKey('ConnectionStatus')) { $statusInfo += "Azure: $($State.ConnectionStatus)" }
         if ($State.ContainsKey('ConfigPath')) { $statusInfo += "Config: $($State.ConfigPath)" }
-        
         if ($statusInfo.Count -gt 0) {
             $statusMessage = $statusInfo -join " | "
         }
     }
-    # Otherwise use config if available
     elseif ($config) {
-        $statusInfo = @()
-        $statusInfo += "Environment: $($config.env)"
-        $statusInfo += "Project: $($config.project)"
-        $statusInfo += "Location: $($config.location)"
+        # Provide fallback values if any configuration property is empty.
+        $envPart     = if ([string]::IsNullOrWhiteSpace($config.env)) { "Not set" } else { $config.env }
+        $projectPart = if ([string]::IsNullOrWhiteSpace($config.project)) { "Not set" } else { $config.project }
+        $locPart     = if ([string]::IsNullOrWhiteSpace($config.location)) { "Not set" } else { $config.location }
         
+        $statusInfo = @(
+            "Environment: $envPart",
+            "Project: $projectPart",
+            "Location: $locPart"
+        )
         $statusMessage = $statusInfo -join " | "
     }
     
-    # Define menu items based on your existing structure
+    # Define menu items including the new KVM software setup option.
     $menuItems = @{
         "1" = "Deploy Azure Infrastructure"
         "2" = "VPN Certificate Management"
@@ -70,9 +73,10 @@ function Show-MainMenu {
         "5" = "NAT Gateway Management"
         "6" = "View Documentation"
         "7" = "Configure Settings"
+        "8" = "Software KVM Setup"
     }
     
-    # Display the menu and get the user's choice
+    # Display the menu and get the user's choice.
     $result = Show-Menu -Title "HOME LAB SETUP - MAIN MENU" -MenuItems $menuItems `
                         -ExitOption "0" -ExitText "Exit" -ShowProgress:$ShowProgress `
                         -DefaultOption "1" -ValidateInput -ShowStatus $statusMessage `

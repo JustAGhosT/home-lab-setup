@@ -2,6 +2,7 @@ function Write-ColorOutput {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true, Position = 0)]
+        [AllowEmptyString()]
         [string]$Text,
         
         [Parameter(Mandatory = $false)]

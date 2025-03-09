@@ -42,7 +42,7 @@
 .NOTES
     Author: Jurie Smit
     Date: March 9, 2025
-    Version: 1.0.0
+    Version: 1.0.1
 #>
 function Show-Menu {
     [CmdletBinding()]
@@ -88,18 +88,18 @@ function Show-Menu {
     )
     
     if ($ShowProgress) {
-        # Show a quick progress bar when loading the menu
+        # Show a quick progress bar when loading the menu.
         for ($i = 0; $i -le 100; $i += 10) {
             Write-Progress -Activity "Loading Menu" -Status "Please wait..." -PercentComplete $i
-            Start-Sleep -Milliseconds 50  # Quick animation
+            Start-Sleep -Milliseconds 50
         }
         Write-Progress -Activity "Loading Menu" -Completed
     }
     
-    # Clear the screen
+    # Clear the screen.
     Clear-Host
     
-    # Calculate border width based on title and menu items
+    # Calculate border width based on title and menu items.
     $maxLength = $Title.Length
     foreach ($item in $MenuItems.Values) {
         $itemText = if ($item -is [hashtable]) { $item.Text } else { $item }
@@ -107,7 +107,7 @@ function Show-Menu {
     }
     $borderWidth = [Math]::Min([Math]::Max(40, $maxLength + 4), $Host.UI.RawUI.WindowSize.Width - 4)
     
-    # Display the title with border
+    # Display the title with border.
     $border = $BorderChar * $borderWidth
     Write-Host "`n$border" -ForegroundColor $TitleColor
     $paddedTitle = " $Title "
@@ -117,15 +117,14 @@ function Show-Menu {
     Write-Host $titleLine -ForegroundColor $TitleColor
     Write-Host "$border`n" -ForegroundColor $TitleColor
     
-    # Create a sorted list of keys to avoid modifying the collection during enumeration
+    # Create a sorted list of keys to avoid modifying the collection during enumeration.
     $sortedKeys = @($MenuItems.Keys | Sort-Object)
     
-    # Display menu items
+    # Display menu items.
     $validOptions = @()
     foreach ($key in $sortedKeys) {
         $validOptions += $key
         $item = $MenuItems[$key]
-        
         if ($item -is [hashtable]) {
             $text = $item.Text
             $color = if ($item.ContainsKey('Color')) { $item.Color } else { 'White' }
@@ -133,69 +132,61 @@ function Show-Menu {
             $text = $item
             $color = 'White'
         }
-        
         $prefix = if ($key -eq $DefaultOption) { "  [$key]* " } else { "  [$key] " }
         Write-Host "$prefix$text" -ForegroundColor $color
     }
     
-    # Add navigation options
+    # Add navigation options.
     $navigationOptions = @()
-    
     if ($ShowHelp) {
         Write-Host "`n  [H] Help" -ForegroundColor Yellow
         $validOptions += 'H'
         $navigationOptions += 'H'
     }
     
-    # Determine exit/return text
+    # Determine exit/return text.
     if (-not $ExitText) {
         $ExitText = if ($ReturnToMain) { "Return to Main Menu" } else { "Quit" }
     }
-    
-    # Add exit/return option
     Write-Host "  [$ExitOption] $ExitText" -ForegroundColor Yellow
     $validOptions += $ExitOption
     $navigationOptions += $ExitOption
     
-    # Show status if provided
+    # Show status if provided.
     if ($ShowStatus) {
         Write-Host "`n$($BorderChar * 20)" -ForegroundColor $StatusColor
         Write-Host $ShowStatus -ForegroundColor $StatusColor
         Write-Host "$($BorderChar * 20)" -ForegroundColor $StatusColor
     }
     
-    # Show default option hint if provided
+    # Show default option hint if provided.
     if ($DefaultOption) {
         Write-Host "`n* Default option (press Enter to select)" -ForegroundColor DarkGray
     }
     
-    # Get user choice with validation if requested
+    # Get user choice with validation if requested.
     $choice = $null
     do {
         Write-Host "`nSelect an option: " -ForegroundColor Cyan -NoNewline
-        $input = Read-Host
-        
-        # Use default option if input is empty and default is provided
-        if ([string]::IsNullOrEmpty($input) -and $DefaultOption) {
+        $userInput = Read-Host
+        # Use default option if input is empty and default is provided.
+        if ([string]::IsNullOrEmpty($userInput) -and $DefaultOption) {
             $choice = $DefaultOption
             break
         }
-        
-        $choice = $input.Trim().ToUpper()
-        
-        # Validate input if requested
-        $isValid = -not $ValidateInput -or $validOptions -contains $choice
+        $choice = $userInput.Trim().ToUpper()
+        $isValid = -not $ValidateInput -or ($validOptions -contains $choice)
         if (-not $isValid) {
             Write-Host "Invalid option. Please try again." -ForegroundColor Red
         }
     } while (-not $isValid)
     
-    # Return the user's choice and additional info
+    # Return the user's choice and additional info.
     return @{
         Choice = $choice
-        IsNavigationOption = $navigationOptions -contains $choice
-        IsExit = $choice -eq $ExitOption
-        IsHelp = $choice -eq 'H'
-        RawInput = $input
+        IsNavigationOption = ($navigationOptions -contains $choice)
+        IsExit = ($choice -eq $ExitOption)
+        IsHelp = ($choice -eq 'H')
+        RawInput = $userInput
     }
 }

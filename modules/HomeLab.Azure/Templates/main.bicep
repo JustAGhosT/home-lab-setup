@@ -21,6 +21,12 @@ param currentMonth string = utcNow('MM')
 @description('Current year in yyyy format')
 param currentYear string = utcNow('yyyy')
 
+@description('Enable NAT Gateway deployment')
+param enableNatGateway bool = false
+
+@description('Enable VPN Gateway deployment')
+param enableVpnGateway bool = false
+
 // Variables for resource naming
 var prefix = '${env}-${loc}'
 var rgName = '${prefix}-rg-${project}'
@@ -44,8 +50,8 @@ module networkResources 'network.bicep' = {
     defaultSubnetPrefix: config.network.defaultSubnetPrefix
     appSubnetPrefix: config.network.appSubnetPrefix
     dbSubnetPrefix: config.network.dbSubnetPrefix
-    enableNatGateway: contains(config, 'natGateway') ? config.natGateway.enabled : false
-    enableVpnGateway: contains(config, 'vpn') ? config.vpn.enabled : false
+    enableNatGateway: enableNatGateway
+    enableVpnGateway: enableVpnGateway
   }
 }
 
