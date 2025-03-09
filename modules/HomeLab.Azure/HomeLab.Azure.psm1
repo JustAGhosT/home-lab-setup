@@ -1,202 +1,230 @@
-﻿<#
+<#
 .SYNOPSIS
     HomeLab Azure Module
 .DESCRIPTION
-    Module for HomeLab Azure infrastructure deployment with safe function loading.
+    Module for HomeLab Azure infrastructure deployment with proper dependency handling.
 .NOTES
     Author: Jurie Smit
-    Date: March 6, 2025
+    Date: March 9, 2025
+    Version: 1.0.3
 #>
 
-# ===== CRITICAL SECTION: PREVENT INFINITE LOOPS =====
+#region Initialization
 # Save original preferences to restore later
-$originalPSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference
-$originalDebugPreference = $DebugPreference
 $originalVerbosePreference = $VerbosePreference
 $originalErrorActionPreference = $ErrorActionPreference
+$originalWarningPreference = $WarningPreference
 
-# Disable automatic module loading to prevent recursive loading
-$PSModuleAutoLoadingPreference = 'None'
-# Disable debugging which can cause infinite loops
-$DebugPreference = 'SilentlyContinue'
-# Control verbosity
-$VerbosePreference = 'SilentlyContinue'
-# Make errors non-terminating
-$ErrorActionPreference = 'Continue'
+# Set preferences for module loading
+$VerbosePreference = 'Continue'  # Show verbose output during loading
+$ErrorActionPreference = 'Continue'  # Don't terminate on errors
+$WarningPreference = 'Continue'  # Show all warnings
 
-# Create a guard to prevent recursive loading
-if ($script:IsLoading) {
-    Write-Warning "Module is already loading. Preventing recursive loading."
-    # Restore original preferences
-    $PSModuleAutoLoadingPreference = $originalPSModuleAutoLoadingPreference
-    $DebugPreference = $originalDebugPreference
-    $VerbosePreference = $originalVerbosePreference
-    $ErrorActionPreference = $originalErrorActionPreference
-    return
-}
-$script:IsLoading = $true
+# Get module path for reference
+$ModulePath = $PSScriptRoot
+$ModuleName = (Get-Item $PSScriptRoot).BaseName
 
-try {
-    # Get the module path
-    $ModulePath = $PSScriptRoot
-    $ModuleName = (Get-Item $PSScriptRoot).BaseName
+Write-Verbose "Starting $ModuleName module initialization from $ModulePath"
+#endregion
 
-    # Create an array to store public function names
-    $PublicFunctionNames = @()
+#region Dependency Management
+# Define required modules
+$requiredModules = @('HomeLab.Utils', 'HomeLab.Logging', 'HomeLab.Core')
+$missingModules = @()
+$loadedModules = @()
 
-    # Function to safely import script files
-    function Import-ScriptFileSafely {
-        [CmdletBinding()]
-        param (
-            [Parameter(Mandatory = $true)]
-            [string]$FilePath,
-            
-            [Parameter(Mandatory = $false)]
-            [switch]$IsPublic
-        )
-        
-        if (-not (Test-Path -Path $FilePath)) {
-            Write-Warning "File not found: $FilePath"
-            return $false
-        }
-        
+Write-Host "Checking dependencies for $ModuleName..." -ForegroundColor Cyan
+
+foreach ($module in $requiredModules) {
+    Write-Host "Checking module: $module" -ForegroundColor Yellow
+    
+    # Check if module is already loaded
+    if (Get-Module -Name $module) {
+        Write-Host "  ✓ Module $module is already loaded" -ForegroundColor Green
+        $loadedModules += $module
+        continue
+    }
+    
+    $moduleLoaded = $false
+    
+    # Try to load from relative path first (sibling directory)
+    $siblingPath = Join-Path -Path (Split-Path -Parent $ModulePath) -ChildPath $module -AdditionalChildPath "$module.psd1"
+    
+    if (Test-Path -Path $siblingPath) {
+        Write-Host "  → Found $module at $siblingPath" -ForegroundColor Yellow
         try {
-            # Extract function name from file name
-            $functionName = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
-            
-            # Read file content
-            $fileContent = Get-Content -Path $FilePath -Raw -ErrorAction Stop
-            
-            # Create a script block and execute it in the current scope
-            $scriptBlock = [ScriptBlock]::Create($fileContent)
-            . $scriptBlock
-            
-            # If public, add to export list
-            if ($IsPublic) {
-                $script:PublicFunctionNames += $functionName
-            }
-            
-            Write-Verbose "Imported $(if ($IsPublic) {'public'} else {'private'}) function: $functionName"
-            return $true
+            Import-Module -Name $siblingPath -Force -ErrorAction Stop
+            Write-Host "  ✓ Successfully loaded $module from sibling path" -ForegroundColor Green
+            $moduleLoaded = $true
+            $loadedModules += $module
         }
         catch {
-            Write-Warning "Failed to import function from $FilePath`: $_"
-            return $false
+            Write-Warning "  ✗ Failed to load $module from sibling path: $($_.Exception.Message)"
         }
     }
-
-    # Safe function to check if a command exists without triggering auto-loading
-    function Test-CommandExistsSafely {
-        param (
-            [string]$CommandName
-        )
-        
-        # First check if it's already loaded without triggering auto-loading
-        $command = Get-Command -Name $CommandName -ErrorAction SilentlyContinue
-        
-        return ($null -ne $command)
+    else {
+        Write-Host "  → Module not found at sibling path, checking PSModulePath" -ForegroundColor Yellow
     }
-
-    # ===== AZURE MODULE PROTECTION =====
-    # Save original Azure module-related environment variables
-    $originalAzureEnvVars = @{}
-    Get-ChildItem env: | Where-Object { $_.Name -like 'AZURE_*' -or $_.Name -like 'AZ_*' } | ForEach-Object {
-        $originalAzureEnvVars[$_.Name] = $_.Value
-    }
-
-    # Temporarily set environment variable to prevent Az module auto-registration
-    $env:AZURE_SKIP_MODULE_REGISTRATION = 'true'
-
-    # Import private functions
-    $PrivateFunctions = Get-ChildItem -Path "$ModulePath\Private\*.ps1" -Recurse -ErrorAction SilentlyContinue
-    foreach ($Function in $PrivateFunctions) {
-        Import-ScriptFileSafely -FilePath $Function.FullName
-    }
-
-    # Import public functions
-    $PublicFunctions = Get-ChildItem -Path "$ModulePath\Public\*.ps1" -Recurse -ErrorAction SilentlyContinue
-    foreach ($Function in $PublicFunctions) {
-        Import-ScriptFileSafely -FilePath $Function.FullName -IsPublic
-    }
-
-    # Define fallback functions if they don't exist
-    $RequiredFunctions = @(
-        'Deploy-Infrastructure',
-        'NatGatewayEnableDisable',
-        'Connect-AzureAccount',
-        'Test-ResourceGroup',
-        'Reset-ResourceGroup'
-    )
-
-    foreach ($FunctionName in $RequiredFunctions) {
-        if (-not (Get-Command -Name $FunctionName -ErrorAction SilentlyContinue)) {
-            # Create a placeholder function
-            $scriptBlock = [ScriptBlock]::Create(@"
-                function $FunctionName {
-                    [CmdletBinding()]
-                    param()
-                    Write-Warning "Function $FunctionName is a placeholder. Implement the actual function in Public/$FunctionName.ps1"
-                }
-"@)
-            . $scriptBlock
-            $PublicFunctionNames += $FunctionName
-        }
-    }
-
-    # Check if Write-Log function is available
-    $canLog = $false
-    try {
-        if (Test-CommandExistsSafely -CommandName "Write-SimpleLog") {
-            $canLog = $true
-            Write-SimpleLog -Message "$ModuleName module loaded successfully" -Level SUCCESS
-        }
-        elseif (Test-CommandExistsSafely -CommandName "Write-Log") {
-            $canLog = $true
-            Write-Log -Message "$ModuleName module loaded successfully" -Level INFO
-        }
-    }
-    catch {
-        # Silently continue if logging fails
-    }
-
-    if (-not $canLog) {
-        Write-Host "$ModuleName module loaded successfully" -ForegroundColor Green
-    }
-
-    # Export all public functions and the helper functions
-    Export-ModuleMember -Function ($PublicFunctionNames + @('Import-ScriptFileSafely', 'Test-CommandExistsSafely'))
-}
-finally {
-    # ===== CLEANUP SECTION =====
-    # Reset module loading guard
-    $script:IsLoading = $false
     
-    # Restore original Azure environment variables
-    if ($originalAzureEnvVars) {
-        foreach ($key in $originalAzureEnvVars.Keys) {
-            if ($originalAzureEnvVars[$key] -eq $null) {
-                Remove-Item -Path "env:$key" -ErrorAction SilentlyContinue
+    # If not loaded from sibling path, try PSModulePath
+    if (-not $moduleLoaded) {
+        try {
+            Import-Module -Name $module -Force -ErrorAction Stop
+            Write-Host "  ✓ Successfully loaded $module from PSModulePath" -ForegroundColor Green
+            $moduleLoaded = $true
+            $loadedModules += $module
+        }
+        catch {
+            Write-Warning "  ✗ Failed to load $module from PSModulePath: $($_.Exception.Message)"
+        }
+    }
+    
+    # If module couldn't be loaded, add to missing modules list
+    if (-not $moduleLoaded) {
+        $missingModules += $module
+    }
+}
+
+# Display summary of dependency check
+Write-Host "Dependency check summary:" -ForegroundColor Cyan
+Write-Host "  - Total required modules: $($requiredModules.Count)" -ForegroundColor Cyan
+Write-Host "  - Successfully loaded: $($loadedModules.Count)" -ForegroundColor $(if ($loadedModules.Count -eq $requiredModules.Count) { 'Green' } else { 'Yellow' })
+Write-Host "  - Missing modules: $($missingModules.Count)" -ForegroundColor $(if ($missingModules.Count -eq 0) { 'Green' } else { 'Red' })
+
+if ($missingModules.Count -gt 0) {
+    Write-Warning "Missing required modules: $($missingModules -join ', '). Some functionality may be limited."
+}
+#endregion
+
+#region Function Loading
+# Load private functions (internal to the module)
+$privatePath = Join-Path -Path $ModulePath -ChildPath 'Private'
+$privateCount = 0
+
+if (Test-Path -Path $privatePath) {
+    $privateFiles = Get-ChildItem -Path "$privatePath\*.ps1" -ErrorAction SilentlyContinue
+    
+    Write-Host "Loading private functions from $privatePath..." -ForegroundColor Cyan
+    Write-Verbose "Found $($privateFiles.Count) private function files"
+    
+    foreach ($file in $privateFiles) {
+        try {
+            . $file.FullName
+            $privateCount++
+            Write-Verbose "Loaded private function: $($file.BaseName)"
+        }
+        catch {
+            Write-Warning "Failed to import private function $($file.BaseName): $($_.Exception.Message)"
+        }
+    }
+    
+    Write-Host "  ✓ Loaded $privateCount private functions" -ForegroundColor Green
+}
+else {
+    Write-Warning "Private directory not found: $privatePath"
+}
+
+# Load public functions (to be exported)
+$publicPath = Join-Path -Path $ModulePath -ChildPath 'Public'
+$exportFunctions = @()
+$publicCount = 0
+
+if (Test-Path -Path $publicPath) {
+    $publicFiles = Get-ChildItem -Path "$publicPath\*.ps1" -ErrorAction SilentlyContinue
+    
+    Write-Host "Loading public functions from $publicPath..." -ForegroundColor Cyan
+    Write-Verbose "Found $($publicFiles.Count) public function files"
+    
+    foreach ($file in $publicFiles) {
+        try {
+            . $file.FullName
+            
+            # Extract function name from file content
+            $fileContent = Get-Content -Path $file.FullName -Raw
+            if ($fileContent -match 'function\s+([A-Za-z0-9\-]+)') {
+                $functionName = $matches[1]
+                $exportFunctions += $functionName
+                $publicCount++
+                Write-Verbose "Added function to export list: $functionName"
             }
             else {
-                Set-Item -Path "env:$key" -Value $originalAzureEnvVars[$key]
+                Write-Warning "No function definition found in file: $($file.Name)"
             }
+        }
+        catch {
+            Write-Warning "Failed to import public function $($file.BaseName): $($_.Exception.Message)"
         }
     }
     
-    # Display functions defined in this module
-    $moduleFunctions = Get-ChildItem -Path Function:\ | Where-Object {
-        $_.ScriptBlock.File -and $_.ScriptBlock.File.Contains($ModulePath)
-    } | Select-Object -ExpandProperty Name
-
-    Write-Host "Functions defined in this module:" -ForegroundColor Cyan
-    $moduleFunctions | ForEach-Object { Write-Host "  - $_" -ForegroundColor Cyan }
-    
-    # Remove temporary environment variables
-    Remove-Item -Path "env:AZURE_SKIP_MODULE_REGISTRATION" -ErrorAction SilentlyContinue
-    
-    # Restore original preferences
-    $PSModuleAutoLoadingPreference = $originalPSModuleAutoLoadingPreference
-    $DebugPreference = $originalDebugPreference
-    $VerbosePreference = $originalVerbosePreference
-    $ErrorActionPreference = $originalErrorActionPreference
+    Write-Host "  ✓ Loaded $publicCount public functions" -ForegroundColor Green
 }
+else {
+    Write-Warning "Public directory not found: $publicPath"
+}
+#endregion
+
+#region Module Finalization
+# Create module-specific wrapper functions if dependencies are missing
+if ($missingModules -contains 'HomeLab.Logging') {
+    function Write-ModuleLog {
+        param(
+            [string]$Message,
+            [string]$Level = 'Info'
+        )
+        
+        $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        $color = switch ($Level) {
+            'Info'    { 'White' }
+            'Warning' { 'Yellow' }
+            'Error'   { 'Red' }
+            'Success' { 'Green' }
+            default   { 'White' }
+        }
+        
+        Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $color
+    }
+    
+    # Use the fallback function
+    Write-ModuleLog -Level Success -Message "$ModuleName module loaded successfully"
+} else {
+    # Use the actual Write-Log function from HomeLab.Logging
+    Write-Log -Level Success -Message "$ModuleName module loaded successfully"
+}
+
+# Export the functions
+if ($exportFunctions.Count -gt 0) {
+    Export-ModuleMember -Function $exportFunctions
+    
+    # Display exported functions for verification
+    Write-Host "Exported functions from $ModuleName module:" -ForegroundColor Cyan
+    foreach ($function in $exportFunctions | Sort-Object) {
+        Write-Host "  - $function" -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Warning "No functions exported from $ModuleName module"
+}
+
+# Display diagnostic information
+Write-Host "`n===== DIAGNOSTIC INFORMATION =====" -ForegroundColor Magenta
+Write-Host "Module path: $ModulePath" -ForegroundColor Magenta
+Write-Host "Functions actually available in the module:" -ForegroundColor Magenta
+$availableFunctions = Get-ChildItem function: | Where-Object { $_.ScriptBlock.File -like "*$ModulePath*" } | Select-Object -ExpandProperty Name
+if ($availableFunctions) {
+    foreach ($fn in $availableFunctions) {
+        Write-Host "  - $fn" -ForegroundColor Magenta
+    }
+} else {
+    Write-Host "  No functions found with this module path" -ForegroundColor Magenta
+}
+
+# Display loaded modules for verification
+Write-Host "Currently loaded HomeLab modules:" -ForegroundColor Magenta
+Get-Module | Where-Object { $_.Name -like "HomeLab.*" } | 
+    Format-Table -Property Name, Version, Path -AutoSize
+
+# Restore original preferences
+$VerbosePreference = $originalVerbosePreference
+$ErrorActionPreference = $originalErrorActionPreference
+$WarningPreference = $originalWarningPreference
+#endregion

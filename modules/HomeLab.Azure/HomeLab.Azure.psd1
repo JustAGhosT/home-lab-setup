@@ -23,8 +23,9 @@
     # Minimum version of the PowerShell engine required by this module.
     PowerShellVersion  = '5.1'
     
-    # This module depends on HomeLab.Core.
-    RequiredModules    = @('HomeLab.Core')
+    # This module depends on all HomeLab modules
+    RequiredModules    = @(
+    )
     
     # Functions to export
     FunctionsToExport  = @(
@@ -32,7 +33,10 @@
         'NatGatewayEnableDisable',
         'Connect-AzureAccount',
         'Test-ResourceGroup',
-        'Reset-ResourceGroup'
+        'Reset-ResourceGroup',
+        'Set-VpnSplitTunneling',
+        'Format-AzureCliOutput',
+        'Test-AzureResourceName'
     )
     
     # Cmdlets to export

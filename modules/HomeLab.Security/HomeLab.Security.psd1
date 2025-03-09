@@ -9,7 +9,7 @@
     PowerShellVersion = '5.1'
     
     # Modules that must be imported before this module
-    RequiredModules = @('HomeLab.Core')
+    RequiredModules = @()
     
     # Functions to export
     FunctionsToExport = @(
