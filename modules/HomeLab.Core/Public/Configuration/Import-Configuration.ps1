@@ -1,4 +1,4 @@
-function Import-Configuration {
+function Initialize-Configuration {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]

@@ -174,11 +174,6 @@ function Invoke-VPNGatewayDeployment {
     if ($result -like "Error*") {
         Write-ColorOutput $result -ForegroundColor Red
     }
-    else {
-        Write-ColorOutput $result -ForegroundColor Green
-        Write-ColorOutput "`nIMPORTANT: The VPN Gateway will continue to incur charges until explicitly deleted." -ForegroundColor Yellow
-        Write-ColorOutput "Use option 5 to check deployment status. When finished testing, consider deleting the VPN Gateway." -ForegroundColor Yellow
-    }
     
     Pause
 }

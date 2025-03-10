@@ -6,7 +6,7 @@
     Provides the high-level Start-HomeLab function as the main entry point for the application.
 .NOTES
     Author: Jurie Smit
-    Date: March 9, 2025
+    Date: March 10, 2025
     Version: 1.0.0
 #>
 
@@ -15,6 +15,36 @@
 $PSModuleAutoLoadingPreference = 'None'
 # Disable function discovery debugging which can cause infinite loops
 $DebugPreference = 'SilentlyContinue'
+
+
+#region Script Variables
+$script:Version = "1.0.0"
+$script:StartTime = Get-Date
+$script:ModulesLoaded = $false
+$script:ConfigLoaded = $false
+# Updated to reflect local module paths
+$script:RequiredModules = @(
+    @{Name = "HomeLab.Core"; Path = "$PSScriptRoot\modules\HomeLab.Core\HomeLab.Core.psm1"},
+    @{Name = "HomeLab.UI"; Path = "$PSScriptRoot\modules\HomeLab.UI\HomeLab.UI.psm1"},
+    @{Name = "HomeLab.Logging"; Path = "$PSScriptRoot\modules\HomeLab.Logging\HomeLab.Logging.psm1"},
+    @{Name = "HomeLab.Utils"; Path = "$PSScriptRoot\modules\HomeLab.Utils\HomeLab.Utils.psm1"},
+    @{Name = "HomeLab.Azure"; Path = "$PSScriptRoot\modules\HomeLab.Azure\HomeLab.Azure.psm1"},
+    @{Name = "HomeLab.Security"; Path = "$PSScriptRoot\modules\HomeLab.Security\HomeLab.Security.psm1"},
+    @{Name = "HomeLab.Monitoring"; Path = "$PSScriptRoot\modules\HomeLab.Monitoring\HomeLab.Monitoring.psm1"}
+    # @{Name = "Az"; MinVersion = "9.0.0"} # Az is the only external module
+)
+$script:State = @{
+    ConfigPath = $ConfigPath
+    LogLevel = $LogLevel
+    Config = $null
+    User = $null
+    AzContext = $null
+    ConnectionStatus = "Disconnected"
+    LastDeployment = $null
+    MenuHistory = @()
+}
+$script:LogFile = "$env:USERPROFILE\.homelab\logs\homelab_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+#endregion
 
 # Save the original PSDefaultParameterValues at the start to prevent infinite loops
 $originalPSDefaultParameterValues = $null
@@ -36,6 +66,10 @@ Write-Verbose "Using script directory: $scriptDirectory"
 # Force $modulesRoot to be a single string.
 [string]$modulesRoot = Join-Path -Path $scriptDirectory -ChildPath "modules"
 Write-Verbose "Modules root set to: $modulesRoot"
+
+# Define the Functions directory path
+[string]$functionsDirectory = Join-Path -Path $scriptDirectory -ChildPath "Functions"
+Write-Verbose "Functions directory set to: $functionsDirectory"
 
 # List paths for each submodule's main PSM1.
 [string]$loggingModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Logging\HomeLab.Logging.psm1"
@@ -73,7 +107,7 @@ if (Test-Path $coreModulePath) {
     if ($loadedModules["Core"]) {
         # Verify core functions are available
         $requiredFunctions = @(
-            "Import-Configuration", 
+            "Initialize-Configuration", 
             "Initialize-Logging", 
             "Write-Log",
             "Import-SafeModule"
@@ -117,23 +151,41 @@ else {
     Write-Warning "Core module could not be loaded. HomeLab functionality will be limited."
 }
 
-# Import the Start-HomeLab function from the separate file
-$startHomeLabPath = Join-Path -Path $scriptDirectory -ChildPath "Start-HomeLab.ps1"
-if (Test-Path $startHomeLabPath) {
+# Create the Functions directory if it doesn't exist
+if (-not (Test-Path -Path $functionsDirectory)) {
     try {
-        . $startHomeLabPath
-        Write-Verbose "Successfully imported Start-HomeLab function from $startHomeLabPath"
+        New-Item -Path $functionsDirectory -ItemType Directory -Force | Out-Null
+        Write-Verbose "Created Functions directory: $functionsDirectory"
     }
     catch {
-        Write-Error "Failed to import Start-HomeLab function: $_"
+        Write-Error "Failed to create Functions directory: $_"
     }
 }
-else {
-    Write-Error "Start-HomeLab.ps1 not found at expected path: $startHomeLabPath"
+
+# Import all function files from the Functions directory
+if (Test-Path $functionsDirectory) {
+    Write-Verbose "Importing functions from directory: $functionsDirectory"
+    $functionFiles = Get-ChildItem -Path $functionsDirectory -Filter "*.ps1" -ErrorAction SilentlyContinue
+    
+    if ($functionFiles.Count -gt 0) {
+        foreach ($functionFile in $functionFiles) {
+            try {
+                Write-Verbose "Importing function file: $($functionFile.FullName)"
+                . $functionFile.FullName
+                Write-Verbose "Successfully imported function file: $($functionFile.Name)"
+            }
+            catch {
+                Write-Error "Failed to import function file $($functionFile.Name): $_"
+            }
+        }
+    }
+    else {
+        Write-Warning "No function files found in directory: $functionsDirectory"
+    }
 }
 
-# Export the Start-HomeLab function so it's available to users of this module
-Export-ModuleMember -Function Start-HomeLab
+# Export both Start-HomeLab and Start-MainLoop functions
+Export-ModuleMember -Function Start-HomeLab, Start-MainLoop
 
 # Restore automatic module loading
 $PSModuleAutoLoadingPreference = 'All'

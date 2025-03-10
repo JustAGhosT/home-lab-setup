@@ -17,8 +17,8 @@
 function Initialize-Logging {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$LogFilePath,
+        [Parameter(Mandatory = $false)]
+        [string]$LogFilePath = "",
         
         [Parameter(Mandatory = $false)]
         [ValidateSet("Info", "Warning", "Error", "Debug", "None")]
@@ -28,6 +28,12 @@ function Initialize-Logging {
         [switch]$Append
     )
     
+    # If no log path provided, create a default one
+    if ([string]::IsNullOrEmpty($LogFilePath)) {
+        $logDir = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\logs"
+        $logFileName = "homelab_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+        $LogFilePath = Join-Path -Path $logDir -ChildPath $logFileName
+    }
     # Store log path and level in script-level variables for other functions to use
     $script:LogFilePath = $LogFilePath
     $script:LogLevel = $LogLevel

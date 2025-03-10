@@ -17,7 +17,7 @@ function Restore-Configuration {
             Copy-Item -Path $BackupFile -Destination $ConfigFile -Force
             
             # Reload the configuration
-            Import-Configuration -ConfigFile $ConfigFile | Out-Null
+            Initialize-Configuration -ConfigFile $ConfigFile | Out-Null
             
             Write-SafeLog -Message "Configuration restored from $BackupFile." -Level Info
             return $true

@@ -1,21 +1,52 @@
 function Invoke-Deployment {
+    [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]$TemplateFile,
+        
+        [Parameter(Mandatory=$true)]
         [string]$ComponentName,
+        
+        [Parameter(Mandatory=$true)]
         [string]$ResourceType,
+        
+        [Parameter(Mandatory=$true)]
         [string]$ResourceName,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$ResourceGroup,
+        
+        [Parameter(Mandatory=$true)]
+        [array]$DeploymentParams,
+        
+        [Parameter(Mandatory=$false)]
+        [switch]$Monitor,
+        
+        [Parameter(Mandatory=$false)]
         [int]$PollIntervalSeconds = 10,
+        
+        [Parameter(Mandatory=$false)]
         [int]$TimeoutMinutes = 30
     )
+    
     Write-Log -Message "=== Deploying $ComponentName ===" -Level Info
     Write-Log -Message "Using template: $TemplateFile" -Level Debug
-    Write-Log -Message "Resource parameters: ResourceType=$ResourceType, ResourceName=$ResourceName" -Level Debug
+    Write-Log -Message "Resource parameters: ResourceType=$ResourceType, ResourceName=$ResourceName, ResourceGroup=$ResourceGroup" -Level Debug
+    
+    # Verify template file exists
+    if (-not (Test-Path -Path $TemplateFile)) {
+        Write-Log -Message "Template file not found: $TemplateFile" -Level Error
+        return $false
+    }
 
-    $deployCmd = @("az", "deployment", "group", "create", "--template-file", $TemplateFile) + $commonParams
-    Write-Log -Message "Constructed deploy command: $($deployCmd -join ' ')" -Level Debug
+    # Construct the deployment command
+    $deployCmd = @("az", "deployment", "group", "create", "--template-file", $TemplateFile) + $DeploymentParams
+    Write-Log -Message "Final command: $($deployCmd -join ' ')" -Level Debug
 
     try {
-        & $deployCmd[0] $deployCmd[1..($deployCmd.Length-1)]
+        # Execute the deployment command and capture output
+        $result = & $deployCmd[0] $deployCmd[1..($deployCmd.Length-1)] 2>&1
+        Write-Log -Message "Command output: $result" -Level Debug
     }
     catch {
         Write-Log -Message "$ComponentName deployment encountered an error: $($_.Exception.Message)" -Level Error
@@ -27,7 +58,7 @@ function Invoke-Deployment {
         return $false
     }
 
-    # If Monitor is enabled, do foreground monitoring via a runspace.
+    # If Monitor is enabled, do foreground monitoring via a runspace
     if ($Monitor) {
         Write-Log -Message "Starting foreground monitoring for $ComponentName deployment." -Level Info
         $monitorScript = {

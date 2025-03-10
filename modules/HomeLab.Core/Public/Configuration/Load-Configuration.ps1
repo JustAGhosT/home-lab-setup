@@ -1,4 +1,4 @@
-function Load-Configuration {
+function Initialize-Configuration {
     [CmdletBinding()]
     param()
     

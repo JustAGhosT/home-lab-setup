@@ -5,7 +5,7 @@
     Retrieves global configuration and deploys either the full infrastructure or a specific component
     (network, VPN gateway, or NAT gateway) using the corresponding Bicep templates.
     If the BackgroundMonitor switch is specified, deployment monitoring runs as background jobs and the function
-    returns immediately.
+    outputs immediately.
 .PARAMETER ComponentsOnly
     Optional. Specifies a single component to deploy ("network", "vpngateway", or "natgateway").
     If not specified, full infrastructure is deployed.
@@ -23,7 +23,7 @@
     Deploy-Infrastructure -Force -BackgroundMonitor
 .NOTES
     Author: Jurie Smit (Original)
-    Updated: March 9, 2025 – Adjusted to include new parameters and split into maintainable parts with enhanced logging.
+    Updated: March 10, 2025 – Adjusted to use PowerShell pipeline output instead of return statements.
 #>
 function Deploy-Infrastructure {
     [CmdletBinding()]
@@ -50,7 +50,8 @@ function Deploy-Infrastructure {
     # Ensure we're connected to Azure.
     if (-not (Connect-AzureAccount)) {
         Write-Log -Message "Failed to connect to Azure. Deployment aborted." -Level Error
-        return $false
+        $false # Output false instead of return
+        return # Exit function
     }
     
     # Retrieve global configuration.
@@ -76,7 +77,8 @@ function Deploy-Infrastructure {
         }
         catch {
             Write-Log -Message "Failed to create resource group: $($_.Exception.Message)" -Level Error
-            return $false
+            $false # Output false instead of return
+            return # Exit function
         }
     }
     else {
@@ -108,18 +110,23 @@ function Deploy-Infrastructure {
     
     # Dispatch to the appropriate component deployment function.
     if ($ComponentsOnly -eq "network") {
-        return Deploy-NetworkComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+        # Output the result of the function call instead of returning it
+        Deploy-NetworkComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
     }
     elseif ($ComponentsOnly -eq "vpngateway") {
-        return Deploy-VPNGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+        # Output the result of the function call instead of returning it
+        Deploy-VPNGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
     }
     elseif ($ComponentsOnly -eq "natgateway") {
-        return Deploy-NATGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+        # Output the result of the function call instead of returning it
+        Deploy-NATGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
     }
     else {
-        if (-not (Deploy-FullInfrastructure -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor)) {
-            return $false
+        $result = Deploy-FullInfrastructure -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+        if (-not $result) {
+            $false # Output false instead of return
+            return # Exit function
         }
-        return $true
+        $true # Output true instead of return
     }
 }

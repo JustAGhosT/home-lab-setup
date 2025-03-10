@@ -1,31 +1,50 @@
 function Deploy-NetworkComponent {
+    [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourceGroup,
+        
+        [Parameter(Mandatory=$true)]
         [string]$location,
+        
+        [Parameter(Mandatory=$true)]
         [string]$env,
+        
+        [Parameter(Mandatory=$true)]
         [string]$loc,
+        
+        [Parameter(Mandatory=$true)]
         [string]$project,
+        
+        [Parameter(Mandatory=$true)]
         [array]$commonParams,
+        
+        [Parameter(Mandatory=$true)]
         [string]$templatesPath,
+        
+        [Parameter(Mandatory=$false)]
         [switch]$Monitor,
+        
+        [Parameter(Mandatory=$false)]
         [switch]$BackgroundMonitor
     )
 
     Write-Log -Message "Deploying network resources using network.bicep" -Level Info
     $templateFile = Join-Path -Path $templatesPath -ChildPath "network.bicep"
     $resourceName = "$env-$loc-vnet-$project"
-    if (-not (Invoke-Deployment -TemplateFile $templateFile -ComponentName "Network" -ResourceType "vnet" -ResourceName $resourceName -PollIntervalSeconds 10)) {
-        return $false
-    }
-
-    if ($BackgroundMonitor) {
-        Write-Log -Message "Initiating background monitoring for Virtual Network: $resourceName" -Level Info
-        $job = Start-BackgroundMonitoring -ResourceGroup $ResourceGroup -ResourceType "vnet" -ResourceName $resourceName -PollIntervalSeconds 10
-        Write-Log -Message "Background monitoring started for Virtual Network (Job ID: $($job.JobId))" -Level Info
-        $exportChoice = Read-Host "Export background job info for Virtual Network? (Y/N)"
-        if ($exportChoice -match '^(Y|y)$') { Export-JobInfo -Job $job }
-        return $true
-    }
-
-    return $true
+    
+    # Use the shared Deploy-Component function and store the result
+    $result = Deploy-Component -ResourceGroup $ResourceGroup `
+                    -TemplateFile $templateFile `
+                    -ResourceName $resourceName `
+                    -ResourceType "vnet" `
+                    -ComponentName "Network" `
+                    -CommonParams $commonParams `
+                    -PollIntervalSeconds 10 `
+                    -TimeoutMinutes 30 `
+                    -Monitor:$Monitor `
+                    -BackgroundMonitor:$BackgroundMonitor
+    
+    # Return the result as a single value
+    return $result
 }

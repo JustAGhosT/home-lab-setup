@@ -1,24 +1,14 @@
-<#
-.SYNOPSIS
-    Exports background job information to a file.
-.DESCRIPTION
-    Writes key details of a background job (name, job ID, state, command, timestamps)
-    to a text file in the TEMP folder.
-.PARAMETER Job
-    The background job object to export.
-.PARAMETER OutputPath
-    Optional. The file path for the output. Defaults to "$env:TEMP\JobInfo_<JobName>.txt".
-.EXAMPLE
-    Export-JobInfo -Job $job
-.NOTES
-    Author: Jurie Smit
-    Date: March 9, 2025
-#>
 function Export-JobInfo {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [object]$Job,
+        
+        [Parameter(Mandatory=$false)]
+        [hashtable]$DeploymentInfo,
+        
+        [Parameter(Mandatory=$false)]
+        [hashtable]$MonitoringInfo,
         
         [Parameter(Mandatory=$false)]
         [string]$Name = "Job"
@@ -26,44 +16,80 @@ function Export-JobInfo {
     
     try {
         $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-        $exportPath = Join-Path -Path $env:TEMP -ChildPath "JobInfo_${Name}${timestamp}.txt"
+        $exportPath = Join-Path -Path $env:TEMP -ChildPath "JobInfo_${Name}_${timestamp}.txt"
         
-        # Create a string representation of the job info
-        $jobDetails = ""
+        # Create a StringBuilder for better performance with large strings
+        $output = New-Object System.Text.StringBuilder
         
-        # Handle different types of job objects
-        if ($Job -is [System.Management.Automation.Job]) {
-            $jobDetails = @"
-Job ID: $($Job.Id)
-Job Name: $($Job.Name)
-State: $($Job.State)
-Start Time: $($Job.PSBeginTime)
-Command: $($Job.Command)
-"@
+        # Add deployment information if provided
+        if ($DeploymentInfo) {
+            [void]$output.AppendLine("Deployment Job:")
+            foreach ($key in $DeploymentInfo.Keys | Sort-Object) {
+                # Fixed string interpolation by using proper string concatenation
+                [void]$output.AppendLine("- " + $key + ": " + $DeploymentInfo[$key])
+            }
+            [void]$output.AppendLine("")
         }
-        elseif ($Job -is [hashtable]) {
-            # Convert hashtable to formatted string
-            $jobDetails = $Job.GetEnumerator() | ForEach-Object {
-                if ($_.Value -is [hashtable]) {
-                    "$($_.Key):`n" + ($_.Value.GetEnumerator() | ForEach-Object { "  $($_.Key): $($_.Value)" } | Out-String)
-                } else {
-                    "$($_.Key): $($_.Value)"
+        
+        # Add monitoring information if provided
+        if ($MonitoringInfo) {
+            [void]$output.AppendLine("Monitoring Details:")
+            [void]$output.AppendLine("")
+            
+            # Format as a table header
+            [void]$output.AppendLine("Name                           Value")
+            [void]$output.AppendLine("----                           -----")
+            
+            # Add each key-value pair
+            if ($MonitoringInfo -is [hashtable]) {
+                foreach ($key in $MonitoringInfo.Keys | Sort-Object) {
+                    # Fixed string interpolation using proper string concatenation
+                    [void]$output.AppendLine(($key.ToString().PadRight(30)) + " " + $MonitoringInfo[$key])
                 }
-            } | Out-String
+            }
+            else {
+                # If MonitoringInfo is not a hashtable, try to format it differently
+                [void]$output.AppendLine("Monitoring object type: " + $MonitoringInfo.GetType().FullName)
+                [void]$output.AppendLine("Monitoring object value: " + $MonitoringInfo)
+            }
         }
-        else {
-            # For any other object type, convert to string safely
-            $jobDetails = $Job | Out-String
+        
+        # Add standard job information if provided
+        if ($Job -and -not $DeploymentInfo -and -not $MonitoringInfo) {
+            if ($Job -is [System.Management.Automation.Job]) {
+                [void]$output.AppendLine("Job ID: " + $Job.Id)
+                [void]$output.AppendLine("Job Name: " + $Job.Name)
+                [void]$output.AppendLine("State: " + $Job.State)
+                [void]$output.AppendLine("Start Time: " + $Job.PSBeginTime)
+                [void]$output.AppendLine("Command: " + $Job.Command)
+            }
+            elseif ($Job -is [hashtable]) {
+                foreach ($key in $Job.Keys | Sort-Object) {
+                    # Fixed string interpolation
+                    [void]$output.AppendLine($key + ": " + $Job[$key])
+                }
+            }
+            else {
+                # For any other object type, convert properties to string
+                $properties = $Job | Get-Member -MemberType Property | Select-Object -ExpandProperty Name
+                foreach ($prop in $properties | Sort-Object) {
+                    # Fixed string interpolation
+                    $propValue = $Job | Select-Object -ExpandProperty $prop
+                    [void]$output.AppendLine($prop + ": " + $propValue)
+                }
+            }
         }
         
         # Write to file
-        $jobDetails | Out-File -FilePath $exportPath
+        $output.ToString() | Out-File -FilePath $exportPath
         
         Write-Log -Message "Job info exported to $exportPath" -Level Info
+        # Return the path as a single string value
         return $exportPath
     }
     catch {
-        Write-Log -Message "Failed to export job info: $_" -Level Error
+        $errorMessage = $_.Exception.Message
+        Write-Log -Message "Failed to export job info: $errorMessage" -Level Error
         return $null
     }
 }

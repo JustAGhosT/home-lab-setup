@@ -45,8 +45,8 @@ function Setup-HomeLab {
             Write-SafeLog -Message "HomeLab setup is already complete. Use -Force to reinitialize." -Level Info
             
             # Just load the configuration if setup is complete
-            if (Get-Command -Name Import-Configuration -ErrorAction SilentlyContinue) {
-                Import-Configuration -Silent
+            if (Get-Command -Name Initialize-Configuration -ErrorAction SilentlyContinue) {
+                Initialize-Configuration -Silent
             }
             
             # Initialize the log file if it doesn't exist
