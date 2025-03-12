@@ -153,7 +153,7 @@ if (Test-Path -Path $publicPath) {
             if ($newFunctions) {
                 foreach ($fn in $newFunctions) {
                     # Verify this is a valid function name (not 'returns' or other keywords)
-                    if ($fn -match '^[a-zA-Z0-9\-_]+$' -and $fn -ne 'returns') {
+                    if ($fileContent -match 'function\s+([A-Za-z0-9\-_]+)\s*\{') {
                         $publicFunctions += $fn
                         Write-Verbose "Added function to export list: $fn"
                     } else {
