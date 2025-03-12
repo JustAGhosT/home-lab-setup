@@ -60,6 +60,9 @@ function Write-ColorOutput {
         }
     }
     
+    # Skip logging empty lines
+    $skipLogging = [string]::IsNullOrWhiteSpace($textString)
+    
     # Map ConsoleColor to string color name for Write-Log
     $colorMap = @{
         'Black' = 'Black'
@@ -80,40 +83,21 @@ function Write-ColorOutput {
         'White' = 'White'
     }
     
-    # If NoNewLine is specified, we need special handling
+    $colorName = $colorMap[$ForegroundColor.ToString()]
+    
+    # For UI elements (menus, prompts, etc.), we want to:
+    # 1. Write directly to console with colors but no timestamp/level prefix
+    # 2. Log to file with timestamp/level prefix
+    
+    # Direct console output with colors
     if ($NoNewLine) {
-        # For NoNewLine, we need to use Write-Host directly
-        $params = @{
-            Object = $textString
-            ForegroundColor = $ForegroundColor
-            BackgroundColor = $BackgroundColor
-            NoNewline = $true
-        }
-        
-        Write-Host @params
-        
-        # Also log to file if not suppressed
-        if (-not $NoLog) {
-            # Convert the color to a string name
-            $colorName = $colorMap[$ForegroundColor.ToString()]
-            
-            # Write to log file only (NoConsole)
-            Write-Log -Message $textString -Level $Level -Color $colorName -NoConsole
-        }
+        Write-Host $textString -ForegroundColor $ForegroundColor -BackgroundColor $BackgroundColor -NoNewline
+    } else {
+        Write-Host $textString -ForegroundColor $ForegroundColor -BackgroundColor $BackgroundColor
     }
-    else {
-        # Normal case - use Write-Log
-        $colorName = $colorMap[$ForegroundColor.ToString()]
-        $writeLogParams = @{
-            Message = $textString
-            Level = $Level
-            Color = $colorName
-        }
-        
-        if ($NoLog) {
-            $writeLogParams.NoLog = $true
-        }
-        
-        Write-Log @writeLogParams
+    
+    # Log to file if not empty and not suppressed
+    if (-not $skipLogging -and -not $NoLog) {
+        Write-Log -Message $textString -Level $Level -Color $colorName -NoConsole
     }
 }

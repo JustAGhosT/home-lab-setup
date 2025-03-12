@@ -46,7 +46,7 @@ param gatewayType string = 'Vpn'
 param vpnType string = 'RouteBased'
 
 @description('Whether to deploy the VPN Gateway.')
-param deployVpnGateway bool = false
+param enableVpnGateway bool = false
 
 @description('Address space for VPN clients (Point-to-Site connections).')
 param vpnClientAddressPoolPrefix string = '172.16.0.0/24'
@@ -75,7 +75,7 @@ resource gatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2021-05-01' = 
 }
 
 // Public IP for the VPN Gateway - only deploy if VPN Gateway is enabled
-resource gatewayPublicIP 'Microsoft.Network/publicIPAddresses@2021-05-01' = if(deployVpnGateway) {
+resource gatewayPublicIP 'Microsoft.Network/publicIPAddresses@2021-05-01' = if(enableVpnGateway) {
   name: gatewayPublicIPName
   location: location
   sku: {
@@ -87,7 +87,7 @@ resource gatewayPublicIP 'Microsoft.Network/publicIPAddresses@2021-05-01' = if(d
 }
 
 // VPN Gateway - only deploy if enabled
-resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = if(deployVpnGateway) {
+resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = if(enableVpnGateway) {
   name: gatewayName
   location: location
   properties: {
@@ -124,6 +124,6 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = if(d
 }
 
 // Outputs - handle conditional deployment
-output vpnGatewayId string = deployVpnGateway ? vpnGateway.id : ''
-output vpnGatewayName string = deployVpnGateway ? vpnGateway.name : ''
-output vpnGatewayPublicIpId string = deployVpnGateway ? gatewayPublicIP.id : ''
+output vpnGatewayId string = enableVpnGateway ? vpnGateway.id : ''
+output vpnGatewayName string = enableVpnGateway ? vpnGateway.name : ''
+output vpnGatewayPublicIpId string = enableVpnGateway ? gatewayPublicIP.id : ''

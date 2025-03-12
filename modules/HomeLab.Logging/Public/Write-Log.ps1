@@ -2,6 +2,7 @@ function Write-Log {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$Message,
         
         [Parameter(Mandatory = $false)]
@@ -21,8 +22,16 @@ function Write-Log {
         [switch]$NoLog,
         
         [Parameter(Mandatory = $false)]
-        [switch]$Force
+        [switch]$Force,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$NoPrefix
     )
+    
+    # Handle empty messages
+    if ([string]::IsNullOrWhiteSpace($Message)) {
+        $Message = "(Empty message)"
+    }
     
     # Define default colors for log levels
     $defaultColors = @{
@@ -64,7 +73,11 @@ function Write-Log {
     
     # Format the timestamp and construct the log message
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logMessage = "[$timestamp] [$Level] $Message"
+    
+    # Create different messages for console and file
+    # Console message can optionally skip the prefix
+    $consoleMessage = if ($NoPrefix) { $Message } else { "[$timestamp] [$Level] $Message" }
+    $fileLogMessage = "[$timestamp] [$Level] $Message"
     
     # Default log levels if config is not available
     $defaultLogLevel = 'Info'
@@ -115,7 +128,7 @@ function Write-Log {
         }
         
         try {
-            $logMessage | Out-File -FilePath $LogFile -Append -ErrorAction Stop
+            $fileLogMessage | Out-File -FilePath $LogFile -Append -ErrorAction Stop
         }
         catch {
             # If we can't write to the log file, at least output an error to the console
@@ -125,7 +138,7 @@ function Write-Log {
     
     # Write to console if not suppressed and meets the minimum level
     if ($writeToConsole) {
-        Write-Host $logMessage -ForegroundColor $Color
+        Write-Host $consoleMessage -ForegroundColor $Color
         [Console]::Out.Flush()
     }
 }

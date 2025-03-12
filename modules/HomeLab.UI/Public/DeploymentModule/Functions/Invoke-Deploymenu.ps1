@@ -17,7 +17,10 @@ function Invoke-DeployMenu {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [switch]$ShowProgress
+        [switch]$ShowProgress,
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]$State
     )
     
     $exitMenu = $false

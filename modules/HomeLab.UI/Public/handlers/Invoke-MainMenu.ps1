@@ -27,7 +27,7 @@ function Invoke-MainMenu {
         [hashtable]$State,
         
         [Parameter(Mandatory = $false)]
-        [switch]$Debug
+        [switch]$DebugMode
     )
     
     # Initialize exit flag

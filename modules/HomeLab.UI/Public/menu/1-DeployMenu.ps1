@@ -17,7 +17,10 @@ function Show-DeployMenu {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [switch]$ShowProgress
+        [switch]$ShowProgress,
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]$State
     )
     
     # Get configuration for displaying in the menu

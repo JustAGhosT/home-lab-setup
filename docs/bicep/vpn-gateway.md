@@ -26,7 +26,7 @@ A public IP is deployed for the VPN Gateway (only if gateway deployment is enabl
 
 ### VPN Gateway
 
-The VPN Gateway itself is conditionally deployed based on the `deployVpnGateway` parameter:
+The VPN Gateway itself is conditionally deployed based on the `enableVpnGateway` parameter:
 
 - **Name**: `{env}-{loc}-vpng-{project}` (e.g., `dev-saf-vpng-homelab`)
 - **Default SKU**: Basic (lowest cost option, ~$27/month)
@@ -49,7 +49,7 @@ The VPN Gateway itself is conditionally deployed based on the `deployVpnGateway`
 | gatewaySku | Basic | SKU for the VPN Gateway (Basic, VpnGw1, VpnGw2, VpnGw3) |
 | gatewayType | Vpn | Type of gateway (Vpn or ExpressRoute) |
 | vpnType | RouteBased | VPN type (RouteBased or PolicyBased) |
-| deployVpnGateway | false | Whether to deploy the actual VPN Gateway |
+| enableVpnGateway | false | Whether to deploy the actual VPN Gateway |
 | vpnClientAddressPoolPrefix | 172.16.0.0/24 | Address space for VPN clients |
 | enableSplitTunneling | true | Enable split tunneling for VPN clients |
 
@@ -57,7 +57,7 @@ The VPN Gateway itself is conditionally deployed based on the `deployVpnGateway`
 
 The template is designed with cost optimization in mind:
 
-1. The `deployVpnGateway` parameter defaults to `false`, allowing the subnet to be created without deploying the costly gateway
+1. The `enableVpnGateway` parameter defaults to `false`, allowing the subnet to be created without deploying the costly gateway
 2. The Basic SKU is used by default to minimize costs (~$27/month vs. $127+/month for higher SKUs)
 3. Split tunneling is enabled by default to reduce bandwidth usage
 
@@ -76,14 +76,14 @@ New-AzResourceGroupDeployment `
   -ResourceGroupName "dev-saf-rg-homelab" `
   -TemplateFile "./vpn-gateway.bicep" `
   -existingVnetName "dev-saf-vnet-homelab" `
-  -deployVpnGateway $false
+  -enableVpnGateway $false
 
 # Deploy with VPN Gateway enabled
 New-AzResourceGroupDeployment `
   -ResourceGroupName "dev-saf-rg-homelab" `
   -TemplateFile "./vpn-gateway.bicep" `
   -existingVnetName "dev-saf-vnet-homelab" `
-  -deployVpnGateway $true `
+  -enableVpnGateway $true `
   -gatewaySku "Basic" `
   -vpnClientAddressPoolPrefix "172.16.0.0/24"
 ```

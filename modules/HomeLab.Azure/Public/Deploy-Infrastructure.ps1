@@ -23,7 +23,7 @@
     Deploy-Infrastructure -Force -BackgroundMonitor
 .NOTES
     Author: Jurie Smit (Original)
-    Updated: March 10, 2025 – Adjusted to use PowerShell pipeline output instead of return statements.
+    Updated: March 12, 2025 – Improved error handling and standardized return pattern.
 #>
 function Deploy-Infrastructure {
     [CmdletBinding()]
@@ -50,8 +50,7 @@ function Deploy-Infrastructure {
     # Ensure we're connected to Azure.
     if (-not (Connect-AzureAccount)) {
         Write-Log -Message "Failed to connect to Azure. Deployment aborted." -Level Error
-        $false # Output false instead of return
-        return # Exit function
+        return $false
     }
     
     # Retrieve global configuration.
@@ -77,8 +76,7 @@ function Deploy-Infrastructure {
         }
         catch {
             Write-Log -Message "Failed to create resource group: $($_.Exception.Message)" -Level Error
-            $false # Output false instead of return
-            return # Exit function
+            return $false
         }
     }
     else {
@@ -108,25 +106,41 @@ function Deploy-Infrastructure {
         Write-Log -Message "Added no-wait parameter (monitoring enabled)." -Level Debug
     }
     
-    # Dispatch to the appropriate component deployment function.
-    if ($ComponentsOnly -eq "network") {
-        # Output the result of the function call instead of returning it
-        Deploy-NetworkComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
-    }
-    elseif ($ComponentsOnly -eq "vpngateway") {
-        # Output the result of the function call instead of returning it
-        Deploy-VPNGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
-    }
-    elseif ($ComponentsOnly -eq "natgateway") {
-        # Output the result of the function call instead of returning it
-        Deploy-NATGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
-    }
-    else {
-        $result = Deploy-FullInfrastructure -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
-        if (-not $result) {
-            $false # Output false instead of return
-            return # Exit function
+    # Dispatch to the appropriate component deployment function with improved error handling and consistent return pattern
+    try {
+        if ($ComponentsOnly -eq "network") {
+            Write-Log -Message "Starting Network component deployment..." -Level Info
+            $result = Deploy-NetworkComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+            Write-Log -Message "Network component deployment completed with result: $result" -Level Info
+            return $result
         }
-        $true # Output true instead of return
+        elseif ($ComponentsOnly -eq "vpngateway") {
+            Write-Log -Message "Starting VPN Gateway component deployment..." -Level Info
+            $result = Deploy-VPNGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+            Write-Log -Message "VPN Gateway component deployment completed with result: $result" -Level Info
+            return $result
+        }
+        elseif ($ComponentsOnly -eq "natgateway") {
+            Write-Log -Message "Starting NAT Gateway component deployment..." -Level Info
+            $result = Deploy-NATGatewayComponent -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+            Write-Log -Message "NAT Gateway component deployment completed with result: $result" -Level Info
+            return $result
+        }
+        else {
+            Write-Log -Message "Starting full infrastructure deployment..." -Level Info
+            $result = Deploy-FullInfrastructure -ResourceGroup $ResourceGroup -location $location -env $env -loc $loc -project $project -commonParams $commonParams -templatesPath $templatesPath -Monitor:$Monitor -BackgroundMonitor:$BackgroundMonitor
+            Write-Log -Message "Full infrastructure deployment completed with result: $result" -Level Info
+            return $result
+        }
+    }
+    catch {
+        $errorMsg = $_.Exception.Message
+        $lineNum = $_.InvocationInfo.ScriptLineNumber
+        Write-Log -Message "Error in Deploy-Infrastructure at line $lineNum`: $errorMsg" -Level Error
+        Write-ColorOutput -Text "Deployment failed: $errorMsg" -ForegroundColor Red
+        return $false
+    }
+    finally {
+        Write-Log -Message "==== Completed Deploy-Infrastructure ====" -Level Info
     }
 }

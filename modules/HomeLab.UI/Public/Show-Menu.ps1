@@ -31,7 +31,7 @@
 .PARAMETER StatusColor
     Color for the status message (default is Yellow).
 .PARAMETER ShowHelp
-    If specified, adds a help option to the menu with key "H".
+    If specified, adds a help option to the menu with key "?".
 .EXAMPLE
     $menuItems = @{
         "1" = "Option 1"
@@ -41,8 +41,8 @@
     $selection = Show-Menu -Title "Main Menu" -MenuItems $menuItems -DefaultOption "1" -ValidateInput
 .NOTES
     Author: Jurie Smit
-    Date: March 9, 2025
-    Version: 1.0.1
+    Date: March 12, 2025
+    Version: 1.0.2
 #>
 function Show-Menu {
     [CmdletBinding()]
@@ -57,7 +57,7 @@ function Show-Menu {
         [switch]$ReturnToMain,
         
         [Parameter(Mandatory = $false)]
-        [string]$ExitOption = "Q",
+        [string]$ExitOption = "0",
         
         [Parameter(Mandatory = $false)]
         [string]$ExitText,
@@ -139,14 +139,14 @@ function Show-Menu {
     # Add navigation options.
     $navigationOptions = @()
     if ($ShowHelp) {
-        Write-Host "`n  [H] Help" -ForegroundColor Yellow
-        $validOptions += 'H'
-        $navigationOptions += 'H'
+        Write-Host "`n  [?] Help" -ForegroundColor Yellow
+        $validOptions += '?'
+        $navigationOptions += '?'
     }
     
     # Determine exit/return text.
     if (-not $ExitText) {
-        $ExitText = if ($ReturnToMain) { "Return to Main Menu" } else { "Quit" }
+        $ExitText = if ($ReturnToMain) { "Return to Main Menu" } else { "Exit" }
     }
     Write-Host "  [$ExitOption] $ExitText" -ForegroundColor Yellow
     $validOptions += $ExitOption
@@ -174,19 +174,19 @@ function Show-Menu {
             $choice = $DefaultOption
             break
         }
-        $choice = $userInput.Trim().ToUpper()
+        $choice = $userInput.Trim()
         $isValid = -not $ValidateInput -or ($validOptions -contains $choice)
         if (-not $isValid) {
             Write-Host "Invalid option. Please try again." -ForegroundColor Red
         }
     } while (-not $isValid)
     
-    # Return the user's choice and additional info.
-    return @{
+    # Return a PSCustomObject instead of a hashtable to ensure compatibility with Get-Member checks
+    return [PSCustomObject]@{
         Choice = $choice
         IsNavigationOption = ($navigationOptions -contains $choice)
         IsExit = ($choice -eq $ExitOption)
-        IsHelp = ($choice -eq 'H')
+        IsHelp = ($ShowHelp -and $choice -eq '?')
         RawInput = $userInput
     }
 }
