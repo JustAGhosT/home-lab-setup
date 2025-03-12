@@ -26,6 +26,17 @@
     # Modules that must be imported into the global environment prior to importing this module
     RequiredModules = @()
     
+    # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
+    NestedModules = @(
+        'modules\HomeLab.Logging\HomeLab.Logging.psm1',
+        'modules\HomeLab.Utils\HomeLab.Utils.psm1',
+        'modules\HomeLab.Core\HomeLab.Core.psm1',
+        'modules\HomeLab.Azure\HomeLab.Azure.psm1',
+        'modules\HomeLab.UI\HomeLab.UI.psm1',
+        'modules\HomeLab.Security\HomeLab.Security.psm1',
+        'modules\HomeLab.Monitoring\HomeLab.Monitoring.psm1'
+    )
+    
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry
     # FunctionsToExport = @(
     # )
