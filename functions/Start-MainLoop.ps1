@@ -1,14 +1,16 @@
 <#
 .SYNOPSIS
-    Main application loop for HomeLab management console
+    Main application loop for HomeLab management console with diagnostic wrapper
 .DESCRIPTION
     Handles the main menu loop and user interaction flow for the HomeLab management console
+.PARAMETER DebugMode
+    If specified, enables additional debug output.
+.EXAMPLE
+    Start-MainLoop -DebugMode
 .NOTES
     Author: Jurie Smit
-    Version: 1.0.0
-    Date: March 10, 2025
+    Date: March 12, 2025
 #>
-
 function Start-MainLoop {
     [CmdletBinding()]
     param(
@@ -17,38 +19,17 @@ function Start-MainLoop {
     )
     
     try {
-        # Check if HomeLab.UI module is available
-        if (-not (Get-Module -Name HomeLab.UI -ErrorAction SilentlyContinue)) {
-            Write-Log -Message "HomeLab.UI module not loaded. Attempting to load it." -Level "Warning"
+        # Add a diagnostic wrapper
+        if ($DebugMode) {
+            Write-Host "=== DIAGNOSTIC MODE ENABLED ===" -ForegroundColor Magenta
+            Write-Host "Entering Start-MainLoop with DebugMode=$DebugMode" -ForegroundColor Magenta
             
-            # Try to import the module
-            try {
-                $uiModulePath = Join-Path -Path "$PSScriptRoot\..\modules" -ChildPath "HomeLab.UI\HomeLab.UI.psm1"
-                Import-Module -Name $uiModulePath -ErrorAction Stop
-                Write-Log -Message "HomeLab.UI module loaded successfully." -Level "Info"
+            # Check if we're in a nested call
+            $callStack = Get-PSCallStack
+            if ($callStack.Count -gt 2) {
+                Write-Host "WARNING: Detected nested call to Start-MainLoop. Call stack:" -ForegroundColor Yellow
+                $callStack | Format-Table -AutoSize
             }
-            catch {
-                Write-Log -Message "Failed to load HomeLab.UI module: $_" -Level "Error"
-                Write-Host "ERROR: HomeLab.UI module could not be loaded. The application cannot continue." -ForegroundColor Red
-                return $false
-            }
-        }
-        
-        # Validate required functions exist
-        $requiredFunctions = @("Show-Menu", "Show-MainMenu", "Invoke-MainMenu")
-        $missingFunctions = @()
-        
-        foreach ($function in $requiredFunctions) {
-            if (-not (Get-Command -Name $function -ErrorAction SilentlyContinue)) {
-                $missingFunctions += $function
-            }
-        }
-        
-        if ($missingFunctions.Count -gt 0) {
-            $missingFunctionsList = $missingFunctions -join ", "
-            Write-Log -Message "Required function(s) not found: $missingFunctionsList" -Level "Error"
-            Write-Host "ERROR: Required function(s) not found: $missingFunctionsList" -ForegroundColor Red
-            return $false
         }
         
         # Initialize application state if not already initialized
@@ -58,16 +39,15 @@ function Start-MainLoop {
                 User = $env:USERNAME
                 ConnectionStatus = "Disconnected"
                 ConfigPath = $null
+                # Add a flag to prevent recursive exit
+                PreventExit = $true
             }
         }
-        
-        # Start the main menu loop
-        Write-Log -Message "Starting main menu loop" -Level "Info"
         
         # Call the main menu handler function
         if ($DebugMode) {
             Write-Host "DEBUG: About to call Invoke-MainMenu with Debug mode" -ForegroundColor Magenta
-            $result = Invoke-MainMenu -State $script:State -ShowProgress -Debug
+            $result = Invoke-MainMenu -State $script:State -ShowProgress -DebugMode
             Write-Host "DEBUG: Invoke-MainMenu returned: $result" -ForegroundColor Magenta
         }
         else {
@@ -103,6 +83,7 @@ function Start-MainLoop {
         return $false
     }
 }
+
 
 # Export the function
 Export-ModuleMember -Function Start-MainLoop

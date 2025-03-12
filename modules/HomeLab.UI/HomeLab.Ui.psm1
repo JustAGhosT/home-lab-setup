@@ -44,8 +44,8 @@ try {
     # Define the functions to export based on the manifest
     $FunctionsToExport = @(
         # Main functions
-        'Show-MainMenu',
         'Show-DeploymentSummary',
+        'Show-Menu',
         
         # Menu display functions
         'Show-DeployMenu',

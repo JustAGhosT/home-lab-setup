@@ -24,20 +24,20 @@ $script:ModulesLoaded = $false
 $script:ConfigLoaded = $false
 # Updated to reflect local module paths
 $script:RequiredModules = @(
-    @{Name = "HomeLab.Core"; Path = "$PSScriptRoot\modules\HomeLab.Core\HomeLab.Core.psm1"},
-    @{Name = "HomeLab.UI"; Path = "$PSScriptRoot\modules\HomeLab.UI\HomeLab.UI.psm1"},
     @{Name = "HomeLab.Logging"; Path = "$PSScriptRoot\modules\HomeLab.Logging\HomeLab.Logging.psm1"},
     @{Name = "HomeLab.Utils"; Path = "$PSScriptRoot\modules\HomeLab.Utils\HomeLab.Utils.psm1"},
+    @{Name = "HomeLab.Core"; Path = "$PSScriptRoot\modules\HomeLab.Core\HomeLab.Core.psm1"},
+    @{Name = "HomeLab.UI"; Path = "$PSScriptRoot\modules\HomeLab.UI\HomeLab.UI.psm1"},
     @{Name = "HomeLab.Azure"; Path = "$PSScriptRoot\modules\HomeLab.Azure\HomeLab.Azure.psm1"},
     @{Name = "HomeLab.Security"; Path = "$PSScriptRoot\modules\HomeLab.Security\HomeLab.Security.psm1"},
     @{Name = "HomeLab.Monitoring"; Path = "$PSScriptRoot\modules\HomeLab.Monitoring\HomeLab.Monitoring.psm1"}
     # @{Name = "Az"; MinVersion = "9.0.0"} # Az is the only external module
 )
 $script:State = @{
-    ConfigPath = $ConfigPath
-    LogLevel = $LogLevel
+    ConfigPath = "$env:USERPROFILE\.homelab\config.json"  # Set a default value
+    LogLevel = "Info"  # Set a default value
     Config = $null
-    User = $null
+    User = $env:USERNAME
     AzContext = $null
     ConnectionStatus = "Disconnected"
     LastDeployment = $null
@@ -80,75 +80,48 @@ Write-Verbose "Functions directory set to: $functionsDirectory"
 [string]$monitoringModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.Monitoring\HomeLab.Monitoring.psm1"
 [string]$uiModulePath = Join-Path -Path $modulesRoot -ChildPath "HomeLab.UI\HomeLab.UI.psm1"
 
+# Load core modules in the correct order
+$moduleOrder = @(
+    $loggingModulePath,  # Fixed: removed comma and added $
+    $utilsModulePath,    # Fixed: removed comma and added $
+    $coreModulePath,     # Fixed: removed comma and added $
+    $uiModulePath,       # Fixed: removed comma and added $
+    $azureModulePath,    # Fixed: removed comma and added $
+    $securityModulePath, # Fixed: removed comma and added $
+    $monitoringModulePath # Fixed: removed comma and added $
+)
+
 # Track which modules were successfully loaded
 $loadedModules = @{}
 
-# Load modules in the correct dependency order
-# 1. First load Logging module as it's needed by all others
-if (Test-Path $loggingModulePath) {
-    Write-Verbose "Loading HomeLab.Logging module from $loggingModulePath"
-    Import-Module $loggingModulePath -Force -Global -DisableNameChecking
-    $loadedModules["Logging"] = (Get-Module -Name "HomeLab.Logging") -ne $null
-    
-    if (-not $loadedModules["Logging"]) {
-        Write-Warning "Failed to load HomeLab.Logging module. Functionality will be limited."
-    }
-}
-else {
-    Write-Warning "HomeLab.Logging module not found at expected path: $loggingModulePath"
-}
-
-# 2. Next load Core module which depends on Logging
-if (Test-Path $coreModulePath) {
-    Write-Verbose "Loading HomeLab.Core module from $coreModulePath"
-    Import-Module $coreModulePath -Force -Global -DisableNameChecking
-    $loadedModules["Core"] = (Get-Module -Name "HomeLab.Core") -ne $null
-    
-    if ($loadedModules["Core"]) {
-        # Verify core functions are available
-        $requiredFunctions = @(
-            "Initialize-Configuration", 
-            "Initialize-Logging", 
-            "Write-Log",
-            "Import-SafeModule"
-        )
-        
-        $missingFunctions = @()
-        foreach ($function in $requiredFunctions) {
-            if (-not (Get-Command -Name $function -ErrorAction SilentlyContinue)) {
-                $missingFunctions += $function
+# Import each module in order
+foreach ($modulePath in $moduleOrder) {
+    if (Test-Path -Path $modulePath) {
+        Write-Verbose "Loading module from path: $modulePath"
+        try {
+            Import-Module -Name $modulePath -Global -Force -DisableNameChecking -ErrorAction Stop
+            
+            # Get the module name from the path
+            $moduleName = [System.IO.Path]::GetFileNameWithoutExtension($modulePath)
+            $moduleName = $moduleName.Split('\')[-1]
+            
+            # Check if the module was loaded correctly
+            $loadedModules[$modulePath] = (Get-Module -Name $moduleName -ErrorAction SilentlyContinue) -ne $null
+            
+            if ($loadedModules[$modulePath]) {
+                Write-Verbose "Successfully loaded module: $moduleName"
+            } else {
+                Write-Warning "Module loaded but not found in Get-Module: $moduleName"
             }
-        }
-        
-        if ($missingFunctions.Count -gt 0) {
-            Write-Warning "Some core functions are not available: $($missingFunctions -join ', ')"
-            Write-Warning "This will likely cause HomeLab to fail. Please check HomeLab.Core module exports."
-        }
-        else {
-            Write-Verbose "All required Core functions verified as available."
+        } catch {
+            Write-Warning "Failed to load module from path: $modulePath. Error: $_"
+            $loadedModules[$modulePath] = $false
         }
     }
     else {
-        Write-Warning "Failed to load HomeLab.Core module. Functionality will be limited."
+        Write-Warning "Module path not found: $modulePath"
+        $loadedModules[$modulePath] = $false
     }
-}
-else {
-    Write-Error "HomeLab.Core module not found at expected path: $coreModulePath"
-}
-
-# Only proceed with other modules if Core was loaded successfully
-if ($loadedModules["Core"]) {
-    # Now load other modules using Import-SafeModule from Core
-    $loadedModules["Utils"] = Import-SafeModule -ModulePath $utilsModulePath -ModuleName "HomeLab.Utils"
-    $loadedModules["Azure"] = Import-SafeModule -ModulePath $azureModulePath -ModuleName "HomeLab.Azure"
-    $loadedModules["Security"] = Import-SafeModule -ModulePath $securityModulePath -ModuleName "HomeLab.Security"
-    $loadedModules["Monitoring"] = Import-SafeModule -ModulePath $monitoringModulePath -ModuleName "HomeLab.Monitoring"
-    
-    # Load UI last as it depends on other modules
-    $loadedModules["UI"] = Import-SafeModule -ModulePath $uiModulePath -ModuleName "HomeLab.UI"
-}
-else {
-    Write-Warning "Core module could not be loaded. HomeLab functionality will be limited."
 }
 
 # Create the Functions directory if it doesn't exist
@@ -184,8 +157,40 @@ if (Test-Path $functionsDirectory) {
     }
 }
 
-# Export both Start-HomeLab and Start-MainLoop functions
-Export-ModuleMember -Function Start-HomeLab, Start-MainLoop
+# Explicitly re-export the Show-Menu function from HomeLab.UI to ensure it's available
+if (Get-Module -Name "HomeLab.UI" -ErrorAction SilentlyContinue) {
+    try {
+        # Check if the function exists in the module
+        $uiModule = Get-Module -Name "HomeLab.UI"
+        $hasShowMenu = $uiModule.ExportedFunctions.ContainsKey('Show-Menu')
+        
+        if ($hasShowMenu) {
+            Write-Verbose "Re-exporting Show-Menu function from HomeLab.UI"
+            Export-ModuleMember -Function Show-Menu
+        } else {
+            Write-Warning "Show-Menu function not found in HomeLab.UI module"
+        }
+    } catch {
+        Write-Warning "Error checking for Show-Menu function: $_"
+    }
+}
+
+# Export functions from the main module
+Export-ModuleMember -Function Start-HomeLab, Start-MainLoop, Initialize-Environment, Initialize-Configuration
+
+# Export critical functions that might be needed
+if (Get-Command -Name Get-AzureConnection -ErrorAction SilentlyContinue) {
+    Export-ModuleMember -Function Get-AzureConnection
+}
+if (Get-Command -Name Import-RequiredModules -ErrorAction SilentlyContinue) {
+    Export-ModuleMember -Function Import-RequiredModules
+}
+if (Get-Command -Name Test-ModuleAvailability -ErrorAction SilentlyContinue) {
+    Export-ModuleMember -Function Test-ModuleAvailability
+}
+if (Get-Command -Name Wait-BeforeSplash -ErrorAction SilentlyContinue) {
+    Export-ModuleMember -Function Wait-BeforeSplash
+}
 
 # Restore automatic module loading
 $PSModuleAutoLoadingPreference = 'All'
@@ -194,3 +199,8 @@ $PSModuleAutoLoadingPreference = 'All'
 if ($originalPSDefaultParameterValues) {
     $global:PSDefaultParameterValues = $originalPSDefaultParameterValues
 }
+
+# Set a flag to indicate that the module has been loaded
+$script:ModulesLoaded = $true
+
+Write-Verbose "HomeLab module initialization complete"

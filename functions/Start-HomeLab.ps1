@@ -40,6 +40,16 @@ function Start-HomeLab {
         if (-not $script:Version) {
             $script:Version = '1.0.0'
         }
+        
+        # Initialize State if not already set
+        if (-not $script:State) {
+            $script:State = @{
+                StartTime = $script:StartTime
+                User = $env:USERNAME
+                ConnectionStatus = "Disconnected"
+                ConfigPath = $ConfigPath
+            }
+        }
 
         # Create default log file path
         $logFileName = "homelab_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
@@ -82,8 +92,19 @@ function Start-HomeLab {
         # Start main application loop
         $result = Start-MainLoop -DebugMode:$DebugMode
         
-        # Log end of session
-        $sessionDuration = (Get-Date) - $script:State.StartTime
+        # Log end of session - FIX HERE
+        # Make sure we're using a valid DateTime object for subtraction
+        $endTime = Get-Date
+        
+        # Check if $script:State.StartTime exists and is a DateTime object
+        if ($script:State -and $script:State.StartTime -and $script:State.StartTime -is [DateTime]) {
+            $sessionDuration = $endTime - $script:State.StartTime
+        } else {
+            # Fallback to $script:StartTime if $script:State.StartTime is not valid
+            $sessionDuration = $endTime - $script:StartTime
+            Write-Log -Message "Used fallback StartTime for duration calculation" -Level "Warning"
+        }
+        
         $formattedDuration = "{0:D2}:{1:D2}:{2:D2}" -f $sessionDuration.Hours, $sessionDuration.Minutes, $sessionDuration.Seconds
         
         Write-Log -Message "HomeLab session ended. Duration: $formattedDuration" -Level "Info"
