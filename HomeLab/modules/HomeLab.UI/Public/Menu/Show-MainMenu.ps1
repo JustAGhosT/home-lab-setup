@@ -13,6 +13,8 @@
       6. View Documentation
       7. Configure Settings
       8. Software KVM Setup
+      9. Website Deployment
+      10. DNS Management
       0. Exit
 .PARAMETER ShowProgress
     If specified, shows a progress bar while loading the menu.
@@ -64,7 +66,7 @@ function Show-MainMenu {
         $statusMessage = $statusInfo -join " | "
     }
     
-    # Define menu items including the new KVM software setup option.
+    # Define menu items including website deployment and DNS management.
     $menuItems = @{
         "1" = "Deploy Azure Infrastructure"
         "2" = "VPN Certificate Management"
@@ -74,6 +76,8 @@ function Show-MainMenu {
         "6" = "View Documentation"
         "7" = "Configure Settings"
         "8" = "Software KVM Setup"
+        "9" = "Website Deployment"
+        "10" = "DNS Management"
     }
     
     # Display the menu and get the user's choice.

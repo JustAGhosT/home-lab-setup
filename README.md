@@ -1,14 +1,16 @@
-# Azure HomeLab VPN Setup
+# Azure HomeLab Setup
 
-This repository contains scripts and documentation for setting up and managing an Azure virtual network with VPN connectivity for a home lab environment.
+This repository contains scripts and documentation for setting up and managing a comprehensive Azure home lab environment with networking, web hosting, and DNS management capabilities.
 
 ## Overview
 
-This HomeLab environment is designed to provide a comprehensive learning and testing platform for Azure services, with a focus on networking and secure remote connectivity. The setup includes:
+This HomeLab environment is designed to provide a comprehensive learning and testing platform for Azure services, with capabilities for networking, web hosting, and DNS management. The setup includes:
 
 - Azure Virtual Network with multiple subnets
 - Azure VPN Gateway for secure remote access
 - Azure NAT Gateway for outbound internet connectivity
+- Website deployment and hosting capabilities
+- DNS zone management for custom domains
 - PowerShell module for managing the entire environment
 - Certificate management for secure authentication
 - Modular deployment scripts for easy customization
@@ -22,6 +24,8 @@ The HomeLab system uses a modular architecture with the following components:
 - **[HomeLab.Security](./modules/HomeLab.Security/README.md)**: Security-related functionality including VPN and certificates
 - **[HomeLab.UI](./modules/HomeLab.UI/README.md)**: User interface components including menus and handlers
 - **[HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md)**: Monitoring and alerting capabilities
+- **[HomeLab.Web](./modules/HomeLab.Web/README.md)**: Website deployment and hosting functionality
+- **[HomeLab.DNS](./modules/HomeLab.DNS/README.md)**: DNS zone management and configuration
 
 For a visual overview of the system architecture, see the [High-Level Architecture Diagram](docs/diagrams/high-level-architecture.md).
 
@@ -41,8 +45,8 @@ Key requirements include:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/JustAGhosT/azure-homelab-vpn.git
-cd azure-homelab-vpn
+git clone https://github.com/JustAGhosT/azure-homelab-setup.git
+cd azure-homelab-setup
 ```
 
 ### 2. Run the HomeLab Setup Script
@@ -60,6 +64,8 @@ This will launch the interactive menu system where you can:
 - Manage VPN certificates
 - Configure VPN gateways and clients
 - Enable/disable NAT Gateway
+- Deploy and manage websites
+- Configure DNS zones and records
 - Access documentation
 
 ### Deployment Process
@@ -71,6 +77,8 @@ The deployment process includes:
 2. Creating and configuring the VPN gateway
 3. Managing certificates for secure authentication
 4. Configuring client VPN access
+5. Deploying web hosting resources
+6. Setting up DNS zones and records
 
 ## Documentation
 
@@ -80,6 +88,8 @@ This repository includes comprehensive documentation to help you deploy, manage,
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
 - [VPN Gateway Guide](docs/VPN-GATEWAY.README.md) - Advanced VPN configuration options
 - [Certificate Management Guide](docs/client-certificate-management.md) - Managing certificates for VPN authentication
+- [Website Deployment Guide](docs/WEBSITE-DEPLOYMENT.md) - Instructions for deploying websites
+- [DNS Management Guide](docs/DNS-MANAGEMENT.md) - Managing DNS zones and records
 
 ### Network Diagrams
 
@@ -151,6 +161,24 @@ Control the NAT Gateway to manage costs:
 
 See the [NAT Gateway Configuration](docs/diagrams/nat-gateway-configuration.md) diagram for details.
 
+### Website Deployment
+
+Deploy and manage websites in your HomeLab:
+- Create App Service Plans and Web Apps
+- Deploy static or dynamic websites
+- Configure custom domains
+- Manage SSL certificates
+- Set up continuous deployment
+
+### DNS Management
+
+Manage DNS zones and records:
+- Create and configure Azure DNS zones
+- Add and manage DNS records
+- Configure domain delegation
+- Set up custom domain verification
+- Manage DNS TTL settings
+
 ### Monitoring & Alerting
 
 Keep track of your environment:
@@ -166,6 +194,8 @@ This HomeLab environment is ideal for:
 - Learning Azure networking concepts
 - Testing secure remote access solutions
 - Developing and testing cloud applications
+- Hosting personal or test websites
+- Managing custom domains and DNS
 - Simulating hybrid cloud scenarios
 - Practicing Azure administration tasks
 
@@ -174,6 +204,8 @@ This HomeLab environment is ideal for:
 - **VPN Gateway**: ~$27/month (Basic SKU)
 - **NAT Gateway**: ~$32/month + data processing charges when enabled
 - **Public IP addresses**: ~$3-5/month each
+- **App Service Plan**: ~$13/month (B1 tier) and up
+- **DNS Zones**: ~$0.50/month per zone + query charges
 
 By keeping the NAT Gateway disabled when not in use, you can significantly reduce costs.
 
@@ -201,7 +233,9 @@ HomeLab/
 │   ├── HomeLab.Azure/
 │   ├── HomeLab.Security/
 │   ├── HomeLab.UI/
-│   └── HomeLab.Monitoring/
+│   ├── HomeLab.Monitoring/
+│   ├── HomeLab.Web/
+│   └── HomeLab.DNS/
 ├── docs/
 │   ├── diagrams/
 │   │   ├── certificate-management-flow.md
@@ -252,6 +286,25 @@ For a detailed view of the network traffic flow, see the [Traffic Flow and Routi
    - Try to access internet resources
    - Check outbound IP using a service like ipinfo.io
 
+### Website Deployment Issues
+
+1. Check App Service status:
+   - Verify the App Service Plan is running
+   - Check Web App deployment status
+   - Review deployment logs for errors
+
+2. Troubleshoot custom domains:
+   - Verify DNS records are correctly configured
+   - Check domain verification status
+   - Ensure SSL certificates are valid and properly bound
+
+### DNS Management Issues
+
+1. Verify DNS zone configuration:
+   - Check name servers are correctly set at the registrar
+   - Verify DNS propagation using tools like `nslookup` or online DNS checkers
+   - Check for conflicting DNS records
+
 ## Module Documentation
 
 Each module in the HomeLab system has its own README with detailed information:
@@ -261,6 +314,8 @@ Each module in the HomeLab system has its own README with detailed information:
 - [HomeLab.Security](./modules/HomeLab.Security/README.md) - Security-related functionality including VPN and certificates
 - [HomeLab.UI](./modules/HomeLab.UI/README.md) - User interface components including menus and handlers
 - [HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md) - Monitoring and alerting capabilities
+- [HomeLab.Web](./modules/HomeLab.Web/README.md) - Website deployment and hosting functionality
+- [HomeLab.DNS](./modules/HomeLab.DNS/README.md) - DNS zone management and configuration
 
 ## PowerShell Module
 
@@ -269,6 +324,8 @@ This repository includes a PowerShell module with functions for:
 - Deploying and managing Azure resources
 - Creating and managing certificates
 - Configuring VPN clients
+- Deploying and managing websites
+- Configuring DNS zones and records
 - Monitoring and troubleshooting
 
 ## Contributing

@@ -208,6 +208,26 @@ function Invoke-MainMenu {
                             Start-Sleep -Seconds 2
                         }
                     }
+                    "9" { 
+                        if (Get-Command -Name Invoke-WebsiteHandler -ErrorAction SilentlyContinue) {
+                            Show-WebsiteMenu
+                            Invoke-WebsiteHandler -Command "Show-WebsiteMenu"
+                        }
+                        else {
+                            Write-Host "`nWebsite Deployment menu not implemented yet.`n" -ForegroundColor Yellow
+                            Start-Sleep -Seconds 2
+                        }
+                    }
+                    "10" { 
+                        if (Get-Command -Name Invoke-DNSHandler -ErrorAction SilentlyContinue) {
+                            Show-DNSMenu
+                            Invoke-DNSHandler -Command "Show-DNSMenu"
+                        }
+                        else {
+                            Write-Host "`nDNS Management menu not implemented yet.`n" -ForegroundColor Yellow
+                            Start-Sleep -Seconds 2
+                        }
+                    }
                     "0" {
                         # Exit option - this is handled by the IsExit property, but included for completeness
                         $exitApplication = $true
