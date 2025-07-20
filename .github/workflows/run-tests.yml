@@ -1,0 +1,59 @@
+name: Run PowerShell Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'HomeLab/**'
+      - 'functions/**'
+      - 'tests/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'HomeLab/**'
+      - 'functions/**'
+      - 'tests/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        Install-Module -Name Pester -Force -SkipPublisherCheck
+        
+    - name: Run Unit Tests
+      shell: pwsh
+      run: |
+        cd tests
+        ./Run-Tests.ps1 -TestType Unit -CI
+        
+    - name: Run Integration Tests
+      shell: pwsh
+      run: |
+        cd tests
+        ./Run-Tests.ps1 -TestType Integration -CI
+        
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: tests/TestResults.xml
+        
+    - name: Run Code Coverage
+      shell: pwsh
+      run: |
+        cd tests
+        ./Run-Tests.ps1 -TestType All -Coverage -CI
+        
+    - name: Upload Coverage Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-results
+        path: tests/coverage.xml

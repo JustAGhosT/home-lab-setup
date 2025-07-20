@@ -1,0 +1,287 @@
+name: Deploy to Azure with Custom Domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment Type'
+        required: true
+        type: choice
+        options:
+          - static
+          - appservice
+          - auto
+        default: 'auto'
+      environment:
+        description: 'Target Environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: 'dev'
+      subdomain:
+        description: 'Subdomain (e.g., myapp for myapp.yourdomain.com)'
+        required: true
+        type: string
+      custom_domain:
+        description: 'Custom Domain (e.g., yourdomain.com)'
+        required: false
+        type: string
+        default: 'liquidmesh.ai'
+      azure_location:
+        description: 'Azure Region'
+        required: true
+        type: choice
+        options:
+          - eastus
+          - westus2
+          - westeurope
+          - southeastasia
+          - australiaeast
+        default: 'eastus'
+      force_deployment:
+        description: 'Force deployment even if resources exist'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      app_name: ${{ steps.generate-names.outputs.app_name }}
+      resource_group: ${{ steps.generate-names.outputs.resource_group }}
+      full_domain: ${{ steps.generate-names.outputs.full_domain }}
+      deployment_type: ${{ steps.determine-type.outputs.deployment_type }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate resource names
+        id: generate-names
+        run: |
+          # Generate consistent naming
+          SUBDOMAIN="${{ github.event.inputs.subdomain }}"
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          CUSTOM_DOMAIN="${{ github.event.inputs.custom_domain }}"
+
+          # Clean subdomain (remove non-alphanumeric chars)
+          CLEAN_SUBDOMAIN=$(echo "$SUBDOMAIN" | sed 's/[^a-zA-Z0-9]//g' | tr '[:upper:]' '[:lower:]')
+
+          # Generate names
+          APP_NAME="${CLEAN_SUBDOMAIN}-${ENVIRONMENT}"
+          RESOURCE_GROUP="rg-${APP_NAME}"
+          FULL_DOMAIN="${SUBDOMAIN}.${CUSTOM_DOMAIN}"
+
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+          echo "full_domain=$FULL_DOMAIN" >> $GITHUB_OUTPUT
+
+          echo "Generated names:"
+          echo "  App Name: $APP_NAME"
+          echo "  Resource Group: $RESOURCE_GROUP"
+          echo "  Full Domain: $FULL_DOMAIN"
+
+      - name: Determine deployment type
+        id: determine-type
+        run: |
+          DEPLOYMENT_TYPE="${{ github.event.inputs.deployment_type }}"
+
+          if [[ "$DEPLOYMENT_TYPE" == "auto" ]]; then
+            # Auto-detect based on project files
+            if [[ -f "package.json" ]]; then
+              if grep -q "express\|koa\|fastify\|hapi\|nest" package.json 2>/dev/null; then
+                DEPLOYMENT_TYPE="appservice"
+              elif grep -q "next\|react\|vue\|angular" package.json 2>/dev/null; then
+                DEPLOYMENT_TYPE="static"
+              else
+                DEPLOYMENT_TYPE="static"
+              fi
+            elif [[ -f "requirements.txt" || -f "Pipfile" ]]; then
+              if [[ -f "wsgi.py" || -f "asgi.py" || -f "manage.py" ]]; then
+                DEPLOYMENT_TYPE="appservice"
+              else
+                DEPLOYMENT_TYPE="static"
+              fi
+            elif [[ -f "*.csproj" || -f "Program.cs" ]]; then
+              DEPLOYMENT_TYPE="appservice"
+            else
+              DEPLOYMENT_TYPE="static"
+            fi
+          fi
+
+          echo "deployment_type=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
+          echo "Determined deployment type: $DEPLOYMENT_TYPE"
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (if package.json exists)
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: hashFiles('package.json') != ''
+        run: npm ci
+
+      - name: Run tests
+        if: hashFiles('package.json') != ''
+        run: |
+          if npm list --depth=0 | grep -q "jest\|mocha\|vitest"; then
+            npm test
+          else
+            echo "No test framework found, skipping tests"
+          fi
+
+      - name: Build application
+        if: hashFiles('package.json') != ''
+        run: |
+          if npm run build --if-present; then
+            echo "Build completed successfully"
+          else
+            echo "No build script found or build failed"
+          fi
+
+      - name: Upload build artifacts
+        if: needs.validate-inputs.outputs.deployment_type == 'static'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            build/
+            dist/
+            out/
+            public/
+            *.html
+            *.css
+            *.js
+          retention-days: 1
+
+  deploy-static:
+    runs-on: ubuntu-latest
+    needs: [validate-inputs, build-and-test]
+    if: needs.validate-inputs.outputs.deployment_type == 'static'
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: '/'
+          api_location: 'api'
+          output_location: 'build'
+          skip_app_build: true
+
+      - name: Configure Custom Domain
+        if: github.event.inputs.custom_domain != ''
+        run: |
+          az staticwebapp hostname set \
+            --name "${{ needs.validate-inputs.outputs.app_name }}" \
+            --resource-group "${{ needs.validate-inputs.outputs.resource_group }}" \
+            --hostname "${{ needs.validate-inputs.outputs.full_domain }}"
+
+  deploy-appservice:
+    runs-on: ubuntu-latest
+    needs: [validate-inputs, build-and-test]
+    if: needs.validate-inputs.outputs.deployment_type == 'appservice'
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Resource Group
+        run: |
+          az group create \
+            --name "${{ needs.validate-inputs.outputs.resource_group }}" \
+            --location "${{ github.event.inputs.azure_location }}"
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ needs.validate-inputs.outputs.app_name }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .
+
+      - name: Configure Custom Domain
+        if: github.event.inputs.custom_domain != ''
+        run: |
+          az webapp config hostname add \
+            --name "${{ needs.validate-inputs.outputs.app_name }}" \
+            --resource-group "${{ needs.validate-inputs.outputs.resource_group }}" \
+            --hostname "${{ needs.validate-inputs.outputs.full_domain }}"
+
+  post-deployment:
+    runs-on: ubuntu-latest
+    needs: [validate-inputs, deploy-static, deploy-appservice]
+    if: always() && (needs.deploy-static.result == 'success' || needs.deploy-appservice.result == 'success')
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get deployment URL
+        id: get-url
+        run: |
+          DEPLOYMENT_TYPE="${{ needs.validate-inputs.outputs.deployment_type }}"
+          APP_NAME="${{ needs.validate-inputs.outputs.app_name }}"
+          RESOURCE_GROUP="${{ needs.validate-inputs.outputs.resource_group }}"
+          FULL_DOMAIN="${{ needs.validate-inputs.outputs.full_domain }}"
+
+          if [[ "$DEPLOYMENT_TYPE" == "static" ]]; then
+            DEFAULT_URL=$(az staticwebapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "defaultHostname" -o tsv)
+            echo "default_url=https://$DEFAULT_URL" >> $GITHUB_OUTPUT
+          else
+            DEFAULT_URL=$(az webapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "defaultHostName" -o tsv)
+            echo "default_url=https://$DEFAULT_URL" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ -n "$FULL_DOMAIN" ]]; then
+            echo "custom_url=https://$FULL_DOMAIN" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Output deployment information
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Default URL: ${{ steps.get-url.outputs.default_url }}"
+          if [[ -n "${{ steps.get-url.outputs.custom_url }}" ]]; then
+            echo "Custom URL: ${{ steps.get-url.outputs.custom_url }}"
+            echo "Note: It may take some time for DNS changes to propagate."
+          fi
