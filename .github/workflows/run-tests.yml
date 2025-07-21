@@ -1,59 +1,74 @@
-name: Run PowerShell Tests
+name: HomeLab Tests
 
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'HomeLab/**'
-      - 'functions/**'
-      - 'tests/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'HomeLab/**'
-      - 'functions/**'
-      - 'tests/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'All'
+        type: choice
+        options:
+          - All
+          - Unit
+          - Integration
+          - Workflow
 
 jobs:
   test:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - name: Install Pester
+    - name: Setup PowerShell
+      uses: actions/setup-powershell@v1
+      with:
+        powershell-version: '7.2'
+    
+    - name: Install required modules
       shell: pwsh
       run: |
         Install-Module -Name Pester -Force -SkipPublisherCheck
-        
-    - name: Run Unit Tests
+        Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
+        Install-Module -Name Az.Resources -Force -SkipPublisherCheck
+        Install-Module -Name Az.Network -Force -SkipPublisherCheck
+        Install-Module -Name Az.Websites -Force -SkipPublisherCheck
+        Install-Module -Name Az.Dns -Force -SkipPublisherCheck
+    
+    - name: Run tests
       shell: pwsh
       run: |
-        cd tests
-        ./Run-Tests.ps1 -TestType Unit -CI
+        $testType = '${{ github.event.inputs.test_type }}'
+        if ([string]::IsNullOrEmpty($testType)) {
+          $testType = 'All'
+        }
         
-    - name: Run Integration Tests
-      shell: pwsh
-      run: |
+        Write-Host "Running $testType tests..."
         cd tests
-        ./Run-Tests.ps1 -TestType Integration -CI
-        
-    - name: Upload Test Results
-      uses: actions/upload-artifact@v4
+        ./Run-HomeLab-Tests.ps1 -TestType $testType -GenerateReport
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
       if: always()
       with:
         name: test-results
-        path: tests/TestResults.xml
-        
-    - name: Run Code Coverage
-      shell: pwsh
-      run: |
-        cd tests
-        ./Run-Tests.ps1 -TestType All -Coverage -CI
-        
-    - name: Upload Coverage Results
-      uses: actions/upload-artifact@v4
+        path: |
+          tests/TestResults.xml
+          tests/TestReport.html
+    
+    - name: Publish test results
+      uses: EnricoMi/publish-unit-test-result-action@v2
       if: always()
       with:
-        name: coverage-results
-        path: tests/coverage.xml
+        files: tests/TestResults.xml
