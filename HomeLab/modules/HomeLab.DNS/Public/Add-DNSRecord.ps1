@@ -56,11 +56,27 @@ function Add-DNSRecord {
     )
     
     # Import required modules
-    Import-Module HomeLab.Core
-    Import-Module HomeLab.Azure
+    try {
+        Import-Module HomeLab.Core -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Core module: $_"
+        return
+    }
+    
+    try {
+        Import-Module HomeLab.Azure -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Azure module: $_"
+        return
+    }
     
     # Set subscription context
-    Set-AzContext -SubscriptionId $SubscriptionId
+    try {
+        Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to set Azure subscription context to $SubscriptionId: $_"
+        return
+    }
     
     # Check if DNS zone exists
     $dnsZone = Get-AzDnsZone -Name $ZoneName -ResourceGroupName $ResourceGroup -ErrorAction SilentlyContinue
