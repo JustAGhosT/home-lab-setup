@@ -110,27 +110,30 @@ function Initialize-Environment {
             }
         }
         
+        # Define directories to be checked and created
+        $logDir = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\logs"
+        $directories = @($logDir)
+
+        foreach ($dir in $directories) {
+            if (-not (Test-Path -Path $dir)) {
+                New-Item -Path $dir -ItemType Directory -Force | Out-Null
+            }
+        }
+
         # First, try to import HomeLab.Logging directly since we need it for logging
         $loggingModule = $script:RequiredModules | Where-Object { $_.Name -eq "HomeLab.Logging" }
         if ($loggingModule -and (Test-Path -Path $loggingModule.Path)) {
-            Write-Host "Loading HomeLab.Logging module..." -ForegroundColor Yellow
             Import-Module -Name $loggingModule.Path -Force:$ForceReload -ErrorAction Stop -Global -DisableNameChecking
             
             # Initialize logging with explicit path
             if ([string]::IsNullOrEmpty($LogFilePath)) {
                 $logFileName = "homelab_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-                $logDir = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\logs"
                 $LogFilePath = Join-Path -Path $logDir -ChildPath $logFileName
             }
 
             # Initialize logging
-            if (Get-Command -Name Initialize-Logging -ErrorAction SilentlyContinue) {
-                Initialize-Logging -LogFilePath $LogFilePath -LogLevel $LogLevel            
-                Write-Log -Message "HomeLab environment initialization started" -Level "Info"
-            }
-            else {
-                Write-Host "Initialize-Logging function not found in HomeLab.Logging module" -ForegroundColor Red
-            }
+            Initialize-Logging -LogFilePath $LogFilePath -LogLevel $LogLevel
+            Write-Log -Message "HomeLab environment initialization started" -Level "Info"
         }
         else {
             Write-Host "HomeLab.Logging module not found at expected path. Will try to load it during module availability check." -ForegroundColor Yellow

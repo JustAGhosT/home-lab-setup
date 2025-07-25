@@ -11,7 +11,19 @@
 
 function Get-AzureConnection {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TenantId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ApplicationId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CertificateThumbprint,
+
+        [Parameter(Mandatory = $false)]
+        [string]$SubscriptionId
+    )
     
     try {
         Write-Log -Message "Checking Azure connection" -Level "Info"
@@ -35,28 +47,31 @@ function Get-AzureConnection {
             return $true
         }
         else {
-            Write-Log -Message "Not connected to Azure" -Level "Warning"
+            Write-Log -Message "Not connected to Azure, attempting to connect with certificate" -Level "Info"
             
-            # Ask if user wants to connect
-            $connect = Read-Host "You are not connected to Azure. Connect now? (Y/N)"
-            if ($connect -eq "Y" -or $connect -eq "y") {
-                # Connect to Azure
-                $context = Connect-AzAccount -ErrorAction Stop
-                
-                if ($context) {
-                    $script:State.AzContext = $context
-                    $script:State.User = $context.Context.Account.Id
-                    $script:State.ConnectionStatus = "Connected"
-                    
-                    Write-Log -Message "Successfully connected to Azure as $($context.Context.Account.Id)" -Level "Success"
-                    Write-Log -Message "Subscription: $($context.Context.Subscription.Name) ($($context.Context.Subscription.Id))" -Level "Info"
-                    
-                    return $true
-                }
+            # Connect to Azure using service principal and certificate
+            $servicePrincipal = @{
+                TenantId = $TenantId
+                ApplicationId = $ApplicationId
+                CertificateThumbprint = $CertificateThumbprint
             }
-            else {
-                Write-Log -Message "User chose not to connect to Azure" -Level "Warning"
-                return $false
+
+            $context = Connect-AzAccount -ServicePrincipal @servicePrincipal -ErrorAction Stop
+
+            if ($context) {
+                # If a specific subscription is requested, set it
+                if (-not [string]::IsNullOrEmpty($SubscriptionId)) {
+                    $context = Set-AzContext -Subscription $SubscriptionId -ErrorAction Stop
+                }
+
+                $script:State.AzContext = $context
+                $script:State.User = $context.Context.Account.Id
+                $script:State.ConnectionStatus = "Connected"
+
+                Write-Log -Message "Successfully connected to Azure as $($context.Context.Account.Id)" -Level "Success"
+                Write-Log -Message "Subscription: $($context.Context.Subscription.Name) ($($context.Context.Subscription.Id))" -Level "Info"
+
+                return $true
             }
         }
     }
