@@ -1,10 +1,14 @@
 import asyncio
+import os
 import pydantic
 import re
+import shlex
 from typing import Optional, List, Dict
 
-from autopr.actions.base import Action
+from .base import Action  # type: ignore
 
+
+from pydantic import field_validator
 
 class Inputs(pydantic.BaseModel):
     """Inputs for the RunHomelabTests action."""
@@ -14,6 +18,12 @@ class Inputs(pydantic.BaseModel):
     test_path: Optional[str] = None  # Optional specific test path
     fix_issues: bool = False  # Whether to attempt to fix common issues
 
+    @field_validator('test_type')
+    def validate_test_type(cls, v):
+        allowed_values = ["Unit", "Integration", "Workflow", "All"]
+        if v not in allowed_values:
+            raise ValueError(f"test_type must be one of {allowed_values}")
+        return v
 
 class FailedTest(pydantic.BaseModel):
     """Details about a failed test."""
@@ -48,12 +58,15 @@ class RunHomelabTests(Action[Inputs, Outputs]):
 
     async def run(self, inputs: Inputs) -> Outputs:
         # Construct the PowerShell command
+        tests_dir = os.path.join(os.environ.get('GITHUB_WORKSPACE', '.'), 'tests')
+        script_path = os.path.join(tests_dir, 'Run-HomeLab-Tests.ps1')
+        
         cmd = [
             "pwsh",
             "-Command",
-            f"cd $env:GITHUB_WORKSPACE\\tests; "
-            f".\\Run-HomeLab-Tests.ps1 "
-            f"-TestType {inputs.test_type} "
+            f"cd {shlex.quote(tests_dir)}; "
+            f".{os.sep}Run-HomeLab-Tests.ps1 "
+            f"-TestType {shlex.quote(inputs.test_type)} "
         ]
         
         if inputs.coverage:
@@ -63,7 +76,7 @@ class RunHomelabTests(Action[Inputs, Outputs]):
             cmd[-1] += "-GenerateReport "
             
         if inputs.test_path:
-            cmd[-1] += f"-Path '{inputs.test_path}' "
+            cmd[-1] += f"-Path {shlex.quote(inputs.test_path)} "
             
         # Run the PowerShell command
         process = await asyncio.create_subprocess_exec(
@@ -113,7 +126,8 @@ class RunHomelabTests(Action[Inputs, Outputs]):
                 except ValueError:
                     pass
             elif "Report generated at:" in line:
-                report_path = line.split(":")[-1].strip()
+                # Handle paths with colons (e.g., C:\path\to\report.html)
+                report_path = line.split("Report generated at:", 1)[-1].strip()
         
         # Extract failed test details
         failed_tests_section = False
@@ -229,7 +243,7 @@ class RunHomelabTests(Action[Inputs, Outputs]):
 
 # When you run this file
 if __name__ == "__main__":
-    from autopr.tests.utils import run_action_manually
+    from ..tests.utils import run_action_manually  # type: ignore
     asyncio.run(
         # Run the action manually
         run_action_manually(

@@ -35,7 +35,7 @@ function New-VpnRootCertificate {
         RootCertThumbprint = "ABC123"
         ClientCertThumbprint = "DEF456"
         RootCertPath = "$ExportPath\$RootCertName.pfx"
-        RootCerPath = "$ExportPath\$RootCertName.cer"
+        RootCertCerPath = "$ExportPath\$RootCertName.cer"
         RootTxtPath = "$ExportPath\$RootCertName.txt"
         ClientCertPath = "$ExportPath\$ClientCertName.pfx"
         RootCertName = $RootCertName

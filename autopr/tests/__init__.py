@@ -1,1 +1,1 @@
-# Tests for AutoPR actions
+# Tests package

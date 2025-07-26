@@ -94,15 +94,28 @@ function Add-DNSRecord {
         $recordSetName = $RecordName
     }
     
+    # Initialize recordSet to null
+    $recordSet = $null
+    
     # Create record set based on type
     switch ($RecordType) {
         "A" {
-            $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType A -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite
-            Add-AzDnsRecordConfig -RecordSet $recordSet -Ipv4Address $Value
+            try {
+                $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType A -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
+                Add-AzDnsRecordConfig -RecordSet $recordSet -Ipv4Address $Value
+            } catch {
+                Write-Error "Failed to create A record set: $_"
+                return
+            }
         }
         "CNAME" {
-            $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType CNAME -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite
-            Add-AzDnsRecordConfig -RecordSet $recordSet -Cname $Value
+            try {
+                $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType CNAME -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
+                Add-AzDnsRecordConfig -RecordSet $recordSet -Cname $Value
+            } catch {
+                Write-Error "Failed to create CNAME record set: $_"
+                return
+            }
         }
         "MX" {
             # Parse MX value (format: "priority hostname")
@@ -115,17 +128,38 @@ function Add-DNSRecord {
             $priority = [int]$parts[0]
             $exchange = $parts[1]
             
-            $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType MX -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite
-            Add-AzDnsRecordConfig -RecordSet $recordSet -Exchange $exchange -Preference $priority
+            try {
+                $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType MX -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
+                Add-AzDnsRecordConfig -RecordSet $recordSet -Exchange $exchange -Preference $priority
+            } catch {
+                Write-Error "Failed to create MX record set: $_"
+                return
+            }
         }
         "TXT" {
-            $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType TXT -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite
-            Add-AzDnsRecordConfig -RecordSet $recordSet -Value $Value
+            try {
+                $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType TXT -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
+                Add-AzDnsRecordConfig -RecordSet $recordSet -Value $Value
+            } catch {
+                Write-Error "Failed to create TXT record set: $_"
+                return
+            }
         }
     }
     
+    # Check if recordSet was created successfully
+    if ($null -eq $recordSet) {
+        Write-Error "Failed to create DNS record set for $RecordName.$ZoneName ($RecordType)"
+        return $null
+    }
+    
     # Save the record set
-    Set-AzDnsRecordSet -RecordSet $recordSet
+    try {
+        Set-AzDnsRecordSet -RecordSet $recordSet -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to save DNS record set: $_"
+        return $null
+    }
     
     Write-Host "DNS record added successfully: $RecordName.$ZoneName ($RecordType)"
     return $recordSet

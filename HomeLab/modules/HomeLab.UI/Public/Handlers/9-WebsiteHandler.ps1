@@ -19,20 +19,39 @@ function Invoke-WebsiteHandler {
     )
     
     # Import required modules
-    Import-Module HomeLab.Core
-    Import-Module HomeLab.Web
+    try {
+        Import-Module HomeLab.Core -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Core module: $_"
+        return
+    }
+    
+    try {
+        Import-Module HomeLab.Web -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Web module: $_"
+        return
+    }
     
     # Get configuration
-    $config = Get-Configuration
+    try {
+        $config = Get-Configuration -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to retrieve configuration: $_"
+        return
+    }
     
     # Helper function to get project path
     function Get-ProjectPathForDeployment {
+        # Use script-level variable instead of global
+        $script:SelectedProjectPath = $script:SelectedProjectPath ?? $null
+        
         # Check if a project has already been selected
-        if ($global:SelectedProjectPath -and (Test-Path -Path $global:SelectedProjectPath)) {
-            $useSelectedPath = Read-Host "Use previously selected project ($global:SelectedProjectPath)? (y/n)"
+        if ($script:SelectedProjectPath -and (Test-Path -Path $script:SelectedProjectPath)) {
+            $useSelectedPath = Read-Host "Use previously selected project ($script:SelectedProjectPath)? (y/n)"
             
             if ($useSelectedPath -eq "y") {
-                $projectPath = $global:SelectedProjectPath
+                $projectPath = $script:SelectedProjectPath
                 Write-Host "Using selected project folder: $projectPath" -ForegroundColor Green
                 return $projectPath
             }
@@ -96,17 +115,19 @@ function Invoke-WebsiteHandler {
                 Write-Host "    Version: $($packageJson.version)"
                 
                 # Check for common frameworks
-                if ($packageJson.dependencies.react) {
-                    Write-Host "    Framework: React" -ForegroundColor Green
-                }
-                elseif ($packageJson.dependencies.vue) {
-                    Write-Host "    Framework: Vue.js" -ForegroundColor Green
-                }
-                elseif ($packageJson.dependencies.angular) {
-                    Write-Host "    Framework: Angular" -ForegroundColor Green
-                }
-                elseif ($packageJson.dependencies.express) {
-                    Write-Host "    Framework: Express.js (Node.js backend)" -ForegroundColor Green
+                if ($packageJson.dependencies -ne $null) {
+                    if ($packageJson.dependencies.react) {
+                        Write-Host "    Framework: React" -ForegroundColor Green
+                    }
+                    elseif ($packageJson.dependencies.vue) {
+                        Write-Host "    Framework: Vue.js" -ForegroundColor Green
+                    }
+                    elseif ($packageJson.dependencies.angular) {
+                        Write-Host "    Framework: Angular" -ForegroundColor Green
+                    }
+                    elseif ($packageJson.dependencies.express) {
+                        Write-Host "    Framework: Express.js (Node.js backend)" -ForegroundColor Green
+                    }
                 }
             }
             
@@ -125,6 +146,8 @@ function Invoke-WebsiteHandler {
             # Recommend deployment type
             Write-Host "`nRecommended Deployment Type:" -ForegroundColor Cyan
             if ($projectInfo.HasPackageJson -and 
+                $packageJson -ne $null -and
+                $packageJson.dependencies -ne $null -and
                 ($packageJson.dependencies.express -or 
                  $packageJson.dependencies.koa -or 
                  $packageJson.dependencies.fastify -or 
@@ -150,8 +173,8 @@ function Invoke-WebsiteHandler {
                 Write-Host "  Recommend using Auto-Detect deployment option" -ForegroundColor Yellow
             }
             
-            # Save project path to global variable for use in other commands
-            $global:SelectedProjectPath = $projectPath
+            # Save project path to script-level variable for use in other commands
+            $script:SelectedProjectPath = $projectPath
             
             Write-Host "`nProject path saved. You can now deploy this project using the deployment options." -ForegroundColor Green
             Write-Host "Press any key to continue..."
@@ -162,57 +185,20 @@ function Invoke-WebsiteHandler {
             Clear-Host
             Write-Host "=== Deploy Static Website ===" -ForegroundColor Cyan
             
-            # Get deployment parameters
-            $resourceGroup = Read-Host "Enter resource group name"
-            $appName = Read-Host "Enter application name"
-            $location = Read-Host "Enter location (default: eastus)"
-            if ([string]::IsNullOrWhiteSpace($location)) { $location = "eastus" }
+            # Import the helper function
+            . "$PSScriptRoot\..\..\..\Private\Get-DeploymentParameters.ps1"
             
-            $useGitHub = Read-Host "Deploy from GitHub? (y/n)"
-            if ($useGitHub -eq "y") {
-                $repoUrl = Read-Host "Enter GitHub repository URL"
-                $branch = Read-Host "Enter branch name (default: main)"
-                if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
-                $gitHubToken = Read-Host "Enter GitHub personal access token"
-            }
-            else {
-                $projectPath = Get-ProjectPathForDeployment
-                if (-not $projectPath) {
-                    Write-Host "Press any key to continue..."
-                    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-                    return
-                }
-            }
+            # Get deployment parameters using the helper function
+            $params = Get-DeploymentParameters -DeploymentType "static" -Config $config
             
-            $useCustomDomain = Read-Host "Configure custom domain? (y/n)"
-            if ($useCustomDomain -eq "y") {
-                $customDomain = Read-Host "Enter domain name (e.g., example.com)"
-                $subdomain = Read-Host "Enter subdomain (e.g., www)"
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
             }
             
             # Deploy website
-            $params = @{
-                DeploymentType = "static"
-                ResourceGroup = $resourceGroup
-                AppName = $appName
-                Location = $location
-                SubscriptionId = $config.SubscriptionId
-            }
-            
-            if ($useGitHub -eq "y") {
-                $params.RepoUrl = $repoUrl
-                $params.Branch = $branch
-                $params.GitHubToken = $gitHubToken
-            }
-            else {
-                $params.ProjectPath = $projectPath
-            }
-            
-            if ($useCustomDomain -eq "y") {
-                $params.CustomDomain = $customDomain
-                $params.Subdomain = $subdomain
-            }
-            
             Deploy-Website @params
             
             Write-Host "Press any key to continue..."
@@ -223,57 +209,20 @@ function Invoke-WebsiteHandler {
             Clear-Host
             Write-Host "=== Deploy App Service Website ===" -ForegroundColor Cyan
             
-            # Get deployment parameters
-            $resourceGroup = Read-Host "Enter resource group name"
-            $appName = Read-Host "Enter application name"
-            $location = Read-Host "Enter location (default: eastus)"
-            if ([string]::IsNullOrWhiteSpace($location)) { $location = "eastus" }
+            # Import the helper function
+            . "$PSScriptRoot\..\..\..\Private\Get-DeploymentParameters.ps1"
             
-            $useGitHub = Read-Host "Deploy from GitHub? (y/n)"
-            if ($useGitHub -eq "y") {
-                $repoUrl = Read-Host "Enter GitHub repository URL"
-                $branch = Read-Host "Enter branch name (default: main)"
-                if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
-                $gitHubToken = Read-Host "Enter GitHub personal access token"
-            }
-            else {
-                $projectPath = Get-ProjectPathForDeployment
-                if (-not $projectPath) {
-                    Write-Host "Press any key to continue..."
-                    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-                    return
-                }
-            }
+            # Get deployment parameters using the helper function
+            $params = Get-DeploymentParameters -DeploymentType "appservice" -Config $config
             
-            $useCustomDomain = Read-Host "Configure custom domain? (y/n)"
-            if ($useCustomDomain -eq "y") {
-                $customDomain = Read-Host "Enter domain name (e.g., example.com)"
-                $subdomain = Read-Host "Enter subdomain (e.g., www)"
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
             }
             
             # Deploy website
-            $params = @{
-                DeploymentType = "appservice"
-                ResourceGroup = $resourceGroup
-                AppName = $appName
-                Location = $location
-                SubscriptionId = $config.SubscriptionId
-            }
-            
-            if ($useGitHub -eq "y") {
-                $params.RepoUrl = $repoUrl
-                $params.Branch = $branch
-                $params.GitHubToken = $gitHubToken
-            }
-            else {
-                $params.ProjectPath = $projectPath
-            }
-            
-            if ($useCustomDomain -eq "y") {
-                $params.CustomDomain = $customDomain
-                $params.Subdomain = $subdomain
-            }
-            
             Deploy-Website @params
             
             Write-Host "Press any key to continue..."
@@ -284,40 +233,20 @@ function Invoke-WebsiteHandler {
             Clear-Host
             Write-Host "=== Auto-Detect and Deploy Website ===" -ForegroundColor Cyan
             
-            # Get deployment parameters
-            $resourceGroup = Read-Host "Enter resource group name"
-            $appName = Read-Host "Enter application name"
-            $location = Read-Host "Enter location (default: eastus)"
-            if ([string]::IsNullOrWhiteSpace($location)) { $location = "eastus" }
+            # Import the helper function
+            . "$PSScriptRoot\..\..\..\Private\Get-DeploymentParameters.ps1"
             
-            $projectPath = Get-ProjectPathForDeployment
-            if (-not $projectPath) {
+            # Get deployment parameters using the helper function
+            $params = Get-DeploymentParameters -DeploymentType "auto" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
                 Write-Host "Press any key to continue..."
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
                 return
             }
             
-            $useCustomDomain = Read-Host "Configure custom domain? (y/n)"
-            if ($useCustomDomain -eq "y") {
-                $customDomain = Read-Host "Enter domain name (e.g., example.com)"
-                $subdomain = Read-Host "Enter subdomain (e.g., www)"
-            }
-            
             # Deploy website
-            $params = @{
-                DeploymentType = "auto"
-                ResourceGroup = $resourceGroup
-                AppName = $appName
-                Location = $location
-                SubscriptionId = $config.SubscriptionId
-                ProjectPath = $projectPath
-            }
-            
-            if ($useCustomDomain -eq "y") {
-                $params.CustomDomain = $customDomain
-                $params.Subdomain = $subdomain
-            }
-            
             Deploy-Website @params
             
             Write-Host "Press any key to continue..."
@@ -392,6 +321,18 @@ function Invoke-WebsiteHandler {
                 CustomDomain = $customDomain
             }
             
+            # Ask for GitHub token if needed
+            $needsToken = Read-Host "Do you need to provide a GitHub token? (y/n)"
+            if ($needsToken -eq "y") {
+                # Securely capture GitHub token
+                $secureGitHubToken = Read-Host "Enter GitHub personal access token" -AsSecureString
+                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureGitHubToken)
+                $gitHubToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+                
+                $params.GitHubToken = $gitHubToken
+            }
+            
             Add-GitHubWorkflows @params
             
             Write-Host "`nGitHub workflow files added successfully!" -ForegroundColor Green
@@ -430,20 +371,28 @@ function Invoke-WebsiteHandler {
             
             # List static web apps
             Write-Host "`nStatic Web Apps:" -ForegroundColor Yellow
-            if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-                Get-AzStaticWebApp | Format-Table Name, ResourceGroupName, DefaultHostname
-            }
-            else {
-                Get-AzStaticWebApp -ResourceGroupName $resourceGroup | Format-Table Name, ResourceGroupName, DefaultHostname
+            try {
+                if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+                    Get-AzStaticWebApp -ErrorAction Stop | Format-Table Name, ResourceGroupName, DefaultHostname
+                }
+                else {
+                    Get-AzStaticWebApp -ResourceGroupName $resourceGroup -ErrorAction Stop | Format-Table Name, ResourceGroupName, DefaultHostname
+                }
+            } catch {
+                Write-Host "Failed to retrieve Static Web Apps: $_" -ForegroundColor Red
             }
             
             # List app services
             Write-Host "`nApp Services:" -ForegroundColor Yellow
-            if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-                Get-AzWebApp | Format-Table Name, ResourceGroup, DefaultHostName
-            }
-            else {
-                Get-AzWebApp -ResourceGroupName $resourceGroup | Format-Table Name, ResourceGroup, DefaultHostName
+            try {
+                if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+                    Get-AzWebApp -ErrorAction Stop | Format-Table Name, ResourceGroup, DefaultHostName
+                }
+                else {
+                    Get-AzWebApp -ResourceGroupName $resourceGroup -ErrorAction Stop | Format-Table Name, ResourceGroup, DefaultHostName
+                }
+            } catch {
+                Write-Host "Failed to retrieve App Services: $_" -ForegroundColor Red
             }
             
             Write-Host "Press any key to continue..."

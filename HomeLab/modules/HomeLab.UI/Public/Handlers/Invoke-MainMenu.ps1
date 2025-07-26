@@ -209,7 +209,8 @@ function Invoke-MainMenu {
                         }
                     }
                     "9" { 
-                        if (Get-Command -Name Invoke-WebsiteHandler -ErrorAction SilentlyContinue) {
+                        if (Get-Command -Name Invoke-WebsiteHandler -ErrorAction SilentlyContinue -and 
+                            Get-Command -Name Show-WebsiteMenu -ErrorAction SilentlyContinue) {
                             Show-WebsiteMenu
                             Invoke-WebsiteHandler -Command "Show-WebsiteMenu"
                         }
@@ -219,7 +220,8 @@ function Invoke-MainMenu {
                         }
                     }
                     "10" { 
-                        if (Get-Command -Name Invoke-DNSHandler -ErrorAction SilentlyContinue) {
+                        if (Get-Command -Name Invoke-DNSHandler -ErrorAction SilentlyContinue -and 
+                            Get-Command -Name Show-DNSMenu -ErrorAction SilentlyContinue) {
                             Show-DNSMenu
                             Invoke-DNSHandler -Command "Show-DNSMenu"
                         }

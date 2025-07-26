@@ -45,8 +45,8 @@ Key requirements include:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/JustAGhosT/azure-homelab-setup.git
-cd azure-homelab-setup
+git clone https://github.com/JustAGhosT/home-lab-setup.git
+cd home-lab-setup
 ```
 
 ### 2. Run the HomeLab Setup Script

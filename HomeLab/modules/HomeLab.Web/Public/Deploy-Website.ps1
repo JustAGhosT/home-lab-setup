@@ -106,9 +106,7 @@ function Deploy-Website {
         [string]$ProjectPath
     )
     
-    # Import required modules
-    Import-Module HomeLab.Core
-    Import-Module HomeLab.Azure
+    # Function to check if Azure PowerShell is installed and logged in
     
     # Function to check if Azure PowerShell is installed and logged in
     function Test-AzurePowerShell {
@@ -211,12 +209,23 @@ function Deploy-Website {
         Write-Host "Deploying Azure Static Web App: $AppName"
         
         # Create the static web app
-        $staticWebApp = New-AzStaticWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -RepositoryUrl $RepoUrl -Branch $Branch -RepositoryToken $GitHubToken -Sku Free
+        try {
+            $staticWebApp = New-AzStaticWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -RepositoryUrl $RepoUrl -Branch $Branch -RepositoryToken $GitHubToken -Sku Free -ErrorAction Stop
+            Write-Host "Static Web App created successfully: $AppName" -ForegroundColor Green
+        } catch {
+            Write-Error "Failed to create Static Web App: $_"
+            return $null
+        }
         
         # Configure custom domain if provided
         if ($CustomDomain -and $Subdomain) {
             $domain = "$Subdomain.$CustomDomain"
-            Configure-CustomDomainStatic -AppName $AppName -ResourceGroup $ResourceGroup -Domain $domain
+            try {
+                Configure-CustomDomainStatic -AppName $AppName -ResourceGroup $ResourceGroup -Domain $domain
+            } catch {
+                Write-Error "Failed to configure custom domain: $_"
+                Write-Warning "Static Web App was created but custom domain configuration failed"
+            }
         }
         
         return $staticWebApp

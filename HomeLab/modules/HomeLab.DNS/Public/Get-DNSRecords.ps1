@@ -41,11 +41,27 @@ function Get-DNSRecords {
     )
     
     # Import required modules
-    Import-Module HomeLab.Core
-    Import-Module HomeLab.Azure
+    try {
+        Import-Module HomeLab.Core -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Core module: $_"
+        return @()
+    }
+    
+    try {
+        Import-Module HomeLab.Azure -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Azure module: $_"
+        return @()
+    }
     
     # Set subscription context
-    Set-AzContext -SubscriptionId $SubscriptionId
+    try {
+        Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to set Azure subscription context: $_"
+        return @()
+    }
     
     # Check if DNS zone exists
     $dnsZone = Get-AzDnsZone -Name $ZoneName -ResourceGroupName $ResourceGroup -ErrorAction SilentlyContinue
@@ -56,11 +72,16 @@ function Get-DNSRecords {
     }
     
     # Get record sets
-    if ($RecordType -eq "All") {
-        $recordSets = Get-AzDnsRecordSet -ZoneName $ZoneName -ResourceGroupName $ResourceGroup
-    }
-    else {
-        $recordSets = Get-AzDnsRecordSet -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -RecordType $RecordType
+    try {
+        if ($RecordType -eq "All") {
+            $recordSets = Get-AzDnsRecordSet -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -ErrorAction Stop
+        }
+        else {
+            $recordSets = Get-AzDnsRecordSet -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -RecordType $RecordType -ErrorAction Stop
+        }
+    } catch {
+        Write-Error "Failed to retrieve DNS record sets: $_"
+        return @()
     }
     
     # Format the results

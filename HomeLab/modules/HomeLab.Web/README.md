@@ -76,7 +76,7 @@ This module can add GitHub workflow files to your project for automated CI/CD:
 - `deploy-azure.yml`: Deploys to a single environment
 - `deploy-multi-env.yml`: Deploys to multiple environments (dev, staging, prod)
 
-See [GitHub Secrets Documentation](../docs/GITHUB-SECRETS.md) for required secrets.
+See [GitHub Secrets Documentation](../../docs/GITHUB-SECRETS.md) for required secrets.
 
 ## Dependencies
 
@@ -87,6 +87,6 @@ See [GitHub Secrets Documentation](../docs/GITHUB-SECRETS.md) for required secre
 ## Documentation
 
 For detailed information, see:
-- [Website Deployment Guide](../docs/WEBSITE-DEPLOYMENT.md) - Detailed information about deployment types
-- [How to Deploy Websites](../docs/HOW-TO-DEPLOY-WEBSITES.md) - Step-by-step guide on deploying websites
-- [GitHub Secrets Guide](../docs/GITHUB-SECRETS.md) - How to set up GitHub secrets for deployment
+- [Website Deployment Guide](../../docs/WEBSITE-DEPLOYMENT.md) - Detailed information about deployment types
+- [How to Deploy Websites](../../docs/HOW-TO-DEPLOY-WEBSITES.md) - Step-by-step guide on deploying websites
+- [GitHub Secrets Guide](../../docs/GITHUB-SECRETS.md) - How to set up GitHub secrets for deployment

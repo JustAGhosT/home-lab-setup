@@ -4,7 +4,7 @@
     {
       "label": "Run All Tests",
       "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\Test-HomeLab.ps1",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}/Test-HomeLab.ps1",
       "group": {
         "kind": "test",
         "isDefault": true
@@ -19,7 +19,7 @@
     {
       "label": "Run Unit Tests",
       "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\Test-HomeLab.ps1 -UnitOnly",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}/Test-HomeLab.ps1 -UnitOnly",
       "group": "test",
       "presentation": {
         "reveal": "always",
@@ -31,7 +31,7 @@
     {
       "label": "Run Integration Tests",
       "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\Test-HomeLab.ps1 -IntegrationOnly",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}/Test-HomeLab.ps1 -IntegrationOnly",
       "group": "test",
       "presentation": {
         "reveal": "always",
@@ -43,7 +43,7 @@
     {
       "label": "Run Core Module Tests",
       "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\Test-HomeLab.ps1 -Module Core",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}/Test-HomeLab.ps1 -Module Core",
       "group": "test",
       "presentation": {
         "reveal": "always",
@@ -55,7 +55,7 @@
     {
       "label": "Run Azure Module Tests",
       "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\Test-HomeLab.ps1 -Module Azure",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}/Test-HomeLab.ps1 -Module Azure",
       "group": "test",
       "presentation": {
         "reveal": "always",
@@ -67,7 +67,7 @@
     {
       "label": "Run Security Module Tests",
       "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\Test-HomeLab.ps1 -Module Security",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}/Test-HomeLab.ps1 -Module Security",
       "group": "test",
       "presentation": {
         "reveal": "always",

@@ -39,13 +39,29 @@ param (
 )
 
 # Ensure Pester is installed
-if (-not (Get-Module -ListAvailable -Name Pester)) {
-    Write-Host "Installing Pester module..." -ForegroundColor Yellow
-    Install-Module -Name Pester -Force -SkipPublisherCheck
+try {
+    $pesterModule = Get-Module -ListAvailable -Name Pester
+    if (-not $pesterModule) {
+        Write-Host "Installing Pester module..." -ForegroundColor Yellow
+        Install-Module -Name Pester -Force -SkipPublisherCheck -ErrorAction Stop
+    }
+    elseif ($pesterModule.Version -lt [Version]"5.0.0") {
+        Write-Warning "Pester version $($pesterModule.Version) detected. Version 5.0+ recommended."
+    }
+}
+catch {
+    Write-Error "Failed to install Pester module: $_"
+    exit 1
 }
 
 # Import Pester
-Import-Module Pester
+try {
+    Import-Module Pester -ErrorAction Stop
+}
+catch {
+    Write-Error "Failed to import Pester module: $_"
+    exit 1
+}
 
 # Create output directory if it doesn't exist
 if (-not (Test-Path -Path $OutputPath)) {
@@ -72,12 +88,6 @@ if (-not $IntegrationOnly) {
     }
 }
 
-if (-not $UnitOnly) {
-    if (Test-Path $integrationTestPath) {
-        $testPaths += $integrationTestPath
-    }
-}
-
 # Filter by module if specified
 if ($Module) {
     $filteredPaths = @()
@@ -87,10 +97,17 @@ if ($Module) {
             if (Test-Path $modPath) {
                 $filteredPaths += $modPath
             }
+            else {
+                Write-Warning "Test file not found for module '$mod': $modPath"
+            }
         }
     }
     if ($filteredPaths.Count -gt 0) {
         $testPaths = $filteredPaths
+    }
+    else {
+        Write-Error "No test files found for specified modules: $($Module -join ', ')"
+        exit 1
     }
 }
 
@@ -112,7 +129,18 @@ foreach ($path in $testPaths) {
     $pesterConfig.TestResult.OutputPath = $resultPath
     
     Write-Host "Running tests in $path..." -ForegroundColor Yellow
-    $results = Invoke-Pester -Configuration $pesterConfig
+    try {
+        $results = Invoke-Pester -Configuration $pesterConfig
+        
+        if (-not $results) {
+            Write-Error "No results returned from Pester for path: $path"
+            continue
+        }
+    } catch {
+        Write-Error "Failed to run tests for path '$path': $_"
+        $totalFailed += 1
+        continue
+    }
     
     $totalTests += $results.TotalCount
     $totalPassed += $results.PassedCount

@@ -18,12 +18,23 @@ function Get-CertificatePath {
         return $VpnCertificatesPath
     }
     
-    # Default path if variable is not set
-    $defaultPath = Join-Path -Path $env:USERPROFILE -ChildPath "HomeLab\Certificates"
+    # Default path if variable is not set - use cross-platform home directory
+    $homeDir = if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
+        $env:USERPROFILE 
+    } else {
+        $env:HOME 
+    }
+    
+    $defaultPath = Join-Path -Path $homeDir -ChildPath "HomeLab" | Join-Path -ChildPath "Certificates"
     
     # Create the directory if it doesn't exist
     if (-not (Test-Path -Path $defaultPath)) {
-        New-Item -Path $defaultPath -ItemType Directory -Force | Out-Null
+        try {
+            Write-Verbose "Creating certificate directory: $defaultPath"
+            New-Item -Path $defaultPath -ItemType Directory -Force | Out-Null
+        } catch {
+            throw "Failed to create certificate directory '$defaultPath': $_"
+        }
     }
     
     return $defaultPath

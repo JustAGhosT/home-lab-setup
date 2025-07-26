@@ -28,16 +28,17 @@ function Add-GitHubWorkflows {
         [ValidateSet("static", "appservice", "auto")]
         [string]$DeploymentType = "auto",
         
-        [Parameter()]
-        [string]$CustomDomain = "liquidmesh.ai"
+        [Parameter(Mandatory = $true)]
+        [string]$CustomDomain
     )
     
-    # Create .github/workflows directory if it doesn't exist
-    $workflowsDir = Join-Path -Path $ProjectPath -ChildPath ".github\workflows"
-    if (-not (Test-Path -Path $workflowsDir)) {
-        New-Item -Path $workflowsDir -ItemType Directory -Force | Out-Null
-        Write-Host "Created .github/workflows directory" -ForegroundColor Green
-    }
+    try {
+        # Create .github/workflows directory if it doesn't exist
+        $workflowsDir = Join-Path -Path $ProjectPath -ChildPath ".github\workflows"
+        if (-not (Test-Path -Path $workflowsDir)) {
+            New-Item -Path $workflowsDir -ItemType Directory -Force | Out-Null
+            Write-Host "Created .github/workflows directory" -ForegroundColor Green
+        }
     
     # Create deploy-azure.yml workflow file
     $deployAzureYmlPath = Join-Path -Path $workflowsDir -ChildPath "deploy-azure.yml"
@@ -156,7 +157,7 @@ jobs:
               else
                 DEPLOYMENT_TYPE="static"
               fi
-            elif [[ -f "*.csproj" || -f "Program.cs" ]]; then
+            elif [[ -n "$(find . -maxdepth 1 -name "*.csproj" 2>/dev/null)" || -f "Program.cs" ]]; then
                 DEPLOYMENT_TYPE="appservice"
             else
               DEPLOYMENT_TYPE="static"
@@ -481,9 +482,32 @@ jobs:
           echo "| Development | ✅ Success | ${{ github.event.inputs.base_subdomain }}-dev |" >> $GITHUB_STEP_SUMMARY
 '@ -f $CustomDomain
 
-    # Write the workflow files
-    Set-Content -Path $deployAzureYmlPath -Value $deployAzureYml
-    Set-Content -Path $multiEnvYmlPath -Value $multiEnvYml
+    # Write the workflow files with existence check
+    if (Test-Path -Path $deployAzureYmlPath) {
+        $overwrite = Read-Host "File $deployAzureYmlPath already exists. Overwrite? (y/n)"
+        if ($overwrite -eq "y") {
+            Set-Content -Path $deployAzureYmlPath -Value $deployAzureYml
+            Write-Host "Updated $deployAzureYmlPath" -ForegroundColor Green
+        } else {
+            Write-Host "Skipped writing to $deployAzureYmlPath" -ForegroundColor Yellow
+        }
+    } else {
+        Set-Content -Path $deployAzureYmlPath -Value $deployAzureYml
+        Write-Host "Created $deployAzureYmlPath" -ForegroundColor Green
+    }
+    
+    if (Test-Path -Path $multiEnvYmlPath) {
+        $overwrite = Read-Host "File $multiEnvYmlPath already exists. Overwrite? (y/n)"
+        if ($overwrite -eq "y") {
+            Set-Content -Path $multiEnvYmlPath -Value $multiEnvYml
+            Write-Host "Updated $multiEnvYmlPath" -ForegroundColor Green
+        } else {
+            Write-Host "Skipped writing to $multiEnvYmlPath" -ForegroundColor Yellow
+        }
+    } else {
+        Set-Content -Path $multiEnvYmlPath -Value $multiEnvYml
+        Write-Host "Created $multiEnvYmlPath" -ForegroundColor Green
+    }
     
     Write-Host "Created GitHub workflow files:" -ForegroundColor Green
     Write-Host "  - .github/workflows/deploy-azure.yml" -ForegroundColor Green
@@ -600,5 +624,9 @@ See the [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) for more detailed instruction
         Write-Warning "Could not find deployment guide template at $templatePath"
     }
     
-    return $true
+        return $true
+    } catch {
+        Write-Error "Failed to add GitHub workflows: $_"
+        return $false
+    }
 }
