@@ -167,7 +167,7 @@ if ($GenerateReport) {
         $htmlContent | Out-File -FilePath $reportPath -Encoding UTF8
         Write-Host "Fallback report generated at: $reportPath" -ForegroundColor Green
     }
-}
+}        
 
 # Return results summary
 Write-Host "Test Results Summary:" -ForegroundColor Cyan

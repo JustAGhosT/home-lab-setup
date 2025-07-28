@@ -9,8 +9,11 @@ This document provides a comprehensive security checklist to ensure your Azure H
 - [ ] Use Azure AD Premium for advanced security features
 - [ ] Create dedicated service principal with minimal required permissions
 - [ ] Regularly rotate service principal credentials
-- [ ] Enable Azure Security Center for subscription
+- [ ] Enable Microsoft Defender for Cloud for subscription
 - [ ] Set up billing alerts to detect unusual resource usage
+- [ ] Enable Azure AD Identity Protection
+- [ ] Implement Conditional Access policies
+- [ ] Use Privileged Identity Management (PIM) for admin access
 
 ### Local Environment Security
 - [ ] Use PowerShell Execution Policy: `Set-ExecutionPolicy RemoteSigned`
@@ -102,6 +105,9 @@ This document provides a comprehensive security checklist to ensure your Azure H
 - [ ] Avoid hardcoded credentials in scripts
 - [ ] Use PowerShell Desired State Configuration (DSC) for consistency
 - [ ] Implement code signing for PowerShell scripts
+- [ ] Use PSScriptAnalyzer for security rule validation
+- [ ] Implement secure path validation to prevent directory traversal
+- [ ] Use bounded regex quantifiers to prevent ReDoS attacks
 
 ### Web Application Security
 - [ ] Use HTTPS for all web applications
@@ -110,6 +116,42 @@ This document provides a comprehensive security checklist to ensure your Azure H
 - [ ] Regular security scanning of web applications
 - [ ] Implement Content Security Policy (CSP) headers
 - [ ] Use secure coding practices
+
+## CI/CD and GitHub Security
+
+### GitHub Repository Security
+- [ ] Enable branch protection rules for main/master branch
+- [ ] Require pull request reviews before merging
+- [ ] Enable security alerts for dependencies
+- [ ] Use Dependabot for automated dependency updates
+- [ ] Implement secret scanning to prevent credential leaks
+- [ ] Use GitHub Advanced Security features if available
+- [ ] Regularly audit repository access and permissions
+
+### GitHub Actions Security
+- [ ] Use OIDC federation instead of long-lived secrets
+- [ ] Pin action versions to specific commits (not tags)
+- [ ] Use least-privilege permissions in workflows
+- [ ] Implement workflow approval for sensitive operations
+- [ ] Use environment protection rules
+- [ ] Audit workflow runs regularly
+- [ ] Use self-hosted runners securely if needed
+
+### Secret Management
+- [ ] Store secrets in GitHub Secrets, not in code
+- [ ] Use environment-specific secrets
+- [ ] Rotate secrets regularly
+- [ ] Use Azure Key Vault for production secrets
+- [ ] Implement secret scanning in CI/CD pipeline
+- [ ] Audit secret access and usage
+
+### Supply Chain Security
+- [ ] Verify integrity of downloaded packages and modules
+- [ ] Use package lock files (package-lock.json, pnpm-lock.yaml)
+- [ ] Implement vulnerability scanning in CI/CD
+- [ ] Use trusted package registries
+- [ ] Audit third-party dependencies regularly
+- [ ] Implement Software Bill of Materials (SBOM)
 
 ## Compliance and Governance
 
