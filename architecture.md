@@ -3,9 +3,9 @@ layout: default
 title: High-Level Architecture
 ---
 
-# High-Level Architecture
+## High-Level Architecture
 
-## Overview
+### Overview
 This document outlines the high-level architecture of our Azure cloud environment, detailing the virtual network design, network components, subnet layout, and connectivity from on-premises or home environments.
 
 ## Architecture Diagram
@@ -71,7 +71,7 @@ flowchart TD
 - **Network Security Groups (NSGs)**: Control traffic flow between subnets and resources
 - **Jump Box**: Provides a secure entry point for administrative access to other resources
 
-### Internet Connectivity
+### Outbound Connectivity
 - **NAT Gateway**: Provides outbound internet connectivity for internal resources with a single shared IP address
 - **VPN Gateway**: Provides internet connectivity for client VPN connections
 

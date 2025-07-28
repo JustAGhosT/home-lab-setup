@@ -89,7 +89,22 @@ function Test-WebDeployment {
     # Test 3: Test GitHub workflow generation
     Write-Host "`nTest 3: Testing GitHub workflow generation..." -ForegroundColor Yellow
     try {
-        Add-GitHubWorkflows -ProjectPath $staticDir -DeploymentType "static" -CustomDomain "example.com"
+        # Check if workflow files already exist
+        $workflowDir = Join-Path -Path $staticDir -ChildPath ".github\workflows"
+        $workflowExists = Test-Path -Path $workflowDir
+        
+        if ($workflowExists) {
+            Write-Host "⚠️ Warning: Workflow directory already exists, will be overwritten" -ForegroundColor Yellow
+            # Clean up existing workflow files to avoid test failures
+            Remove-Item -Path $workflowDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        
+        # Add GitHub workflows
+        $result = Add-GitHubWorkflows -ProjectPath $staticDir -DeploymentType "static" -CustomDomain "example.com"
+        
+        if (-not $result) {
+            throw "Add-GitHubWorkflows returned false or null"
+        }
         
         $workflowFiles = @(
             ".github\workflows\deploy-azure.yml",

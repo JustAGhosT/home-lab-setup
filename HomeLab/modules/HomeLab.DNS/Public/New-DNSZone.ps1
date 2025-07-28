@@ -42,6 +42,7 @@ function New-DNSZone {
     
     if ($existingZone) {
         Write-Host "DNS zone $DomainName already exists."
+        $dnsZone = $existingZone
         $nameServers = $existingZone.NameServers
     }
     else {

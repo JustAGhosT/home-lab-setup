@@ -146,19 +146,19 @@ Value: {verification-id}
 
 ### Common Issues
 
-**"Resource already exists"**
+### Resource already exists
 - Use --force-deployment flag
 - Or delete existing resources first
 
-**"DNS not propagating"**
+### DNS not propagating
 - Wait 24-48 hours for DNS propagation
 - Check DNS records with nslookup
 
-**"SSL certificate issues"**
+### SSL certificate issues
 - Ensure DNS records are correct
 - Wait for automatic certificate provisioning
 
-**"GitHub Actions failing"**
+### GitHub Actions failing
 - Verify all secrets are set correctly
 - Check Azure permissions
 

@@ -1,259 +1,136 @@
-# Mock functions for HomeLab.Security module
+# Mock functions for HomeLab.Security module tests
 
-# Certificate storage paths
-$script:VpnCertificatesPath = "$env:USERPROFILE\HomeLab\Certificates"
-$script:VpnConfigPath = "$env:USERPROFILE\HomeLab\VpnConfig"
-$script:VpnDefaultValidity = 365
-$script:VpnDefaultKeySize = 2048
-
-function Get-CertificatePath {
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$CertificateType = "Root",
-        
-        [Parameter(Mandatory = $false)]
-        [string]$CertificateName = "HomeLab-VPN-Root"
-    )
-    
-    $path = Join-Path -Path $script:VpnCertificatesPath -ChildPath "$CertificateType\$CertificateName.pfx"
-    return $path
-}
-
-function New-VpnRootCertificate {
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$CertificateName = "HomeLab-VPN-Root",
-        
-        [Parameter(Mandatory = $false)]
-        [int]$ValidityInDays = 3650,
-        
-        [Parameter(Mandatory = $false)]
-        [int]$KeySize = 2048,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$Password = "P@ssw0rd",
-        
-        [Parameter(Mandatory = $false)]
-        [switch]$Force
-    )
-    
-    # Return a mock certificate object
-    return @{
-        Subject = "CN=$CertificateName"
-        Thumbprint = "0123456789ABCDEF0123456789ABCDEF01234567"
-        NotBefore = (Get-Date)
-        NotAfter = (Get-Date).AddDays($ValidityInDays)
-        HasPrivateKey = $true
-        Path = Get-CertificatePath -CertificateType "Root" -CertificateName $CertificateName
-    }
-}
-
-function New-VpnClientCertificate {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ClientName,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$RootCertificateName = "HomeLab-VPN-Root",
-        
-        [Parameter(Mandatory = $false)]
-        [int]$ValidityInDays = 365,
-        
-        [Parameter(Mandatory = $false)]
-        [int]$KeySize = 2048,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$Password = "P@ssw0rd",
-        
-        [Parameter(Mandatory = $false)]
-        [switch]$Force
-    )
-    
-    # Return a mock certificate object
-    return @{
-        Subject = "CN=$ClientName"
-        Thumbprint = "FEDCBA9876543210FEDCBA9876543210FEDCBA98"
-        NotBefore = (Get-Date)
-        NotAfter = (Get-Date).AddDays($ValidityInDays)
-        HasPrivateKey = $true
-        Path = Get-CertificatePath -CertificateType "Client" -CertificateName $ClientName
-    }
-}
-
-function Get-VpnCertificate {
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$CertificateType = "All"
-    )
-    
-    $certificates = @()
-    
-    if ($CertificateType -eq "Root" -or $CertificateType -eq "All") {
-        $certificates += [PSCustomObject]@{
-            Type = "Root"
-            Name = "HomeLab-VPN-Root"
-            Thumbprint = "0123456789ABCDEF0123456789ABCDEF01234567"
-            NotBefore = (Get-Date).AddDays(-30)
-            NotAfter = (Get-Date).AddDays(3650)
-            Path = Get-CertificatePath -CertificateType "Root" -CertificateName "HomeLab-VPN-Root"
-        }
-    }
-    
-    if ($CertificateType -eq "Client" -or $CertificateType -eq "All") {
-        $certificates += [PSCustomObject]@{
-            Type = "Client"
-            Name = "TestClient1"
-            Thumbprint = "FEDCBA9876543210FEDCBA9876543210FEDCBA98"
-            NotBefore = (Get-Date).AddDays(-10)
-            NotAfter = (Get-Date).AddDays(365)
-            Path = Get-CertificatePath -CertificateType "Client" -CertificateName "TestClient1"
-        }
-        
-        $certificates += [PSCustomObject]@{
-            Type = "Client"
-            Name = "TestClient2"
-            Thumbprint = "ABCDEF0123456789ABCDEF0123456789ABCDEF01"
-            NotBefore = (Get-Date).AddDays(-5)
-            NotAfter = (Get-Date).AddDays(365)
-            Path = Get-CertificatePath -CertificateType "Client" -CertificateName "TestClient2"
-        }
-    }
-    
-    return $certificates
-}
-
-function Add-VpnGatewayCertificate {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ResourceGroupName,
-        
-        [Parameter(Mandatory = $true)]
-        [string]$VpnGatewayName,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$RootCertificateName = "HomeLab-VPN-Root"
-    )
-    
-    # Return success
-    return $true
-}
-
-function Add-VpnClientCertificate {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ClientName,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$CertificatePath,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$Password = "P@ssw0rd"
-    )
-    
-    # Return success
-    return $true
-}
-
-function Add-VpnComputer {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ComputerName,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$ClientCertificateName,
-        
-        [Parameter(Mandatory = $false)]
-        [switch]$Force
-    )
-    
-    # Return success
-    return $true
-}
-
-function Connect-Vpn {
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$ConnectionName = "HomeLab VPN"
-    )
-    
-    # Return success
-    return $true
-}
-
-function Disconnect-Vpn {
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$ConnectionName = "HomeLab VPN"
-    )
-    
-    # Return success
-    return $true
-}
-
-function Get-VpnConnectionStatus {
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$ConnectionName = "HomeLab VPN"
-    )
-    
-    # Return connected status
-    return @{
-        Name = $ConnectionName
-        Status = "Connected"
-        ConnectionTime = (Get-Date).AddMinutes(-30)
-    }
-}
-
-# Helper functions
 function Get-SanitizedCertName {
-    param (
+    param(
         [Parameter(Mandatory = $true)]
         [string]$Name
     )
     
-    # Remove invalid characters
-    $sanitized = $Name -replace '[^a-zA-Z0-9\-_]', ''
+    # Simple mock implementation
+    $sanitized = $Name -replace '[^\w\d\-_]', ''
     return $sanitized
 }
 
-function Get-CertificateData {
-    param (
+function New-VpnRootCertificate {
+    param(
         [Parameter(Mandatory = $true)]
-        [string]$CertificatePath,
+        [string]$RootCertName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ClientCertName,
         
         [Parameter(Mandatory = $false)]
-        [string]$Password = "P@ssw0rd"
+        [switch]$CreateNewRoot,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ExportPath = $env:TEMP,
+        
+        [Parameter(Mandatory = $false)]
+        [securestring]$CertPassword
     )
     
-    # Return mock certificate data
-    return "MIICXAIBAAKBgQC+8pdU..."
+    return @{
+        Success = $true
+        Message = "Root and initial client certificate created."
+        RootCertThumbprint = "ABC123"
+        ClientCertThumbprint = "DEF456"
+        RootCertPath = "$ExportPath\$RootCertName.pfx"
+        RootCertCerPath = "$ExportPath\$RootCertName.cer"
+        RootTxtPath = "$ExportPath\$RootCertName.txt"
+        ClientCertPath = "$ExportPath\$ClientCertName.pfx"
+        RootCertName = $RootCertName
+        ClientCertName = $ClientCertName
+    }
 }
 
-function Confirm-ExportPath {
-    param (
+function New-VpnClientCertificate {
+    param(
         [Parameter(Mandatory = $true)]
-        [string]$Path
+        [string]$CertificateName,
+        
+        [Parameter(Mandatory = $true)]
+        [object]$RootCertificate,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ExportPath = $env:TEMP,
+        
+        [Parameter(Mandatory = $false)]
+        [securestring]$CertPassword
     )
     
-    # Create directory if it doesn't exist
-    if (-not (Test-Path -Path $Path)) {
-        New-Item -Path $Path -ItemType Directory -Force | Out-Null
+    return @{
+        Success = $true
+        Message = "Client certificate created."
+        Thumbprint = "DEF456"
+        CertificatePath = "$ExportPath\$CertificateName.pfx"
+        CertificateName = $CertificateName
     }
+}
+
+function Add-VpnGatewayCertificate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CertificateData,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$CertificateName
+    )
     
     return $true
 }
 
-function Write-LogSafely {
-    param (
+function Add-VpnComputer {
+    param(
         [Parameter(Mandatory = $true)]
-        [string]$Message,
+        [string]$ComputerName,
         
-        [Parameter(Mandatory = $false)]
-        [string]$Level = "Info"
+        [Parameter(Mandatory = $true)]
+        [string]$CertificateThumbprint
     )
     
-    # Just return the message for testing
-    return "$Level - $Message"
+    return $true
 }
 
-# No need to export functions in a dot-sourced script
+function Connect-Vpn {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionName
+    )
+    
+    return $true
+}
+
+function Disconnect-Vpn {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionName
+    )
+    
+    return $true
+}
+
+function Get-VpnConnectionStatus {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionName
+    )
+    
+    return "Connected"
+}
+
+function Get-VpnCertificate {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$CertificateType
+    )
+    
+    if ($CertificateType -eq "Root") {
+        return @(@{Thumbprint = "ABC123"; Subject = "CN=Root-Test" })
+    }
+    
+    return @(@{Thumbprint = "ABC123"; Subject = "CN=Test" })
+}
+
+function Get-CertificatePath {
+    return "TestDrive:\homelab\certs"
+}

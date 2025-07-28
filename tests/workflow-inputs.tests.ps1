@@ -2,7 +2,7 @@ Describe "Workflow Input Validation Tests" {
     Context "Resource Name Generation" {
         BeforeAll {
             # Mock function to simulate the GitHub workflow's name generation
-            function Generate-ResourceNames {
+            function New-ResourceNames {
                 param (
                     [string]$Subdomain,
                     [string]$Environment,
@@ -10,7 +10,7 @@ Describe "Workflow Input Validation Tests" {
                 )
                 
                 # Clean subdomain (remove non-alphanumeric chars)
-                $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
+                $cleanSubdomain = ($Subdomain -replace '[^a-zA-Z0-9]', '').ToLower()
                 
                 # Generate names
                 $appName = "$cleanSubdomain-$Environment"
@@ -18,15 +18,15 @@ Describe "Workflow Input Validation Tests" {
                 $fullDomain = "$Subdomain.$CustomDomain"
                 
                 return @{
-                    AppName = $appName
+                    AppName       = $appName
                     ResourceGroup = $resourceGroup
-                    FullDomain = $fullDomain
+                    FullDomain    = $fullDomain
                 }
             }
         }
         
         It "Should generate correct resource names with simple inputs" {
-            $result = Generate-ResourceNames -Subdomain "myapp" -Environment "dev" -CustomDomain "example.com"
+            $result = New-ResourceNames -Subdomain "myapp" -Environment "dev" -CustomDomain "example.com"
             
             $result.AppName | Should -Be "myapp-dev"
             $result.ResourceGroup | Should -Be "rg-myapp-dev"
@@ -34,7 +34,7 @@ Describe "Workflow Input Validation Tests" {
         }
         
         It "Should clean subdomain by removing special characters" {
-            $result = Generate-ResourceNames -Subdomain "my-app_123!" -Environment "prod" -CustomDomain "example.com"
+            $result = New-ResourceNames -Subdomain "my-app_123!" -Environment "prod" -CustomDomain "example.com"
             
             $result.AppName | Should -Be "myapp123-prod"
             $result.ResourceGroup | Should -Be "rg-myapp123-prod"
@@ -42,7 +42,7 @@ Describe "Workflow Input Validation Tests" {
         }
         
         It "Should convert uppercase to lowercase in app name" {
-            $result = Generate-ResourceNames -Subdomain "MyApp" -Environment "staging" -CustomDomain "example.com"
+            $result = New-ResourceNames -Subdomain "MyApp" -Environment "staging" -CustomDomain "example.com"
             
             $result.AppName | Should -Be "myapp-staging"
             $result.ResourceGroup | Should -Be "rg-myapp-staging"
@@ -53,7 +53,7 @@ Describe "Workflow Input Validation Tests" {
     Context "Deployment Type Detection" {
         BeforeAll {
             # Mock function to simulate the GitHub workflow's deployment type detection
-            function Detect-DeploymentType {
+            function Test-DeploymentType {
                 param (
                     [string]$InputType,
                     [bool]$HasPackageJson = $false,
@@ -95,26 +95,26 @@ Describe "Workflow Input Validation Tests" {
         }
         
         It "Should use explicit deployment type when provided" {
-            Detect-DeploymentType -InputType "static" | Should -Be "static"
-            Detect-DeploymentType -InputType "appservice" | Should -Be "appservice"
+            Test-DeploymentType -InputType "static" | Should -Be "static"
+            Test-DeploymentType -InputType "appservice" | Should -Be "appservice"
         }
         
         It "Should detect Node.js backend app as appservice" {
             $packageJson = '{"dependencies": {"express": "^4.17.1"}}'
-            Detect-DeploymentType -InputType "auto" -HasPackageJson $true -PackageJsonContent $packageJson | Should -Be "appservice"
+            Test-DeploymentType -InputType "auto" -HasPackageJson $true -PackageJsonContent $packageJson | Should -Be "appservice"
         }
         
         It "Should detect React frontend app as static" {
             $packageJson = '{"dependencies": {"react": "^17.0.2"}}'
-            Detect-DeploymentType -InputType "auto" -HasPackageJson $true -PackageJsonContent $packageJson | Should -Be "static"
+            Test-DeploymentType -InputType "auto" -HasPackageJson $true -PackageJsonContent $packageJson | Should -Be "static"
         }
         
         It "Should detect .NET app as appservice" {
-            Detect-DeploymentType -InputType "auto" -HasCsprojFile $true | Should -Be "appservice"
+            Test-DeploymentType -InputType "auto" -HasCsprojFile $true | Should -Be "appservice"
         }
         
         It "Should default to static when no specific indicators are found" {
-            Detect-DeploymentType -InputType "auto" | Should -Be "static"
+            Test-DeploymentType -InputType "auto" | Should -Be "static"
         }
     }
 }

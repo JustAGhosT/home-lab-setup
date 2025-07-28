@@ -103,29 +103,42 @@ This guide explains how to deploy websites to Azure using the HomeLab environmen
 - Static Web Apps: Automatic SSL certificates
 - App Service: Automatic SSL certificates with custom domains
 
-## Required GitHub Secrets
+## Authentication Setup (Recommended: OIDC)
 
-Configure these secrets in your GitHub repository:
+**Recommended**: Use GitHub-to-Azure OIDC federation for password-less deployments:
 
 ```
 AZURE_SUBSCRIPTION_ID      # Your Azure subscription ID
-AZURE_CLIENT_ID            # Service principal client ID
-AZURE_CLIENT_SECRET        # Service principal client secret
+AZURE_CLIENT_ID            # Service principal client ID (no secret needed)
 AZURE_TENANT_ID            # Your Azure tenant ID
-AZURE_CREDENTIALS          # Complete Azure credentials JSON
 GITHUB_TOKEN               # GitHub personal access token
 ```
 
-## Azure Service Principal Setup
+> **Security Note**: OIDC federation eliminates the need for `AZURE_CLIENT_SECRET` or `AZURE_CREDENTIALS`, reducing secret sprawl and following least-privilege principles. See [Microsoft's OIDC setup guide](https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure) for configuration.
+
+**Legacy (Not Recommended)**: If OIDC is not available, configure these secrets:
+
+```
+AZURE_CLIENT_SECRET        # Service principal client secret (legacy)
+AZURE_CREDENTIALS          # Complete Azure credentials JSON (legacy)
+```
+
+## Azure OIDC Federation Setup
 
 ```bash
-# Create service principal with contributor role
+# Create service principal for OIDC federation
 az ad sp create-for-rbac \
   --name "github-actions-deployment" \
   --role contributor \
-  --scopes /subscriptions/{subscription-id} \
-  --sdk-auth
+  --scopes /subscriptions/{subscription-id}/resourceGroups/{rg-name}
+
+# Configure federated credentials (replace with your values)
+az ad app federated-credential create \
+  --id {client-id} \
+  --parameters '{"name":"github-actions","issuer":"https://token.actions.githubusercontent.com","subject":"repo:{owner}/{repo}:ref:refs/heads/main","audiences":["api://AzureADTokenExchange"]}'
 ```
+
+For detailed OIDC setup instructions, see [Microsoft's official guide](https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure).
 
 ## Usage Examples
 
@@ -136,14 +149,14 @@ az ad sp create-for-rbac \
 ```powershell
 Deploy-Website -DeploymentType static -ResourceGroup "rg-portfolio" -AppName "portfolio-prod" -SubscriptionId "abc123" -CustomDomain "johndoe.com" -Subdomain "portfolio"
 ```
-Result: https://portfolio.johndoe.com
+Result: <https://portfolio.johndoe.com>
 
 **Deploy a Node.js API**:
 
 ```powershell
 Deploy-Website -DeploymentType appservice -ResourceGroup "rg-api" -AppName "backend-api" -SubscriptionId "abc123" -CustomDomain "mycompany.com" -Subdomain "api"
 ```
-Result: https://api.mycompany.com
+Result: <https://api.mycompany.com>
 
 ### GitHub Actions Deployment
 

@@ -3,9 +3,9 @@ layout: default
 title: My Home Lab Setup
 ---
 
-# My Home Lab Setup
+## My Home Lab Setup
 
-## Overview
+### Overview
 
 This document explains the configuration and purpose of my home lab environment, which serves as both my development workspace and a practical implementation of the architecture described in this repository.
 

@@ -73,7 +73,7 @@ flowchart TD
   - Supports more concurrent connections and higher bandwidth
   - Necessary for larger teams or higher performance requirements
 
-### Optimization Strategy
+### VPN Optimization Strategy
 - Start with Basic SKU for development and testing
 - Monitor performance metrics to determine if upgrade is necessary
 - Consider scheduled scaling for periodic high-demand scenarios

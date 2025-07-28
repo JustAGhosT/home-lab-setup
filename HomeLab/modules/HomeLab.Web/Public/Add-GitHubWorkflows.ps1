@@ -1,5 +1,5 @@
 function Add-GitHubWorkflows {
-    <#
+  <#
     .SYNOPSIS
         Adds GitHub workflow files for automatic deployment to a project.
     
@@ -19,24 +19,25 @@ function Add-GitHubWorkflows {
     .EXAMPLE
         Add-GitHubWorkflows -ProjectPath "C:\Projects\MyWebsite" -DeploymentType "static" -CustomDomain "example.com"
     #>
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ProjectPath,
+  [CmdletBinding()]
+  param (
+    [Parameter(Mandatory = $true)]
+    [string]$ProjectPath,
         
-        [Parameter()]
-        [ValidateSet("static", "appservice", "auto")]
-        [string]$DeploymentType = "auto",
+    [Parameter()]
+    [ValidateSet("static", "appservice", "auto")]
+    [string]$DeploymentType = "auto",
         
-        [Parameter()]
-        [string]$CustomDomain = "liquidmesh.ai"
-    )
+    [Parameter(Mandatory = $true)]
+    [string]$CustomDomain
+  )
     
+  try {
     # Create .github/workflows directory if it doesn't exist
     $workflowsDir = Join-Path -Path $ProjectPath -ChildPath ".github\workflows"
     if (-not (Test-Path -Path $workflowsDir)) {
-        New-Item -Path $workflowsDir -ItemType Directory -Force | Out-Null
-        Write-Host "Created .github/workflows directory" -ForegroundColor Green
+      New-Item -Path $workflowsDir -ItemType Directory -Force | Out-Null
+      Write-Host "Created .github/workflows directory" -ForegroundColor Green
     }
     
     # Create deploy-azure.yml workflow file
@@ -94,7 +95,6 @@ on:
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -156,7 +156,7 @@ jobs:
               else
                 DEPLOYMENT_TYPE="static"
               fi
-            elif [[ -f "*.csproj" || -f "Program.cs" ]]; then
+            elif [[ -n "$(find . -maxdepth 1 -name "*.csproj" 2>/dev/null)" || -f "Program.cs" ]]; then
                 DEPLOYMENT_TYPE="appservice"
             else
               DEPLOYMENT_TYPE="static"
@@ -173,33 +173,62 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm (if pnpm-lock.yaml exists)
+        if: hashFiles('pnpm-lock.yaml') != ''
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Setup Node.js (if package.json exists)
         if: hashFiles('package.json') != ''
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
         if: hashFiles('package.json') != ''
-        run: npm ci
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          elif [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Run tests
         if: hashFiles('package.json') != ''
         run: |
-          if npm list --depth=0 | grep -q "jest\|mocha\|vitest"; then
-            npm test
+          if [ -f "pnpm-lock.yaml" ]; then
+            if pnpm list | grep -q "jest\|mocha\|vitest"; then
+              pnpm test
+            else
+              echo "No test framework found, skipping tests"
+            fi
           else
-            echo "No test framework found, skipping tests"
+            if npm list --depth=0 | grep -q "jest\|mocha\|vitest"; then
+              npm test
+            else
+              echo "No test framework found, skipping tests"
+            fi
           fi
 
       - name: Build application
         if: hashFiles('package.json') != ''
         run: |
-          if npm run build --if-present; then
-            echo "Build completed successfully"
+          if [ -f "pnpm-lock.yaml" ]; then
+            if pnpm run build 2>/dev/null; then
+              echo "Build completed successfully"
+            else
+              echo "No build script found or build failed"
+            fi
           else
-            echo "No build script found or build failed"
+            if npm run build --if-present; then
+              echo "Build completed successfully"
+            else
+              echo "No build script found or build failed"
+            fi
           fi
 
       - name: Upload build artifacts
@@ -454,7 +483,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to ${{ matrix.environment }}
-        uses: ./.github/workflows/deploy-azure.yml
+        uses: ./.github/workflows/deploy-azure.yml@main
         with:
           deployment_type: ${{ github.event.inputs.deployment_type }}
           environment: ${{ matrix.environment }}
@@ -481,9 +510,36 @@ jobs:
           echo "| Development | ✅ Success | ${{ github.event.inputs.base_subdomain }}-dev |" >> $GITHUB_STEP_SUMMARY
 '@ -f $CustomDomain
 
-    # Write the workflow files
-    Set-Content -Path $deployAzureYmlPath -Value $deployAzureYml
-    Set-Content -Path $multiEnvYmlPath -Value $multiEnvYml
+    # Write the workflow files with existence check
+    if (Test-Path -Path $deployAzureYmlPath) {
+      $overwrite = Read-Host "File $deployAzureYmlPath already exists. Overwrite? (y/n)"
+      if ($overwrite -eq "y") {
+        Set-Content -Path $deployAzureYmlPath -Value $deployAzureYml
+        Write-Host "Updated $deployAzureYmlPath" -ForegroundColor Green
+      }
+      else {
+        Write-Host "Skipped writing to $deployAzureYmlPath" -ForegroundColor Yellow
+      }
+    }
+    else {
+      Set-Content -Path $deployAzureYmlPath -Value $deployAzureYml
+      Write-Host "Created $deployAzureYmlPath" -ForegroundColor Green
+    }
+    
+    if (Test-Path -Path $multiEnvYmlPath) {
+      $overwrite = Read-Host "File $multiEnvYmlPath already exists. Overwrite? (y/n)"
+      if ($overwrite -eq "y") {
+        Set-Content -Path $multiEnvYmlPath -Value $multiEnvYml
+        Write-Host "Updated $multiEnvYmlPath" -ForegroundColor Green
+      }
+      else {
+        Write-Host "Skipped writing to $multiEnvYmlPath" -ForegroundColor Yellow
+      }
+    }
+    else {
+      Set-Content -Path $multiEnvYmlPath -Value $multiEnvYml
+      Write-Host "Created $multiEnvYmlPath" -ForegroundColor Green
+    }
     
     Write-Host "Created GitHub workflow files:" -ForegroundColor Green
     Write-Host "  - .github/workflows/deploy-azure.yml" -ForegroundColor Green
@@ -492,7 +548,7 @@ jobs:
     # Create .gitignore file if it doesn't exist
     $gitignorePath = Join-Path -Path $ProjectPath -ChildPath ".gitignore"
     if (-not (Test-Path -Path $gitignorePath)) {
-        $gitignoreContent = @"
+      $gitignoreContent = @"
 # Node.js
 node_modules/
 npm-debug.log
@@ -532,15 +588,15 @@ Thumbs.db
 # Azure
 .azure/
 "@
-        Set-Content -Path $gitignorePath -Value $gitignoreContent
-        Write-Host "Created .gitignore file" -ForegroundColor Green
+      Set-Content -Path $gitignorePath -Value $gitignoreContent
+      Write-Host "Created .gitignore file" -ForegroundColor Green
     }
     
     # Create README.md file if it doesn't exist
     $readmePath = Join-Path -Path $ProjectPath -ChildPath "README.md"
     if (-not (Test-Path -Path $readmePath)) {
-        $projectName = Split-Path -Path $ProjectPath -Leaf
-        $readmeContent = @"
+      $projectName = Split-Path -Path $ProjectPath -Leaf
+      $readmeContent = @"
 # $projectName
 
 ## Deployment
@@ -585,8 +641,8 @@ The following secrets need to be configured in your GitHub repository:
 
 See the [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) for more detailed instructions.
 "@
-        Set-Content -Path $readmePath -Value $readmeContent
-        Write-Host "Created README.md file with deployment instructions" -ForegroundColor Green
+      Set-Content -Path $readmePath -Value $readmeContent
+      Write-Host "Created README.md file with deployment instructions" -ForegroundColor Green
     }
     
     # Copy the deployment guide template to the project
@@ -594,11 +650,17 @@ See the [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) for more detailed instruction
     $deploymentGuidePath = Join-Path -Path $ProjectPath -ChildPath "DEPLOYMENT-GUIDE.md"
     
     if (Test-Path -Path $templatePath) {
-        Copy-Item -Path $templatePath -Destination $deploymentGuidePath -Force
-        Write-Host "Added DEPLOYMENT-GUIDE.md to the project" -ForegroundColor Green
-    } else {
-        Write-Warning "Could not find deployment guide template at $templatePath"
+      Copy-Item -Path $templatePath -Destination $deploymentGuidePath -Force
+      Write-Host "Added DEPLOYMENT-GUIDE.md to the project" -ForegroundColor Green
+    }
+    else {
+      Write-Warning "Could not find deployment guide template at $templatePath"
     }
     
     return $true
+  }
+  catch {
+    Write-Error "Failed to add GitHub workflows: $_"
+    return $false
+  }
 }

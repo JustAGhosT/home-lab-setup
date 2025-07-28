@@ -1,0 +1,2 @@
+[console_scripts]
+mdlint = markdown_lint.cli:main

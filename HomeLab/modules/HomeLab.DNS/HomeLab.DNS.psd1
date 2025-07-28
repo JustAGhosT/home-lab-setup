@@ -7,8 +7,15 @@
     Copyright = '(c) 2023. All rights reserved.'
     Description = 'DNS zone management and configuration for HomeLab'
     PowerShellVersion = '7.0'
-    RequiredModules = @('HomeLab.Core', 'HomeLab.Azure')
-    FunctionsToExport = '*'
+    RequiredModules = @(
+        @{ModuleName = 'HomeLab.Core'; ModuleVersion = '0.1.0'}, 
+        @{ModuleName = 'HomeLab.Azure'; ModuleVersion = '0.1.0'}
+    )
+    FunctionsToExport = @(
+        'Add-DNSRecord',
+        'Get-DNSRecords',
+        'New-DNSZone'
+    )
     CmdletsToExport = @()
     VariablesToExport = @()
     AliasesToExport = @()

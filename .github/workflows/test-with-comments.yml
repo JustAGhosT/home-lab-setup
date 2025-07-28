@@ -1,0 +1,150 @@
+name: Test with PR Comments
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install required modules
+        shell: pwsh
+        run: |
+          Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
+          Install-Module -Name Pester -Force -SkipPublisherCheck -MinimumVersion 5.0
+          Install-Module -Name PowerShell-Yaml -Force -SkipPublisherCheck
+          Write-Host "Module installation completed." -ForegroundColor Green
+
+      - name: Run tests
+        id: run_tests
+        shell: pwsh
+        run: |
+          Write-Host "Starting HomeLab test execution..." -ForegroundColor Cyan
+
+          # Change to tests directory
+          Set-Location tests
+
+          # Run unit tests first (fastest feedback)
+          Write-Host "Running Unit Tests..." -ForegroundColor Yellow
+          try {
+            $unitResults = ./Run-Tests.ps1 -TestType Unit -CI
+            $unitSuccess = $LASTEXITCODE -eq 0
+            Write-Host "Unit tests completed. Success: $unitSuccess" -ForegroundColor $(if($unitSuccess) {'Green'} else {'Red'})
+          }
+          catch {
+            Write-Host "Unit tests failed with exception: $($_.Exception.Message)" -ForegroundColor Red
+            $unitSuccess = $false
+          }
+
+          # Run integration tests if unit tests pass
+          $integrationSuccess = $false
+          if ($unitSuccess) {
+            Write-Host "Running Integration Tests..." -ForegroundColor Yellow
+            try {
+              $integrationResults = ./Run-Tests.ps1 -TestType Integration -CI
+              $integrationSuccess = $LASTEXITCODE -eq 0
+              Write-Host "Integration tests completed. Success: $integrationSuccess" -ForegroundColor $(if($integrationSuccess) {'Green'} else {'Red'})
+            }
+            catch {
+              Write-Host "Integration tests failed with exception: $($_.Exception.Message)" -ForegroundColor Red
+              $integrationSuccess = $false
+            }
+          }
+          else {
+            Write-Host "Skipping integration tests due to unit test failures" -ForegroundColor Yellow
+          }
+
+          # Determine overall success
+          $overallSuccess = $unitSuccess -and $integrationSuccess
+
+          # Check if any issues were automatically fixed (placeholder logic)
+          # In a real scenario, this could check for auto-formatting, dependency updates, etc.
+          $issuesFixed = $false
+
+          # Set GitHub Actions outputs
+          Write-Host "Setting GitHub Actions outputs..." -ForegroundColor Cyan
+          "success=$($overallSuccess.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "issues_fixed=$($issuesFixed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "unit_success=$($unitSuccess.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "integration_success=$($integrationSuccess.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          Write-Host "Test execution completed. Overall success: $overallSuccess" -ForegroundColor $(if($overallSuccess) {'Green'} else {'Red'})
+
+          # Exit with appropriate code
+          if (-not $overallSuccess) {
+            exit 1
+          }
+
+      - name: Comment on success
+        if: ${{ steps.run_tests.outputs.success == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `
+            ## ✅ **HomeLab Tests Passed Successfully!**
+
+            ### Test Results Summary:
+            - **Unit Tests**: ${{ steps.run_tests.outputs.unit_success == 'true' && '✅ Passed' || '❌ Failed' }}
+            - **Integration Tests**: ${{ steps.run_tests.outputs.integration_success == 'true' && '✅ Passed' || '❌ Failed' }}
+
+            ${{ steps.run_tests.outputs.issues_fixed == 'true' && '### 🔧 **Issues Automatically Fixed**\n✅ Some issues were automatically resolved during testing!' || '' }}
+
+            ### 🚀 **Ready for Merge**
+            All tests are passing and the code is ready to be merged into the main branch.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+      - name: Comment on failure
+        if: ${{ steps.run_tests.outputs.success == 'false' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `
+            ## ❌ **HomeLab Tests Failed**
+
+            ### Test Results Summary:
+            - **Unit Tests**: ${{ steps.run_tests.outputs.unit_success == 'true' && '✅ Passed' || '❌ Failed' }}
+            - **Integration Tests**: ${{ steps.run_tests.outputs.integration_success == 'true' && '✅ Passed' || '❌ Failed' }}
+
+            ### 🔍 **Next Steps**
+            1. Review the test failure details in the [Actions tab](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            2. Fix the failing tests locally
+            3. Push your changes to trigger a new test run
+
+            ### 📋 **Common Issues**
+            - Check for syntax errors in PowerShell modules
+            - Verify all required dependencies are properly imported
+            - Ensure test data and mocks are correctly configured
+
+            **Please fix the failing tests before merging this PR.**
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            tests/TestResults.xml

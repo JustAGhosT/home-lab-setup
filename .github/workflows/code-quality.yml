@@ -1,0 +1,303 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  powershell-analysis:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck
+          Write-Host "PSScriptAnalyzer installed successfully"
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Write-Host "Running PSScriptAnalyzer on PowerShell files..."
+
+          # Get all PowerShell files
+          $psFiles = Get-ChildItem -Path . -Include "*.ps1", "*.psm1", "*.psd1" -Recurse |
+                     Where-Object { $_.FullName -notlike "*\node_modules\*" }
+
+          Write-Host "Found $($psFiles.Count) PowerShell files to analyze"
+
+          $issues = @()
+          foreach ($file in $psFiles) {
+            Write-Host "Analyzing: $($file.Name)"
+            $results = Invoke-ScriptAnalyzer -Path $file.FullName -Severity Warning,Error
+            if ($results) {
+              $issues += $results
+            }
+          }
+
+          if ($issues.Count -gt 0) {
+            Write-Host "Found $($issues.Count) issues:" -ForegroundColor Yellow
+            foreach ($issue in $issues) {
+              $severity = if ($issue.Severity -eq 'Error') { '❌' } else { '⚠️' }
+              Write-Host "$severity $($issue.Severity): $($issue.Message)" -ForegroundColor $(if ($issue.Severity -eq 'Error') { 'Red' } else { 'Yellow' })
+              Write-Host "   File: $($issue.ScriptName):$($issue.Line)" -ForegroundColor Gray
+            }
+
+            # Fail if there are errors
+            $errors = $issues | Where-Object { $_.Severity -eq 'Error' }
+            if ($errors.Count -gt 0) {
+              Write-Error "Found $($errors.Count) error(s). Please fix before proceeding."
+              exit 1
+            }
+          } else {
+            Write-Host "✅ No issues found!" -ForegroundColor Green
+          }
+
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run markdownlint
+        run: |
+          echo "Running markdownlint on Markdown files..."
+          npx markdownlint "**/*.md" --ignore node_modules
+          echo "Markdown linting completed"
+
+  yaml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: |
+          echo "Running yamllint on YAML files..."
+          find . -name "*.yml" -o -name "*.yaml" | grep -v node_modules | xargs yamllint -d relaxed
+          echo "YAML linting completed"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  dependency-check:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check PowerShell module dependencies
+        shell: pwsh
+        run: |
+          Write-Host "Checking PowerShell module dependencies..."
+
+          # Check if all required modules are properly declared
+          $manifestFiles = Get-ChildItem -Path . -Name "*.psd1" -Recurse |
+                          Where-Object { $_ -notlike "*node_modules*" }
+
+          foreach ($manifest in $manifestFiles) {
+            Write-Host "Checking manifest: $manifest"
+            try {
+              $moduleData = Import-PowerShellDataFile -Path $manifest
+              if ($moduleData.RequiredModules) {
+                Write-Host "  Required modules: $($moduleData.RequiredModules -join ', ')"
+              }
+              if ($moduleData.NestedModules) {
+                Write-Host "  Nested modules: $($moduleData.NestedModules -join ', ')"
+              }
+            }
+            catch {
+              Write-Warning "Failed to parse manifest $manifest`: $($_.Exception.Message)"
+            }
+          }
+
+      - name: Setup pnpm (if pnpm-lock.yaml exists)
+        if: hashFiles('pnpm-lock.yaml') != ''
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Setup Node.js (if package.json exists)
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Check Node.js dependencies (if applicable)
+        if: hashFiles('package.json') != ''
+        run: |
+          echo "Checking Node.js dependencies..."
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm audit --audit-level moderate
+          elif [ -f "package-lock.json" ]; then
+            npm audit --audit-level moderate
+          elif [ -f "package.json" ]; then
+            echo "No lock file found, skipping audit"
+          fi
+        shell: bash
+
+  file-structure-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify project structure
+        run: |
+          echo "Verifying project structure..."
+
+          # Check for essential files
+          essential_files=(
+            "README.md"
+            "LICENSE"
+            "CHANGELOG.md"
+            "CONTRIBUTING.md"
+            "SECURITY.md"
+            ".gitignore"
+            "HomeLab/HomeLab.psd1"
+            "HomeLab/HomeLab.psm1"
+          )
+
+          missing_files=()
+          for file in "${essential_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              missing_files+=("$file")
+            fi
+          done
+
+          if [ ${#missing_files[@]} -gt 0 ]; then
+            echo "❌ Missing essential files:"
+            printf '%s\n' "${missing_files[@]}"
+            exit 1
+          else
+            echo "✅ All essential files present"
+          fi
+
+          # Check for proper module structure
+          if [ -d "HomeLab/modules" ]; then
+            echo "✅ Module directory structure exists"
+
+            # Count modules
+            module_count=$(find HomeLab/modules -name "*.psd1" | wc -l)
+            echo "Found $module_count PowerShell modules"
+          else
+            echo "❌ Module directory structure missing"
+            exit 1
+          fi
+
+  summary:
+    needs:
+      [
+        powershell-analysis,
+        markdown-lint,
+        yaml-lint,
+        security-scan,
+        dependency-check,
+        file-structure-check,
+      ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Code Quality Summary
+        run: |
+          echo "# 🔍 Code Quality Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check results of each job
+          jobs=(
+            "powershell-analysis:PowerShell Analysis"
+            "markdown-lint:Markdown Linting"
+            "yaml-lint:YAML Linting"
+            "security-scan:Security Scan"
+            "dependency-check:Dependency Check"
+            "file-structure-check:File Structure Check"
+          )
+
+          for job_info in "${jobs[@]}"; do
+            job_name="${job_info%%:*}"
+            job_display="${job_info##*:}"
+
+            # Get the job result using explicit job names since GitHub Actions expressions can't use shell variables
+            case "$job_name" in
+              "powershell-analysis")
+                result="${{ needs.powershell-analysis.result }}"
+                ;;
+              "markdown-lint")
+                result="${{ needs.markdown-lint.result }}"
+                ;;
+              "yaml-lint")
+                result="${{ needs.yaml-lint.result }}"
+                ;;
+              "security-scan")
+                result="${{ needs.security-scan.result }}"
+                ;;
+              "dependency-check")
+                result="${{ needs.dependency-check.result }}"
+                ;;
+              "file-structure-check")
+                result="${{ needs.file-structure-check.result }}"
+                ;;
+              *)
+                result="unknown"
+                ;;
+            esac
+
+            case "$result" in
+              "success")
+                echo "✅ **$job_display**: Passed" >> $GITHUB_STEP_SUMMARY
+                ;;
+              "failure")
+                echo "❌ **$job_display**: Failed" >> $GITHUB_STEP_SUMMARY
+                ;;
+              "cancelled")
+                echo "⏹️ **$job_display**: Cancelled" >> $GITHUB_STEP_SUMMARY
+                ;;
+              "skipped")
+                echo "⏭️ **$job_display**: Skipped" >> $GITHUB_STEP_SUMMARY
+                ;;
+              *)
+                echo "❓ **$job_display**: Unknown" >> $GITHUB_STEP_SUMMARY
+                ;;
+            esac
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "For detailed results, check the individual job logs above." >> $GITHUB_STEP_SUMMARY

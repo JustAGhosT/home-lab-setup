@@ -33,7 +33,7 @@ sequenceDiagram
 
 ### 1. Connection Initiation
 - **Client Computer**: End-user initiates a VPN connection using the Azure VPN Client software
-- **Connection Parameters**: 
+- **Connection Parameters**:
   - VPN Server: Azure VPN Gateway public IP or DNS name
   - Authentication Type: Certificate-based authentication
   - Protocol: IKEv2 or SSTP (based on client configuration)

@@ -94,10 +94,7 @@ function global:Import-Module {
         [switch]$Force,
         
         [Parameter()]
-        [switch]$DisableNameChecking,
-        
-        [Parameter()]
-        [string]$ErrorAction = 'Continue'
+        [switch]$DisableNameChecking
     )
     
     # Track module loading
@@ -126,7 +123,7 @@ function global:Import-Module {
     # Call original Import-Module using the module-qualified name to avoid recursion
     try {
         # Use the Microsoft.PowerShell.Core module qualified command name
-        Microsoft.PowerShell.Core\Import-Module -Name $Name -Global:$Global -Force:$Force -DisableNameChecking:$DisableNameChecking -ErrorAction $ErrorAction
+        Microsoft.PowerShell.Core\Import-Module -Name $Name -Global:$Global -Force:$Force -DisableNameChecking:$DisableNameChecking -ErrorAction Continue
     }
     catch {
         Write-DiagLog -Message "Error loading module $Name`: $_" -Level ERROR
@@ -143,10 +140,7 @@ function global:Get-Command {
         [string]$Name,
         
         [Parameter()]
-        [string]$CommandType,
-        
-        [Parameter()]
-        [string]$ErrorAction = 'Continue'
+        [string]$CommandType
     )
     
     $key = "GetCommand:$Name"
@@ -171,7 +165,7 @@ function global:Get-Command {
     }
     
     # Call original Get-Command using the module-qualified name
-    Microsoft.PowerShell.Core\Get-Command -Name $Name -CommandType $CommandType -ErrorAction $ErrorAction
+    Microsoft.PowerShell.Core\Get-Command -Name $Name -CommandType $CommandType -ErrorAction Continue
 }
 
 # Create a wrapper for Get-ChildItem to track file system operations
@@ -186,10 +180,7 @@ function global:Get-ChildItem {
         [string]$Filter,
         
         [Parameter()]
-        [switch]$Recurse,
-        
-        [Parameter()]
-        [string]$ErrorAction = 'Continue'
+        [switch]$Recurse
     )
     
     $key = "GetChildItem:$Path"
@@ -214,7 +205,7 @@ function global:Get-ChildItem {
     }
     
     # Call original Get-ChildItem using the module-qualified name
-    Microsoft.PowerShell.Management\Get-ChildItem -Path $Path -Filter $Filter -Recurse:$Recurse -ErrorAction $ErrorAction
+    Microsoft.PowerShell.Management\Get-ChildItem -Path $Path -Filter $Filter -Recurse:$Recurse -ErrorAction Continue
 }
 
 # Function to test module loading

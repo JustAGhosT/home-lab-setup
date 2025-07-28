@@ -1,4 +1,35 @@
+# Import the core modules
+$modulePath = Join-Path $PSScriptRoot "..\HomeLab\modules"
+try {
+    # Import required modules
+    Import-Module "$modulePath\HomeLab.Core" -Force -ErrorAction Stop
+    Import-Module "$modulePath\HomeLab.Azure" -Force -ErrorAction Stop
+    Import-Module "$modulePath\HomeLab.Web" -Force -ErrorAction Stop
+} catch {
+    Write-Warning "Failed to import one or more required modules: $_"
+}
+
 Describe "End-to-End Deployment Workflow Tests" {
+    # Helper function for resource naming
+    function global:Get-ResourceNames {
+        param (
+            [string]$Subdomain,
+            [string]$Environment,
+            [string]$CustomDomain
+        )
+        
+        $cleanSubdomain = ($Subdomain -replace '[^a-zA-Z0-9]', '').ToLower()
+        $appName = "$cleanSubdomain-$Environment"
+        $resourceGroup = "rg-$appName"
+        $fullDomain = "$Subdomain.$CustomDomain"
+        
+        return @{
+            CleanSubdomain = $cleanSubdomain
+            AppName        = $appName
+            ResourceGroup  = $resourceGroup
+            FullDomain     = $fullDomain
+        }
+    }
     Context "Static Website Deployment Flow" {
         BeforeAll {
             # Mock functions to simulate the deployment workflow
@@ -7,14 +38,11 @@ Describe "End-to-End Deployment Workflow Tests" {
                     [string]$Subdomain = "myapp",
                     [string]$Environment = "dev",
                     [string]$CustomDomain = "example.com",
-                    [string]$Location = "eastus"
+                    [string]$Location = "westeurope"
                 )
                 
                 # Step 1: Generate resource names
-                $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
-                $appName = "$cleanSubdomain-$Environment"
-                $resourceGroup = "rg-$appName"
-                $fullDomain = "$Subdomain.$CustomDomain"
+                $resourceNames = Get-ResourceNames -Subdomain $Subdomain -Environment $Environment -CustomDomain $CustomDomain
                 
                 # Step 2: Deploy to Static Web App
                 $deploymentSuccess = $true
@@ -26,11 +54,11 @@ Describe "End-to-End Deployment Workflow Tests" {
                 }
                 
                 return @{
-                    AppName = $appName
-                    ResourceGroup = $resourceGroup
-                    FullDomain = $fullDomain
+                    AppName           = $resourceNames.AppName
+                    ResourceGroup     = $resourceNames.ResourceGroup
+                    FullDomain        = $resourceNames.FullDomain
                     DeploymentSuccess = $deploymentSuccess
-                    DomainConfigured = $domainConfigured
+                    DomainConfigured  = $domainConfigured
                 }
             }
         }
@@ -62,14 +90,11 @@ Describe "End-to-End Deployment Workflow Tests" {
                     [string]$Subdomain = "myapi",
                     [string]$Environment = "dev",
                     [string]$CustomDomain = "example.com",
-                    [string]$Location = "eastus"
+                    [string]$Location = "westeurope"
                 )
                 
                 # Step 1: Generate resource names
-                $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
-                $appName = "$cleanSubdomain-$Environment"
-                $resourceGroup = "rg-$appName"
-                $fullDomain = "$Subdomain.$CustomDomain"
+                $resourceNames = Get-ResourceNames -Subdomain $Subdomain -Environment $Environment -CustomDomain $CustomDomain
                 
                 # Step 2: Create resource group
                 $resourceGroupCreated = $true
@@ -84,12 +109,12 @@ Describe "End-to-End Deployment Workflow Tests" {
                 }
                 
                 return @{
-                    AppName = $appName
-                    ResourceGroup = $resourceGroup
-                    FullDomain = $fullDomain
+                    AppName              = $resourceNames.AppName
+                    ResourceGroup        = $resourceNames.ResourceGroup
+                    FullDomain           = $resourceNames.FullDomain
                     ResourceGroupCreated = $resourceGroupCreated
-                    DeploymentSuccess = $deploymentSuccess
-                    DomainConfigured = $domainConfigured
+                    DeploymentSuccess    = $deploymentSuccess
+                    DomainConfigured     = $domainConfigured
                 }
             }
         }

@@ -31,7 +31,7 @@ For a visual overview of the system architecture, see the [High-Level Architectu
 
 ## Prerequisites
 
-Before deploying the HomeLab environment, ensure you have all the necessary tools and permissions. See the [Prerequisites Guide](docs/PREREQUISITES.MD) for detailed requirements.
+Before deploying the HomeLab environment, ensure you have all the necessary tools and permissions. See the [Prerequisites Guide](docs/PREREQUISITES.md) for detailed requirements.
 
 Key requirements include:
 - Active Azure subscription with sufficient permissions
@@ -45,8 +45,8 @@ Key requirements include:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/JustAGhosT/azure-homelab-setup.git
-cd azure-homelab-setup
+git clone https://github.com/JustAGhosT/home-lab-setup.git
+cd home-lab-setup
 ```
 
 ### 2. Run the HomeLab Setup Script
@@ -84,12 +84,12 @@ The deployment process includes:
 
 This repository includes comprehensive documentation to help you deploy, manage, and understand your HomeLab environment:
 
-- [Prerequisites Guide](docs/PREREQUISITES.MD) - Requirements before starting
+- [Prerequisites Guide](docs/PREREQUISITES.md) - Requirements before starting
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
-- [VPN Gateway Guide](docs/VPN-GATEWAY.README.md) - Advanced VPN configuration options
+- [VPN Gateway Guide](docs/vpn-gateway.md) - Advanced VPN configuration options
 - [Certificate Management Guide](docs/client-certificate-management.md) - Managing certificates for VPN authentication
 - [Website Deployment Guide](docs/WEBSITE-DEPLOYMENT.md) - Instructions for deploying websites
-- [DNS Management Guide](docs/DNS-MANAGEMENT.md) - Managing DNS zones and records
+- [DNS Management Guide](docs/WEBSITE-DEPLOYMENT.md#dns-management) - Managing DNS zones and records
 
 ### Network Diagrams
 
@@ -131,7 +131,7 @@ See the [Subnet Layout](docs/diagrams/subnet-layout.md) diagram for details on t
 - Split tunneling options
 - Custom DNS and routing configurations
 
-For details on the VPN connection process, see the [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection.md) diagram.
+For details on the VPN connection process, see the [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection-flow.md) diagram.
 
 ### VPN Certificate Management
 

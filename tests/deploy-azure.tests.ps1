@@ -2,6 +2,11 @@ BeforeAll {
     # Path to the workflow file
     $workflowPath = Join-Path -Path $PSScriptRoot -ChildPath "..\deploy-azure.yml"
     
+    # Ensure PowerShell-Yaml module is available
+    if (-not (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue)) {
+        throw "PowerShell-Yaml module is required. Install via: Install-Module -Name PowerShell-Yaml"
+    }
+    
     # Import the workflow file content
     $workflowContent = Get-Content -Path $workflowPath -Raw
 }

@@ -19,11 +19,27 @@ function Invoke-DNSHandler {
     )
     
     # Import required modules
-    Import-Module HomeLab.Core
-    Import-Module HomeLab.DNS
+    try {
+        Import-Module HomeLab.Core -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.Core module: $_"
+        return
+    }
+    
+    try {
+        Import-Module HomeLab.DNS -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to import HomeLab.DNS module: $_"
+        return
+    }
     
     # Get configuration
-    $config = Get-Configuration
+    try {
+        $config = Get-Configuration -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to retrieve configuration: $_"
+        return
+    }
     
     switch ($Command) {
         "Create-DNSZone" {
@@ -31,7 +47,18 @@ function Invoke-DNSHandler {
             Write-Host "=== Create DNS Zone ===" -ForegroundColor Cyan
             
             # Get parameters
-            $domainName = Read-Host "Enter domain name (e.g., example.com)"
+            $validDomain = $false
+            do {
+                $domainName = Read-Host "Enter domain name (e.g., example.com)"
+                
+                # Validate domain name format
+                if ($domainName -match '^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$') {
+                    $validDomain = $true
+                } else {
+                    Write-Host "Invalid domain name format. Please enter a valid domain name." -ForegroundColor Red
+                }
+            } while (-not $validDomain)
+            
             $resourceGroup = Read-Host "Enter resource group name"
             
             # Create DNS zone
@@ -95,7 +122,12 @@ function Invoke-DNSHandler {
             $ttl = if ([string]::IsNullOrWhiteSpace($ttlInput)) { 3600 } else { [int]$ttlInput }
             
             # Add DNS record
-            Add-DNSRecord -ZoneName $zoneName -RecordName $recordName -RecordType $recordType -Value $value -TTL $ttl -ResourceGroup $resourceGroup -SubscriptionId $config.SubscriptionId
+            try {
+                Add-DNSRecord -ZoneName $zoneName -RecordName $recordName -RecordType $recordType -Value $value -TTL $ttl -ResourceGroup $resourceGroup -SubscriptionId $config.SubscriptionId -ErrorAction Stop
+                Write-Host "DNS record added successfully." -ForegroundColor Green
+            } catch {
+                Write-Host "Failed to add DNS record: $_" -ForegroundColor Red
+            }
             
             Write-Host "Press any key to continue..."
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -109,11 +141,15 @@ function Invoke-DNSHandler {
             $resourceGroup = Read-Host "Enter resource group name (leave empty for all)"
             
             # List DNS zones
-            if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-                Get-AzDnsZone | Format-Table Name, ResourceGroupName, ZoneType
-            }
-            else {
-                Get-AzDnsZone -ResourceGroupName $resourceGroup | Format-Table Name, ResourceGroupName, ZoneType
+            try {
+                if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+                    Get-AzDnsZone -ErrorAction Stop | Format-Table Name, ResourceGroupName, ZoneType
+                }
+                else {
+                    Get-AzDnsZone -ResourceGroupName $resourceGroup -ErrorAction Stop | Format-Table Name, ResourceGroupName, ZoneType
+                }
+            } catch {
+                Write-Host "Failed to retrieve DNS zones: $_" -ForegroundColor Red
             }
             
             Write-Host "Press any key to continue..."
@@ -129,17 +165,21 @@ function Invoke-DNSHandler {
             $resourceGroup = Read-Host "Enter resource group name"
             
             # List DNS records
-            Write-Host "`nA Records:" -ForegroundColor Yellow
-            Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType A | Format-Table Name, Records
-            
-            Write-Host "`nCNAME Records:" -ForegroundColor Yellow
-            Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType CNAME | Format-Table Name, Records
-            
-            Write-Host "`nMX Records:" -ForegroundColor Yellow
-            Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType MX | Format-Table Name, Records
-            
-            Write-Host "`nTXT Records:" -ForegroundColor Yellow
-            Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType TXT | Format-Table Name, Records
+            try {
+                Write-Host "`nA Records:" -ForegroundColor Yellow
+                Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType A -ErrorAction Stop | Format-Table Name, Records
+                
+                Write-Host "`nCNAME Records:" -ForegroundColor Yellow
+                Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType CNAME -ErrorAction Stop | Format-Table Name, Records
+                
+                Write-Host "`nMX Records:" -ForegroundColor Yellow
+                Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType MX -ErrorAction Stop | Format-Table Name, Records
+                
+                Write-Host "`nTXT Records:" -ForegroundColor Yellow
+                Get-AzDnsRecordSet -ZoneName $zoneName -ResourceGroupName $resourceGroup -RecordType TXT -ErrorAction Stop | Format-Table Name, Records
+            } catch {
+                Write-Host "Failed to retrieve DNS records: $_" -ForegroundColor Red
+            }
             
             Write-Host "Press any key to continue..."
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

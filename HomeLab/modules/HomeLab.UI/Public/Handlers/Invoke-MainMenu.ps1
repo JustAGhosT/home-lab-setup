@@ -84,7 +84,8 @@ function Invoke-MainMenu {
                 # Show help if requested
                 if (Get-Command -Name Show-Help -ErrorAction SilentlyContinue) {
                     Show-Help -State $State
-                } else {
+                }
+                else {
                     Write-Host "`nHelp functionality is not implemented yet.`n" -ForegroundColor Yellow
                     Start-Sleep -Seconds 2
                 }
@@ -208,20 +209,20 @@ function Invoke-MainMenu {
                             Start-Sleep -Seconds 2
                         }
                     }
-                    "9" { 
-                        if (Get-Command -Name Invoke-WebsiteHandler -ErrorAction SilentlyContinue) {
+                    "9" {
+                        if ((Get-Command -Name Invoke-WebsiteHandler -ErrorAction SilentlyContinue) -and
+                            (Get-Command -Name Show-WebsiteMenu -ErrorAction SilentlyContinue)) {
                             Show-WebsiteMenu
-                            Invoke-WebsiteHandler -Command "Show-WebsiteMenu"
                         }
                         else {
                             Write-Host "`nWebsite Deployment menu not implemented yet.`n" -ForegroundColor Yellow
                             Start-Sleep -Seconds 2
                         }
                     }
-                    "10" { 
-                        if (Get-Command -Name Invoke-DNSHandler -ErrorAction SilentlyContinue) {
+                    "10" {
+                        if ((Get-Command -Name Invoke-DNSHandler -ErrorAction SilentlyContinue) -and
+                            (Get-Command -Name Show-DNSMenu -ErrorAction SilentlyContinue)) {
                             Show-DNSMenu
-                            Invoke-DNSHandler -Command "Show-DNSMenu"
                         }
                         else {
                             Write-Host "`nDNS Management menu not implemented yet.`n" -ForegroundColor Yellow

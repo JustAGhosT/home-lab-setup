@@ -1,0 +1,115 @@
+name: Test HomeLab Environment
+description: Run tests for the HomeLab environment and report results
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: Type of tests to run
+        required: true
+        default: All
+        type: choice
+        options:
+          - All
+          - Unit
+          - Integration
+          - Workflow
+      fix_issues:
+        description: Attempt to fix common issues automatically
+        required: false
+        default: false
+        type: boolean
+
+steps:
+  - id: run_tests
+    uses: ./.github/actions/run-homelab-tests
+    with:
+      test_type: ${{ inputs.test_type || 'All' }}
+      coverage: true
+      generate_report: true
+      fix_issues: ${{ inputs.fix_issues || false }}
+
+  - id: comment_results
+    if: ${{ steps.run_tests.outputs.success == false }}
+    uses: comment
+    with:
+      body: |
+        ## ❌ HomeLab Test Results Failed
+
+        **Test Summary:**
+        - Total Tests: ${{ steps.run_tests.outputs.total_tests }}
+        - Passed: ${{ steps.run_tests.outputs.passed_tests }}
+        - Failed: ${{ steps.run_tests.outputs.failed_tests }}
+        - Skipped: ${{ steps.run_tests.outputs.skipped_tests }}
+        - Pass Rate: ${{ steps.run_tests.outputs.pass_rate }}%
+
+        ${{ steps.run_tests.outputs.issues_fixed && '✅ **Some issues were automatically fixed!**' || '' }}
+
+        ${{ steps.run_tests.outputs.fix_details && format('**Fix Details:**\n```\n{0}\n```\n', steps.run_tests.outputs.fix_details) || '' }}
+
+        ### Failed Tests:
+        ${{ join(steps.run_tests.outputs.failed_test_details, '\n- **{name}**: {error_message}\n') }}
+
+        <details>
+        <summary>View Full Test Results</summary>
+
+        ```
+        ${{ steps.run_tests.outputs.test_results }}
+        ```
+
+        </details>
+
+        ${{ steps.run_tests.outputs.report_path && format('📊 [View HTML Report]({0})\n', steps.run_tests.outputs.report_path) || '' }}
+
+        Please fix the failing tests before merging this PR.
+
+  - id: comment_success
+    if: ${{ steps.run_tests.outputs.success == true }}
+    uses: comment
+    with:
+      body: |
+        ## ✅ HomeLab Test Results Passed
+
+        **Test Summary:**
+        - Total Tests: ${{ steps.run_tests.outputs.total_tests }}
+        - Passed: ${{ steps.run_tests.outputs.passed_tests }}
+        - Failed: ${{ steps.run_tests.outputs.failed_tests }}
+        - Skipped: ${{ steps.run_tests.outputs.skipped_tests }}
+        - Pass Rate: ${{ steps.run_tests.outputs.pass_rate }}%
+
+        ${{ steps.run_tests.outputs.issues_fixed && '✅ **Some issues were automatically fixed!**' || '' }}
+
+        ${{ steps.run_tests.outputs.fix_details && format('**Fix Details:**\n```\n{0}\n```\n', steps.run_tests.outputs.fix_details) || '' }}
+
+        ${{ steps.run_tests.outputs.report_path && format('📊 [View HTML Report]({0})\n', steps.run_tests.outputs.report_path) || '' }}
+
+        All tests have passed successfully!
+
+  - id: run_tests_again
+    if: ${{ steps.run_tests.outputs.issues_fixed == true }}
+    uses: ./.github/actions/run-homelab-tests
+    with:
+      test_type: ${{ inputs.test_type || 'All' }}
+      coverage: true
+      generate_report: true
+      fix_issues: false
+
+  - id: comment_rerun_results
+    if: ${{ steps.run_tests.outputs.issues_fixed == true }}
+    uses: comment
+    with:
+      body: |
+        ## 🔄 Tests Re-run After Fixes
+
+        **Test Summary:**
+        - Total Tests: ${{ steps.run_tests_again.outputs.total_tests }}
+        - Passed: ${{ steps.run_tests_again.outputs.passed_tests }}
+        - Failed: ${{ steps.run_tests_again.outputs.failed_tests }}
+        - Skipped: ${{ steps.run_tests_again.outputs.skipped_tests }}
+        - Pass Rate: ${{ steps.run_tests_again.outputs.pass_rate }}%
+
+        ${{ steps.run_tests_again.outputs.success && '✅ **All tests now pass!**' || '❌ **Some tests still failing**' }}
+
+        ${{ steps.run_tests_again.outputs.report_path && format('📊 [View HTML Report]({0})\n', steps.run_tests_again.outputs.report_path) || '' }}

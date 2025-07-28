@@ -42,8 +42,8 @@ function Show-BackgroundMonitoringDetails {
             $jobInfo = Import-Clixml -Path $file.FullName
             $jobs += [PSCustomObject]@{
                 JobId = $jobInfo.JobId
-                Path = $file.FullName
-                Info = $jobInfo
+                Path  = $file.FullName
+                Info  = $jobInfo
             }
         }
         catch {
@@ -65,9 +65,9 @@ function Show-BackgroundMonitoringDetails {
         $formattedTime = "{0:hh\:mm\:ss}" -f $elapsedTime
         
         # Extract resource information
-        $resourceType = $jobInfo.ResourceType ?? "Unknown Resource"
-        $resourceName = $jobInfo.ResourceName ?? "Unknown Name"
-        $resourceGroup = $jobInfo.ResourceGroupName ?? "Unknown Group"
+        $resourceType = if ($jobInfo.ResourceType) { $jobInfo.ResourceType } else { "Unknown Resource" }
+        $resourceName = if ($jobInfo.ResourceName) { $jobInfo.ResourceName } else { "Unknown Name" }
+        $resourceGroup = if ($jobInfo.ResourceGroupName) { $jobInfo.ResourceGroupName } else { "Unknown Group" }
         
         # Get job status
         $status = "Unknown"
@@ -117,7 +117,7 @@ function Show-BackgroundMonitoringDetails {
         
         # Show log file if available
         if ($jobInfo.LogFile -or ($result -and $result.LogFile)) {
-            $logFile = $jobInfo.LogFile ?? $result.LogFile
+            $logFile = if ($jobInfo.LogFile) { $jobInfo.LogFile } else { $result.LogFile }
             if (Test-Path $logFile) {
                 Write-Host "  Log File: $logFile" -ForegroundColor Gray
             }
@@ -141,7 +141,8 @@ function Show-BackgroundMonitoringDetails {
         
         if ($CleanupCompleted) {
             $cleanupJobs = $true
-        } else {
+        }
+        else {
             $response = Read-Host "Would you like to clean up completed monitoring jobs? (Y/N)"
             $cleanupJobs = $response -like "Y*"
         }
