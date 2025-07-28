@@ -26,7 +26,7 @@ jobs:
           Write-Host "Running PSScriptAnalyzer on PowerShell files..."
 
           # Get all PowerShell files
-          $psFiles = Get-ChildItem -Path . -Include "*.ps1", "*.psm1", "*.psd1" -Recurse | 
+          $psFiles = Get-ChildItem -Path . -Include "*.ps1", "*.psm1", "*.psd1" -Recurse |
                      Where-Object { $_.FullName -notlike "*\node_modules\*" }
 
           Write-Host "Found $($psFiles.Count) PowerShell files to analyze"
@@ -47,7 +47,7 @@ jobs:
               Write-Host "$severity $($issue.Severity): $($issue.Message)" -ForegroundColor $(if ($issue.Severity -eq 'Error') { 'Red' } else { 'Yellow' })
               Write-Host "   File: $($issue.ScriptName):$($issue.Line)" -ForegroundColor Gray
             }
-            
+  
             # Fail if there are errors
             $errors = $issues | Where-Object { $_.Severity -eq 'Error' }
             if ($errors.Count -gt 0) {
@@ -130,7 +130,7 @@ jobs:
           Write-Host "Checking PowerShell module dependencies..."
 
           # Check if all required modules are properly declared
-          $manifestFiles = Get-ChildItem -Path . -Name "*.psd1" -Recurse | 
+          $manifestFiles = Get-ChildItem -Path . -Name "*.psd1" -Recurse |
                           Where-Object { $_ -notlike "*node_modules*" }
 
           foreach ($manifest in $manifestFiles) {
@@ -214,7 +214,7 @@ jobs:
           # Check for proper module structure
           if [ -d "HomeLab/modules" ]; then
             echo "✅ Module directory structure exists"
-            
+
             # Count modules
             module_count=$(find HomeLab/modules -name "*.psd1" | wc -l)
             echo "Found $module_count PowerShell modules"
