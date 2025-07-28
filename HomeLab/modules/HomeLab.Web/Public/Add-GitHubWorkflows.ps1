@@ -185,7 +185,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: `${{ hashFiles('pnpm-lock.yaml') != '' && 'pnpm' || (hashFiles('package-lock.json') != '' && 'npm' || '') }}
+          cache: npm
 
       - name: Install dependencies
         if: hashFiles('package.json') != ''

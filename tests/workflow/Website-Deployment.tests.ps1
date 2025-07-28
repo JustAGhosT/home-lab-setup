@@ -125,7 +125,10 @@ Describe "Website Deployment Workflow" {
             $websiteName = "test-site"
             $domainName = "test.example.com"
             $certPath = ".\test-cert.pfx"
-            $certPassword = ConvertTo-SecureString "TestPassword" -AsPlainText -Force
+            # Create a mock secure string for testing
+            $certPassword = New-Object System.Security.SecureString
+            "TestPassword".ToCharArray() | ForEach-Object { $certPassword.AppendChar($_) }
+            $certPassword.MakeReadOnly()
             
             # Act
             $result = Add-SSLCertificate -WebAppName $websiteName -DomainName $domainName -CertificatePath $certPath -CertificatePassword $certPassword

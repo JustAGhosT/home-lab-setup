@@ -44,7 +44,8 @@ Describe "HomeLab.Security Module Tests" {
     Context "VPN Client Management" {
         It "Should add a computer to the VPN" {
             $cert = @{Thumbprint = "ABC123" }
-            $result = Add-VpnComputer -ComputerName "TestComputer" -CertificateThumbprint "ABC123"
+            $testComputerName = "TestComputer-$(Get-Random)"
+            $result = Add-VpnComputer -ComputerName $testComputerName -CertificateThumbprint "ABC123"
             $result | Should -Be $true
         }
         

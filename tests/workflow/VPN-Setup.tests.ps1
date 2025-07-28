@@ -177,7 +177,8 @@ Describe "VPN Setup Workflow Tests" {
             $clientCert | Should -Not -BeNullOrEmpty
             
             # Add computer to VPN
-            $result = Add-VpnComputer -ComputerName "WorkflowTestComputer" -CertificateThumbprint "DEF456"
+            $testComputerName = "TestComputer-$(Get-Random)"
+            $result = Add-VpnComputer -ComputerName $testComputerName -CertificateThumbprint "DEF456"
             $result | Should -Be $true
         }
         

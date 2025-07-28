@@ -146,7 +146,8 @@ Describe "HomeLab Module Integration Tests" {
                 return $true
             }
             
-            $addComputer = Add-VpnComputer -ComputerName "TestComputer" -CertificateThumbprint "DEF456"
+            $testComputerName = "TestComputer-$(Get-Random)"
+            $addComputer = Add-VpnComputer -ComputerName $testComputerName -CertificateThumbprint "DEF456"
             $addComputer | Should -Be $true
         }
     }
