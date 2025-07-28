@@ -149,19 +149,29 @@ jobs:
             }
           }
 
+      - name: Setup pnpm (if pnpm-lock.yaml exists)
+        if: hashFiles('pnpm-lock.yaml') != ''
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Setup Node.js (if package.json exists)
         if: hashFiles('package.json') != ''
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-          cache: "npm"
+          cache: ${{ hashFiles('pnpm-lock.yaml') != '' && 'pnpm' || (hashFiles('package-lock.json') != '' && 'npm' || '') }}
 
       - name: Check Node.js dependencies (if applicable)
         if: hashFiles('package.json') != ''
         run: |
           echo "Checking Node.js dependencies..."
-          if [ -f "package.json" ]; then
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm audit --audit-level moderate || true
+          elif [ -f "package-lock.json" ]; then
             npm audit --audit-level moderate || true
+          elif [ -f "package.json" ]; then
+            echo "No lock file found, skipping audit"
           fi
         shell: bash
 
