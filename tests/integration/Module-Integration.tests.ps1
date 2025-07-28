@@ -28,6 +28,39 @@ Describe "HomeLab Module Integration Tests" {
                 } 
             } 
         }
+        
+        # Mock New-VpnRootCertificate function
+        function New-VpnRootCertificate {
+            param(
+                [Parameter(Mandatory = $true)]
+                [string]$RootCertName,
+                
+                [Parameter(Mandatory = $true)]
+                [string]$ClientCertName,
+                
+                [Parameter(Mandatory = $false)]
+                [string]$ExportPath = $env:TEMP
+            )
+            
+            return @{
+                Success = $true
+                RootCertThumbprint = "ABC123"
+                PublicData = "TestData"
+            }
+        }
+        
+        # Mock Add-VpnGatewayCertificate function
+        function Add-VpnGatewayCertificate {
+            param(
+                [Parameter(Mandatory = $true)]
+                [string]$CertificateData,
+                
+                [Parameter(Mandatory = $true)]
+                [string]$CertificateName
+            )
+            
+            return $true
+        }
     }
     
     Context "Core and Azure Module Integration" {
@@ -56,41 +89,10 @@ Describe "HomeLab Module Integration Tests" {
             $vpnResult.Success | Should -Be $true
             
             # Create and add root certificate
-            function New-VpnRootCertificate {
-                param(
-                    [Parameter(Mandatory = $true)]
-                    [string]$RootCertName,
-                    
-                    [Parameter(Mandatory = $true)]
-                    [string]$ClientCertName,
-                    
-                    [Parameter(Mandatory = $false)]
-                    [string]$ExportPath = $env:TEMP
-                )
-                
-                return @{
-                    Success = $true
-                    RootCertThumbprint = "ABC123"
-                    PublicData = "TestData"
-                }
-            }
-            
             $rootCert = New-VpnRootCertificate -RootCertName "IntegrationTestRoot" -ClientCertName "IntegrationTestClient"
             $rootCert | Should -Not -BeNullOrEmpty
             
             # Add certificate to VPN Gateway
-            function Add-VpnGatewayCertificate {
-                param(
-                    [Parameter(Mandatory = $true)]
-                    [string]$CertificateData,
-                    
-                    [Parameter(Mandatory = $true)]
-                    [string]$CertificateName
-                )
-                
-                return $true
-            }
-            
             $addResult = Add-VpnGatewayCertificate -CertificateData "TestData" -CertificateName "TestCert"
             $addResult | Should -Be $true
         }
@@ -103,39 +105,8 @@ Describe "HomeLab Module Integration Tests" {
             $infra.Success | Should -Be $true
             
             # Create and add root certificate
-            function New-VpnRootCertificate {
-                param(
-                    [Parameter(Mandatory = $true)]
-                    [string]$RootCertName,
-                    
-                    [Parameter(Mandatory = $true)]
-                    [string]$ClientCertName,
-                    
-                    [Parameter(Mandatory = $false)]
-                    [string]$ExportPath = $env:TEMP
-                )
-                
-                return @{
-                    Success = $true
-                    RootCertThumbprint = "ABC123"
-                    PublicData = "TestData"
-                }
-            }
-            
             $rootCert = New-VpnRootCertificate -RootCertName "TestRoot" -ClientCertName "TestClient"
             $rootCert | Should -Not -BeNullOrEmpty
-            
-            function Add-VpnGatewayCertificate {
-                param(
-                    [Parameter(Mandatory = $true)]
-                    [string]$CertificateData,
-                    
-                    [Parameter(Mandatory = $true)]
-                    [string]$CertificateName
-                )
-                
-                return $true
-            }
             
             $addRoot = Add-VpnGatewayCertificate -CertificateData "TestData" -CertificateName "TestCert"
             $addRoot | Should -Be $true

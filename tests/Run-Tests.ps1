@@ -7,6 +7,13 @@ param(
     [switch]$CI
 )
 
+# Check and install PowerShell-Yaml module if needed
+if (-not (Get-Module -ListAvailable -Name PowerShell-Yaml)) {
+    Write-Host "Installing PowerShell-Yaml module..." -ForegroundColor Yellow
+    Install-Module -Name PowerShell-Yaml -Force -Scope CurrentUser
+}
+Import-Module PowerShell-Yaml
+
 # Check if Pester 5.0+ is available
 $pesterModule = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 }
 
@@ -55,6 +62,7 @@ if ($Coverage) {
         "$PSScriptRoot\..\HomeLab\modules\*\Public\*.ps1"
         "$PSScriptRoot\..\HomeLab\modules\*\Private\*.ps1"
         "$PSScriptRoot\..\functions\*.ps1"
+        "$PSScriptRoot\..\HomeLab\functions\*.ps1"
     )
     $config.CodeCoverage.OutputPath = ".\coverage.xml"
     $config.CodeCoverage.OutputFormat = 'JaCoCo'

@@ -1,3 +1,24 @@
+# Helper function for resource naming
+function Get-ResourceNames {
+    param (
+        [string]$Subdomain,
+        [string]$Environment,
+        [string]$CustomDomain
+    )
+    
+    $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
+    $appName = "$cleanSubdomain-$Environment"
+    $resourceGroup = "rg-$appName"
+    $fullDomain = "$Subdomain.$CustomDomain"
+    
+    return @{
+        CleanSubdomain = $cleanSubdomain
+        AppName = $appName
+        ResourceGroup = $resourceGroup
+        FullDomain = $fullDomain
+    }
+}
+
 Describe "End-to-End Deployment Workflow Tests" {
     Context "Static Website Deployment Flow" {
         BeforeAll {
@@ -11,10 +32,7 @@ Describe "End-to-End Deployment Workflow Tests" {
                 )
                 
                 # Step 1: Generate resource names
-                $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
-                $appName = "$cleanSubdomain-$Environment"
-                $resourceGroup = "rg-$appName"
-                $fullDomain = "$Subdomain.$CustomDomain"
+                $resourceNames = Get-ResourceNames -Subdomain $Subdomain -Environment $Environment -CustomDomain $CustomDomain
                 
                 # Step 2: Deploy to Static Web App
                 $deploymentSuccess = $true
@@ -26,9 +44,9 @@ Describe "End-to-End Deployment Workflow Tests" {
                 }
                 
                 return @{
-                    AppName = $appName
-                    ResourceGroup = $resourceGroup
-                    FullDomain = $fullDomain
+                    AppName = $resourceNames.AppName
+                    ResourceGroup = $resourceNames.ResourceGroup
+                    FullDomain = $resourceNames.FullDomain
                     DeploymentSuccess = $deploymentSuccess
                     DomainConfigured = $domainConfigured
                 }
@@ -66,10 +84,7 @@ Describe "End-to-End Deployment Workflow Tests" {
                 )
                 
                 # Step 1: Generate resource names
-                $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
-                $appName = "$cleanSubdomain-$Environment"
-                $resourceGroup = "rg-$appName"
-                $fullDomain = "$Subdomain.$CustomDomain"
+                $resourceNames = Get-ResourceNames -Subdomain $Subdomain -Environment $Environment -CustomDomain $CustomDomain
                 
                 # Step 2: Create resource group
                 $resourceGroupCreated = $true
@@ -84,9 +99,9 @@ Describe "End-to-End Deployment Workflow Tests" {
                 }
                 
                 return @{
-                    AppName = $appName
-                    ResourceGroup = $resourceGroup
-                    FullDomain = $fullDomain
+                    AppName = $resourceNames.AppName
+                    ResourceGroup = $resourceNames.ResourceGroup
+                    FullDomain = $resourceNames.FullDomain
                     ResourceGroupCreated = $resourceGroupCreated
                     DeploymentSuccess = $deploymentSuccess
                     DomainConfigured = $domainConfigured

@@ -24,7 +24,7 @@ on:
 
 steps:
   - id: run_tests
-    uses: run-homelab-tests
+    uses: ./.github/actions/run-homelab-tests
     with:
       test_type: ${{ inputs.test_type || 'All' }}
       coverage: true
@@ -89,7 +89,7 @@ steps:
         
   - id: run_tests_again
     if: ${{ steps.run_tests.outputs.issues_fixed == true }}
-    uses: run-homelab-tests
+    uses: ./.github/actions/run-homelab-tests
     with:
       test_type: ${{ inputs.test_type || 'All' }}
       coverage: true

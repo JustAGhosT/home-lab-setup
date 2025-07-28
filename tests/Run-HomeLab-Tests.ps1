@@ -14,7 +14,14 @@ param(
 # Import required modules
 if (-not (Get-Module -Name Pester -ListAvailable)) {
     Write-Host "Installing Pester module..."
-    Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck
+    try {
+        Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck
+        Write-Host "Pester module installed successfully" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Failed to install Pester module: $_" -ForegroundColor Red
+        exit 1
+    }
 }
 
 Import-Module -Name Pester -MinimumVersion 5.0
@@ -65,12 +72,17 @@ $testResults = Invoke-Pester -Configuration $config
 
 # Generate HTML report if requested
 if ($GenerateReport) {
-    Write-Host "Generating HTML report..." -ForegroundColor Cyan
     
     # Check if we have the module for report generation
     if (-not (Get-Module -Name PScribo -ListAvailable)) {
         Write-Host "Installing PScribo module for report generation..."
-        Install-Module -Name PScribo -Force -SkipPublisherCheck
+        try {
+            Install-Module -Name PScribo -Force -SkipPublisherCheck -ErrorAction Stop
+        } catch {
+            Write-Error "Failed to install PScribo module: $_"
+            Write-Host "HTML report generation will be skipped" -ForegroundColor Yellow
+            return
+        }
     }
     
     Import-Module -Name PScribo
@@ -97,9 +109,9 @@ if ($GenerateReport) {
                 Paragraph "Code coverage analysis results:"
                 
                 Table -Name "Coverage Summary" -Hashtable @{
-                    "Files Analyzed" = $testResults.CodeCoverage.NumberOfCommandsAnalyzed
-                    "Commands Covered" = $testResults.CodeCoverage.NumberOfCommandsExecuted
-                    "Coverage %" = if ($testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
+                    "Files Analyzed" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
+                    "Commands Covered" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
+                    "Coverage %" = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
                         [math]::Round(($testResults.CodeCoverage.NumberOfCommandsExecuted / $testResults.CodeCoverage.NumberOfCommandsAnalyzed) * 100, 2) 
                     } else { 0 }
                 }

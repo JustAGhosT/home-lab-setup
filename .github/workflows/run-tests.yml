@@ -31,11 +31,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Setup PowerShell
-      uses: actions/setup-powershell@v1
-      with:
-        powershell-version: '7.2'
-    
+
     - name: Install required modules
       shell: pwsh
       run: |

@@ -1,0 +1,61 @@
+name: 'run-homelab-tests'
+description: 'Run tests for the HomeLab environment and report results'
+author: 'HomeLab Team'
+inputs:
+  test_type:
+    description: 'Type of tests to run (All, Unit, Integration, Workflow)'
+    required: false
+    default: 'All'
+  coverage:
+    description: 'Generate coverage report'
+    required: false
+    default: 'true'
+  generate_report:
+    description: 'Generate HTML test report'
+    required: false
+    default: 'true'
+  fix_issues:
+    description: 'Attempt to fix common issues automatically'
+    required: false
+    default: 'false'
+outputs:
+  success:
+    description: 'Whether all tests passed'
+  total_tests:
+    description: 'Total number of tests run'
+  passed_tests:
+    description: 'Number of tests that passed'
+  failed_tests:
+    description: 'Number of tests that failed'
+  skipped_tests:
+    description: 'Number of tests that were skipped'
+  pass_rate:
+    description: 'Percentage of tests that passed'
+  test_results:
+    description: 'Full test results output'
+  report_path:
+    description: 'Path to the generated HTML report'
+  failed_test_details:
+    description: 'Details about failed tests'
+  issues_fixed:
+    description: 'Whether any issues were automatically fixed'
+  fix_details:
+    description: 'Details about fixes that were applied'
+runs:
+  using: 'composite'
+  steps:
+    - name: Run HomeLab Tests
+      shell: pwsh
+      run: |
+        cd $env:GITHUB_WORKSPACE
+        ./Test-HomeLab.ps1 -TestType "${{ inputs.test_type }}" -OutputPath "./TestResults"
+        
+        # Set outputs based on test results
+        $success = $LASTEXITCODE -eq 0
+        echo "success=$success" >> $env:GITHUB_OUTPUT
+        echo "total_tests=0" >> $env:GITHUB_OUTPUT
+        echo "passed_tests=0" >> $env:GITHUB_OUTPUT
+        echo "failed_tests=0" >> $env:GITHUB_OUTPUT
+        echo "skipped_tests=0" >> $env:GITHUB_OUTPUT
+        echo "pass_rate=0" >> $env:GITHUB_OUTPUT
+        echo "issues_fixed=false" >> $env:GITHUB_OUTPUT

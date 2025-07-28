@@ -112,7 +112,7 @@ jobs:
               else
                 DEPLOYMENT_TYPE="static"
               fi
-            elif [[ -f "*.csproj" || -f "Program.cs" ]]; then
+            elif ls *.csproj 2>/dev/null || [[ -f "Program.cs" ]]; then
               DEPLOYMENT_TYPE="appservice"
             else
               DEPLOYMENT_TYPE="static"

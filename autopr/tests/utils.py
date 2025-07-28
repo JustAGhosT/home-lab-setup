@@ -1,10 +1,9 @@
-from typing import TypeVar, Type
+from typing import TypeVar, Type, Any
 import asyncio
 
-ActionT = TypeVar('ActionT')
 InputsT = TypeVar('InputsT')
 
-async def run_action_manually(action: Type[ActionT], inputs: InputsT):
+async def run_action_manually(action: Type[Any], inputs: InputsT) -> Any:
     """Utility function to run an action manually for testing."""
     action_instance = action()
-    return await action_instance.run(inputs)
+    return await action_instance.run(inputs)  # type: ignore[attr-defined]
