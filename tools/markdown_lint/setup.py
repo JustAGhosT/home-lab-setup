@@ -1,25 +1,17 @@
 #!/usr/bin/env python3
 """Setup script for the markdown-lint package."""
 
+import os
+
 from setuptools import find_packages, setup
 
 # Read the README file
-try:
-    with open("README.md", "r", encoding="utf-8") as f:
-        long_description = f.read()
-except FileNotFoundError:
-    long_description = (
-        "A markdown linter and fixer with support for common style issues."
-    )
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
 
 # Read requirements
-try:
-    with open("requirements.txt", "r", encoding="utf-8") as f:
-        requirements = [
-            line.strip() for line in f if line.strip() and not line.startswith("#")
-        ]
-except FileNotFoundError:
-    requirements = []
+with open("requirements.txt", "r", encoding="utf-8") as f:
+    requirements = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 setup(
     name="markdown-lint",
@@ -29,7 +21,7 @@ setup(
     long_description_content_type="text/markdown",
     author="VeritasVault Team",
     author_email="dev@veritasvault.net",
-    url="https://github.com/JustAGhosT/home-lab-setup",
+    url="https://github.com/yourusername/markdown-lint",
     packages=find_packages(),
     package_data={
         "markdown_lint": ["py.typed"],
@@ -57,7 +49,7 @@ setup(
     python_requires=">=3.8",
     keywords="markdown lint linter formatter style checker",
     project_urls={
-        "Bug Reports": "https://github.com/JustAGhosT/home-lab-setup/issues",
-        "Source": "https://github.com/JustAGhosT/home-lab-setup",
+        "Bug Reports": "https://github.com/yourusername/markdown-lint/issues",
+        "Source": "https://github.com/yourusername/markdown-lint",
     },
 )

@@ -1,5 +1,6 @@
 # Core dependencies
 click>=8.1.0,<9.0.0
+requests>=2.31.0,<3.0.0
 
 # Development dependencies
 black>=24.8.0,<25.0.0

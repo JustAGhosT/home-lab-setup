@@ -56,7 +56,8 @@ Options:
                              Minimum severity to report  [default: warning]
   --version                  Show the version and exit.
   --help                     Show this message and exit.
-```
+
+```text
 
 ## Configuration
 
@@ -72,13 +73,14 @@ Create a `.mdlintrc` file in your project root to configure the linter:
   "insert_final_newline": true,
   "check_common_mistakes": true
 }
-```
+
+```text
 
 ## Rules
 
-### MD001 - Heading levels should only increment by one level at a time
+### MD001 - Inconsistent line endings
 
-**Description**: Heading levels should only increment by one level at a time
+**Description**: Inconsistent line endings (CRLF vs LF)
 
 **Fixable**: Yes
 
@@ -178,12 +180,17 @@ Add this to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/yourusername/markdown-lint
+
+  - repo: <https://github.com/yourusername/markdown-lint>
+
     rev: v0.1.0
     hooks:
+
       - id: mdlint
+
         args: [--fix]
-```
+
+```text
 
 ## Development
 
@@ -201,7 +208,8 @@ repos:
 
 ```bash
 pytest
-```
+
+```text
 
 ### Linting
 
@@ -210,7 +218,8 @@ flake8 markdown_lint tests
 black markdown_lint tests
 isort markdown_lint tests
 mypy markdown_lint
-```
+
+```text
 
 ## License
 
