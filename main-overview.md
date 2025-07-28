@@ -8,7 +8,6 @@
 - Always provide a complete PLAN with REASONING based on evidence from code and logs before making changes.
 - Explain your OBSERVATIONS clearly, then provide REASONING to identify the exact issue. Add console logs when needed to gather more information.
 
-
 ## Core HomeLab Components
 
 ### Azure Infrastructure Management (Importance: 95)

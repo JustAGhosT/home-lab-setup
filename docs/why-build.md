@@ -3,7 +3,7 @@ layout: default
 title: Why Build an Azure HomeLab VPN
 ---
 
-# Why Build an Azure HomeLab VPN
+## Why Build an Azure HomeLab VPN
 
 This document explains the rationale, benefits, and use cases for implementing an Azure-based HomeLab VPN infrastructure as outlined in our architecture diagrams.
 

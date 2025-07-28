@@ -3,7 +3,7 @@ layout: default
 title: Network Diagrams
 ---
 
-# Network Diagrams
+## Network Diagrams
 
 This section contains various network diagrams that visualize different aspects of the Azure HomeLab VPN setup. These diagrams are designed to help you understand the architecture, traffic flow, security configurations, and other important aspects of the network.
 

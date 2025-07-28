@@ -37,7 +37,7 @@ This workflow runs the HomeLab tests and comments on the PR with the results.
 - Pull request: opened, synchronize
 - Manual workflow dispatch
 
-#### Inputs
+#### Workflow Inputs
 
 - `test_type` (string): Type of tests to run. Options: `Unit`, `Integration`, `Workflow`, `All`. Default: `All`.
 
@@ -101,4 +101,4 @@ asyncio.run(
 )
 ```
 
-3. Run the tests: `pytest autopr/tests/test_run_homelab_tests.py`
+1. Run the tests: `pytest autopr/tests/test_run_homelab_tests.py`

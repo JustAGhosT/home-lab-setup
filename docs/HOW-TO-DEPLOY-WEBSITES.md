@@ -182,19 +182,19 @@ See [GitHub Secrets Documentation](GITHUB-SECRETS.md) for details on how to set 
 
 ### Common Issues
 
-**"Resource already exists"**
+#### Resource already exists
 - Use a different resource name
 - Delete the existing resource first
 
-**"DNS not propagating"**
+#### DNS not propagating
 - Wait 24-48 hours for DNS propagation
 - Check DNS records with nslookup
 
-**"SSL certificate issues"**
+#### SSL certificate issues
 - Ensure DNS records are correct
 - Wait for automatic certificate provisioning
 
-**"GitHub Actions failing"**
+#### GitHub Actions failing
 - Verify all secrets are set correctly
 - Check Azure permissions
 

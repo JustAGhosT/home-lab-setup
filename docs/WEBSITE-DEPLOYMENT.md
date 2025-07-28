@@ -136,14 +136,14 @@ az ad sp create-for-rbac \
 ```powershell
 Deploy-Website -DeploymentType static -ResourceGroup "rg-portfolio" -AppName "portfolio-prod" -SubscriptionId "abc123" -CustomDomain "johndoe.com" -Subdomain "portfolio"
 ```
-Result: https://portfolio.johndoe.com
+Result: <https://portfolio.johndoe.com>
 
 **Deploy a Node.js API**:
 
 ```powershell
 Deploy-Website -DeploymentType appservice -ResourceGroup "rg-api" -AppName "backend-api" -SubscriptionId "abc123" -CustomDomain "mycompany.com" -Subdomain "api"
 ```
-Result: https://api.mycompany.com
+Result: <https://api.mycompany.com>
 
 ### GitHub Actions Deployment
 

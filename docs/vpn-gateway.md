@@ -9,7 +9,7 @@ This comprehensive guide covers advanced configuration options for Azure VPN Gat
   - [Azure AD Authentication](#azure-ad-authentication)
   - [RADIUS Authentication](#radius-authentication)
 - [Custom Client Configurations](#custom-client-configurations)
-  - [Split Tunneling](#split-tunneling)
+  - [Split Tunneling](#split-tunneling-configuration)
   - [Custom DNS Servers](#custom-dns-servers)
   - [Client Protocols](#client-protocols)
   - [Custom Routes](#custom-routes)
@@ -23,7 +23,7 @@ This comprehensive guide covers advanced configuration options for Azure VPN Gat
 
 Certificate authentication uses certificates to authenticate VPN clients. This method is widely compatible and doesn't require additional Azure services.
 
-#### Implementation in Bicep
+#### Certificate Bicep Template
 
 ```bicep
 param rootCertData string // Base64-encoded .cer public certificate data
@@ -144,7 +144,7 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
 
 RADIUS authentication allows integration with existing authentication systems like MFA servers, NPS (Network Policy Server), or third-party identity providers.
 
-#### Implementation in Bicep
+#### Bicep Template
 
 ```bicep
 param radiusServerAddress string
