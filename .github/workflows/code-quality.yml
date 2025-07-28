@@ -47,7 +47,7 @@ jobs:
               Write-Host "$severity $($issue.Severity): $($issue.Message)" -ForegroundColor $(if ($issue.Severity -eq 'Error') { 'Red' } else { 'Yellow' })
               Write-Host "   File: $($issue.ScriptName):$($issue.Line)" -ForegroundColor Gray
             }
-  
+
             # Fail if there are errors
             $errors = $issues | Where-Object { $_.Severity -eq 'Error' }
             if ($errors.Count -gt 0) {

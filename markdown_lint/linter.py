@@ -25,7 +25,7 @@ class MarkdownLinter:
     }
 
     # Common markdown patterns - Fixed ReDoS vulnerability
-    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>[^\r\n]*)$")
+    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>(?:[^\r\n])*)$")
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     HTML_COMMENT_START = re.compile(r"<!--")
     HTML_COMMENT_END = re.compile(r"-->")
@@ -75,12 +75,14 @@ class MarkdownLinter:
                 # Check for HTML comment start/end
                 if not in_html_comment and self.HTML_COMMENT_START.search(line):
                     in_html_comment = True
+                    # Check if comment ends on same line
                     if self.HTML_COMMENT_END.search(line):
-                        in_html_comment = False  # Single line comment
+                        in_html_comment = False
                     prev_line = line
                     continue
-                elif in_html_comment and self.HTML_COMMENT_END.search(line):
-                    in_html_comment = False
+                elif in_html_comment:
+                    if self.HTML_COMMENT_END.search(line):
+                        in_html_comment = False
                     prev_line = line
                     continue
 
@@ -327,25 +329,27 @@ class MarkdownLinter:
 
     def _apply_fixes(self, content: str, issues: List[LintIssue]) -> List[str]:
         """Apply all fixes to the content and return the fixed lines."""
-        lines = content.splitlines(keepends=True)
-
-        # Sort issues by line number (descending) to avoid offset issues
-        sorted_issues = sorted(
-            [i for i in issues if i.fixable and i.line > 0], key=lambda x: x.line, reverse=True
-        )
-
-        # Apply fixes from bottom to top
-        for issue in sorted_issues:
+        # Separate line-level and file-level fixes
+        line_fixes = [i for i in issues if i.fixable and i.line > 0]
+        file_fixes = [i for i in issues if i.fixable and i.line == 0]
+        
+        # Start with original content
+        current_content = content
+        
+        # Apply file-level fixes first (they work on entire content)
+        for issue in file_fixes:
+            if issue.fix:
+                current_content = issue.fix(current_content)
+        
+        # Convert to lines for line-level fixes
+        lines = current_content.splitlines(keepends=True)
+        
+        # Apply line-level fixes from bottom to top to avoid offset issues
+        sorted_line_fixes = sorted(line_fixes, key=lambda x: x.line, reverse=True)
+        for issue in sorted_line_fixes:
             if issue.fix and 0 < issue.line <= len(lines):
                 line_idx = issue.line - 1
                 lines[line_idx] = issue.fix(lines[line_idx])
-
-        # Handle file-level fixes
-        for issue in issues:
-            if issue.fix and issue.line == 0:
-                # Apply to the entire content
-                fixed_content = issue.fix("".join(lines))
-                lines = fixed_content.splitlines(keepends=True)
 
         return lines
 
