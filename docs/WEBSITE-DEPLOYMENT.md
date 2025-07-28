@@ -130,7 +130,7 @@ AZURE_CREDENTIALS          # Complete Azure credentials JSON (legacy)
 az ad sp create-for-rbac \
   --name "github-actions-deployment" \
   --role contributor \
-  --scopes /subscriptions/{subscription-id}
+  --scopes /subscriptions/{subscription-id}/resourceGroups/{rg-name}
 
 # Configure federated credentials (replace with your values)
 az ad app federated-credential create \

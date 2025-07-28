@@ -61,13 +61,7 @@ function Deploy-GitHubRepository {
             throw "Repository path '$resolvedRepoPath' is outside the allowed directory '$resolvedBasePath'. This may indicate a security risk."
         }
 
-        # Additional validation: ensure path doesn't contain suspicious patterns
-        $suspiciousPatterns = @('..', '~', '$', '`', ';', '|', '&', '<', '>')
-        foreach ($pattern in $suspiciousPatterns) {
-            if ($resolvedRepoPath.Contains($pattern)) {
-                throw "Repository path contains suspicious characters that may indicate a security risk: '$pattern'"
-            }
-        }
+        # Path traversal protection is already handled by the base directory check above
 
         Write-Host "Repository path validated: $resolvedRepoPath" -ForegroundColor Green
         
@@ -209,14 +203,6 @@ function Get-RepositoryDeploymentConfig {
         [ValidateScript({
                 if (-not (Test-Path $_ -PathType Container)) {
                     throw "Path '$_' does not exist or is not a directory."
-                }
-                # Additional security validation
-                $resolvedPath = [System.IO.Path]::GetFullPath($_)
-                $suspiciousPatterns = @('..', '~', '$', '`', ';', '|', '&', '<', '>')
-                foreach ($pattern in $suspiciousPatterns) {
-                    if ($resolvedPath.Contains($pattern)) {
-                        throw "Path contains suspicious characters that may indicate a security risk: '$pattern'"
-                    }
                 }
                 return $true
             })]

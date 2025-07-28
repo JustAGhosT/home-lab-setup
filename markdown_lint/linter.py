@@ -263,12 +263,14 @@ class MarkdownLinter:
         # Check for proper indentation (2 or 4 spaces)
         indent = len(line) - len(line.lstrip())
         if indent % 2 != 0 and indent > 0:
+            # Calculate nearest multiple of 2
+            correct_indent = ((indent + 1) // 2) * 2
             self._add_issue(
                 report,
                 line_num,
                 "List items should be indented with multiples of 2 spaces",
                 "MD007",
-                fix=lambda line: " " * (indent + 1) + line.lstrip(),
+                fix=lambda line: " " * correct_indent + line.lstrip(),
             )
 
     def _check_common_mistakes(
@@ -277,22 +279,37 @@ class MarkdownLinter:
         """Check for common markdown mistakes."""
         # Check for bare URLs and insecure HTTP - Combined security fix
         if "http://" in line or "https://" in line:
-            # Simple check for bare URLs (very basic, might have false positives)
-            words = re.split(r"[\s<>]", line)
-            for word in words:
-                if word.startswith("http://"):
+            # Check for URLs that are not part of markdown links
+            url_pattern = re.compile(r'(https?://[^\s<>"]+)')
+            link_pattern = re.compile(r'\[[^\]]*\]\([^\)]*\)')
+            
+            # Find all URLs in the line
+            for url_match in url_pattern.finditer(line):
+                url = url_match.group(1)
+                url_start = url_match.start()
+                
+                # Check if URL starts with http://
+                if url.startswith("http://"):
                     self._add_issue(
                         report,
                         line_num,
-                        f"Insecure HTTP URL found, use HTTPS instead: {word}",
+                        f"Insecure HTTP URL found, use HTTPS instead: {url}",
                         "SEC001",
                         severity=IssueSeverity.WARNING,
                     )
-                if (word.startswith("http://") or word.startswith("https://")) and "](" not in line:
+                
+                # Check if URL is part of a markdown link
+                is_in_link = False
+                for link_match in link_pattern.finditer(line):
+                    if link_match.start() <= url_start <= link_match.end():
+                        is_in_link = True
+                        break
+                
+                if not is_in_link:
                     self._add_issue(
                         report,
                         line_num,
-                        f"Bare URL used, consider using a link reference: {word}",
+                        f"Bare URL used, consider using a link reference: {url}",
                         "MD034",
                     )
 

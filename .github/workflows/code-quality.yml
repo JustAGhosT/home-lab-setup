@@ -166,9 +166,9 @@ jobs:
         run: |
           echo "Checking Node.js dependencies..."
           if [ -f "pnpm-lock.yaml" ]; then
-            pnpm audit --audit-level moderate || true
+            pnpm audit --audit-level moderate
           elif [ -f "package-lock.json" ]; then
-            npm audit --audit-level moderate || true
+            npm audit --audit-level moderate
           elif [ -f "package.json" ]; then
             echo "No lock file found, skipping audit"
           fi
