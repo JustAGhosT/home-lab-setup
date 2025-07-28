@@ -131,7 +131,7 @@ if ($GenerateReport) {
                 }
             }
         }
-    } | Export-Document -Path (Join-Path $PSScriptRoot "TestReport") -Format HTML
+    } | Export-Document -Path $PSScriptRoot -Format HTML -Options @{ 'FileName' = 'TestReport' }
     
     Write-Host "Report generated at: $(Join-Path $PSScriptRoot 'TestReport.html')" -ForegroundColor Green
 }
