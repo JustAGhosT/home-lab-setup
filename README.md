@@ -282,9 +282,9 @@ home-lab-setup/
 ├── .github/                         # GitHub Actions workflows
 │   ├── workflows/                   # CI/CD workflows
 │   └── actions/                     # Custom actions
-├── markdown_lint/                   # Markdown linting tools
-├── yaml_lint/                       # YAML linting tools
 └── tools/                           # Utility scripts
+    ├── markdown_lint/               # Markdown linting tools
+    └── yaml_lint/                   # YAML linting tools
 ```
 
 ## Troubleshooting
