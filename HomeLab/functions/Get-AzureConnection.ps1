@@ -9,6 +9,30 @@
     Date: March 10, 2025
 #>
 
+# Helper function to set subscription context with error handling
+function Set-SubscriptionContext {
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$CurrentContext
+    )
+
+    try {
+        Write-Log -Message "Setting subscription context to $SubscriptionId" -Level "Info"
+        $newContext = Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
+        Write-Log -Message "Successfully set subscription context to $SubscriptionId" -Level "Success"
+        return $newContext
+    }
+    catch {
+        Write-Log -Message "Failed to set subscription context to $SubscriptionId`: $($_.Exception.Message)" -Level "Error"
+        return $null
+    }
+}
+
 function Get-AzureConnection {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -31,12 +55,8 @@ function Get-AzureConnection {
         if ($context -and $context.Account) {
             # If SubscriptionId is provided, set the context to that subscription
             if ($SubscriptionId) {
-                try {
-                    Write-Log -Message "Setting subscription context to $SubscriptionId" -Level "Info"
-                    $context = Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
-                }
-                catch {
-                    Write-Log -Message "Failed to set subscription context: $_" -Level "Error"
+                $context = Set-SubscriptionContext -SubscriptionId $SubscriptionId -CurrentContext $context
+                if (-not $context) {
                     return $false
                 }
             }
@@ -65,12 +85,8 @@ function Get-AzureConnection {
                 if ($context) {
                     # If SubscriptionId is provided, set the context to that subscription
                     if ($SubscriptionId) {
-                        try {
-                            Write-Log -Message "Setting subscription context to $SubscriptionId" -Level "Info"
-                            $context = Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
-                        }
-                        catch {
-                            Write-Log -Message "Failed to set subscription context: $_" -Level "Error"
+                        $context = Set-SubscriptionContext -SubscriptionId $SubscriptionId -CurrentContext $context
+                        if (-not $context) {
                             return $false
                         }
                     }

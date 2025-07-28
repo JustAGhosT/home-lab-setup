@@ -88,9 +88,36 @@ function Get-DeploymentParameters {
         }
     } while (-not $isValidApp)
 
-    # Get location with default
-    $location = Read-Host "Enter location (default: westeurope)"
-    if ([string]::IsNullOrWhiteSpace($location)) { $location = "westeurope" }
+    # Get location with validation
+    $validLocations = @(
+        "eastus", "eastus2", "southcentralus", "westus2", "westus3", "australiaeast",
+        "southeastasia", "northeurope", "swedencentral", "uksouth", "westeurope",
+        "centralus", "southafricanorth", "centralindia", "eastasia", "japaneast",
+        "koreacentral", "canadacentral", "francecentral", "germanywestcentral",
+        "norwayeast", "switzerlandnorth", "uaenorth", "brazilsouth", "eastus2euap",
+        "qatarcentral", "centralusstage", "eastusstage", "eastus2stage", "northcentralusstage",
+        "southcentralusstage", "westusstage", "westus2stage", "asia", "asiapacific",
+        "australia", "brazil", "canada", "europe", "france", "germany", "global",
+        "india", "japan", "korea", "norway", "singapore", "southafrica",
+        "switzerland", "uae", "uk", "unitedstates", "unitedstateseuap"
+    )
+
+    do {
+        $location = Read-Host "Enter location (default: westeurope)"
+        if ([string]::IsNullOrWhiteSpace($location)) {
+            $location = "westeurope"
+            $isValidLocation = $true
+        }
+        else {
+            $isValidLocation = $validLocations -contains $location.ToLower()
+            if (-not $isValidLocation) {
+                Write-Host "Invalid Azure location: $location" -ForegroundColor Red
+                Write-Host "Valid locations include: eastus, westeurope, southeastasia, etc." -ForegroundColor Yellow
+                Write-Host "For a complete list, visit: https://azure.microsoft.com/en-us/global-infrastructure/locations/" -ForegroundColor Cyan
+                Write-Host "Please try again or press Enter for default (westeurope)." -ForegroundColor Yellow
+            }
+        }
+    } while (-not $isValidLocation)
     
     $params = @{
         DeploymentType = $DeploymentType
