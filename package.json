@@ -1,5 +1,12 @@
 {
-	"dependencies": {
-		"tailwindcss-animate": "^1.0.7"
-	}
+  "name": "home-lab-setup",
+  "version": "1.0.0",
+  "description": "Azure HomeLab Setup - PowerShell modules for Azure infrastructure deployment",
+  "private": true,
+  "scripts": {
+    "test": "echo \"No Node.js tests configured\""
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.37.0"
+  }
 }
