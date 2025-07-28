@@ -29,6 +29,7 @@ Import-Module -Name Pester -MinimumVersion 5.0
 # Configure test run
 $config = New-PesterConfiguration
 $config.Run.Path = $PSScriptRoot
+$config.Run.PassThru = $true  # Enable result object return
 $config.TestResult.Enabled = $true
 $config.TestResult.OutputPath = Join-Path $PSScriptRoot "TestResults.xml"
 $config.Output.Verbosity = "Detailed"
@@ -78,7 +79,8 @@ if ($GenerateReport) {
         Write-Host "Installing PScribo module for report generation..."
         try {
             Install-Module -Name PScribo -Force -SkipPublisherCheck -ErrorAction Stop
-        } catch {
+        }
+        catch {
             Write-Error "Failed to install PScribo module: $_"
             Write-Host "HTML report generation will be skipped" -ForegroundColor Yellow
             return
@@ -97,10 +99,10 @@ if ($GenerateReport) {
             
             Table -Name "Test Results Summary" -Hashtable @{
                 "Total Tests" = $testResults.TotalCount
-                "Passed" = $testResults.PassedCount
-                "Failed" = $testResults.FailedCount
-                "Skipped" = $testResults.SkippedCount
-                "Pass Rate" = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
+                "Passed"      = $testResults.PassedCount
+                "Failed"      = $testResults.FailedCount
+                "Skipped"     = $testResults.SkippedCount
+                "Pass Rate"   = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
             }
         }
         
@@ -109,11 +111,12 @@ if ($GenerateReport) {
                 Paragraph "Code coverage analysis results:"
                 
                 Table -Name "Coverage Summary" -Hashtable @{
-                    "Files Analyzed" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
+                    "Files Analyzed"   = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
                     "Commands Covered" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
-                    "Coverage %" = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
+                    "Coverage %"       = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
                         [math]::Round(($testResults.CodeCoverage.NumberOfCommandsExecuted / $testResults.CodeCoverage.NumberOfCommandsAnalyzed) * 100, 2) 
-                    } else { 0 }
+                    }
+                    else { 0 }
                 }
             }
         }
@@ -146,7 +149,8 @@ if ($testResults.FailedCount -gt 0) {
         Write-Host "  - $($_.Name): $($_.ErrorRecord)" -ForegroundColor Red
     }
     exit 1
-} else {
+}
+else {
     Write-Host "`nAll tests passed!" -ForegroundColor Green
     exit 0
 }

@@ -1,25 +1,35 @@
-# Helper function for resource naming
-function Get-ResourceNames {
-    param (
-        [string]$Subdomain,
-        [string]$Environment,
-        [string]$CustomDomain
-    )
-    
-    $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
-    $appName = "$cleanSubdomain-$Environment"
-    $resourceGroup = "rg-$appName"
-    $fullDomain = "$Subdomain.$CustomDomain"
-    
-    return @{
-        CleanSubdomain = $cleanSubdomain
-        AppName = $appName
-        ResourceGroup = $resourceGroup
-        FullDomain = $fullDomain
-    }
+# Import the core modules
+$modulePath = Join-Path $PSScriptRoot "..\HomeLab\modules"
+try {
+    # Import required modules
+    Import-Module "$modulePath\HomeLab.Core" -Force -ErrorAction Stop
+    Import-Module "$modulePath\HomeLab.Azure" -Force -ErrorAction Stop
+    Import-Module "$modulePath\HomeLab.Web" -Force -ErrorAction Stop
+} catch {
+    Write-Warning "Failed to import one or more required modules: $_"
 }
 
 Describe "End-to-End Deployment Workflow Tests" {
+    # Helper function for resource naming
+    function global:Get-ResourceNames {
+        param (
+            [string]$Subdomain,
+            [string]$Environment,
+            [string]$CustomDomain
+        )
+        
+        $cleanSubdomain = ($Subdomain -replace '[^a-zA-Z0-9]', '').ToLower()
+        $appName = "$cleanSubdomain-$Environment"
+        $resourceGroup = "rg-$appName"
+        $fullDomain = "$Subdomain.$CustomDomain"
+        
+        return @{
+            CleanSubdomain = $cleanSubdomain
+            AppName        = $appName
+            ResourceGroup  = $resourceGroup
+            FullDomain     = $fullDomain
+        }
+    }
     Context "Static Website Deployment Flow" {
         BeforeAll {
             # Mock functions to simulate the deployment workflow
@@ -44,11 +54,11 @@ Describe "End-to-End Deployment Workflow Tests" {
                 }
                 
                 return @{
-                    AppName = $resourceNames.AppName
-                    ResourceGroup = $resourceNames.ResourceGroup
-                    FullDomain = $resourceNames.FullDomain
+                    AppName           = $resourceNames.AppName
+                    ResourceGroup     = $resourceNames.ResourceGroup
+                    FullDomain        = $resourceNames.FullDomain
                     DeploymentSuccess = $deploymentSuccess
-                    DomainConfigured = $domainConfigured
+                    DomainConfigured  = $domainConfigured
                 }
             }
         }
@@ -99,12 +109,12 @@ Describe "End-to-End Deployment Workflow Tests" {
                 }
                 
                 return @{
-                    AppName = $resourceNames.AppName
-                    ResourceGroup = $resourceNames.ResourceGroup
-                    FullDomain = $resourceNames.FullDomain
+                    AppName              = $resourceNames.AppName
+                    ResourceGroup        = $resourceNames.ResourceGroup
+                    FullDomain           = $resourceNames.FullDomain
                     ResourceGroupCreated = $resourceGroupCreated
-                    DeploymentSuccess = $deploymentSuccess
-                    DomainConfigured = $domainConfigured
+                    DeploymentSuccess    = $deploymentSuccess
+                    DomainConfigured     = $domainConfigured
                 }
             }
         }

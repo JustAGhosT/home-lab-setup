@@ -74,4 +74,45 @@ TestResults/
 TestReport.html
 TestResults.xml
 
+# Azure credentials and secrets
+.azure/
+*.publishsettings
+*.azurepubxml
+
+# Certificates and keys
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
+*.pem
+certificates/
+certs/
+
+# Configuration files with sensitive data
+*.config.json
+appsettings.json
+appsettings.*.json
+
+# HomeLab specific
+HomeLab/config/
+*.homelab.config
+deployment-logs/
+azure-resources.json
+
+# Terraform (if used)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# ARM Templates output
+*.parameters.json
+deployment-output.json
+
+# Local development
+local/
+dev/
+sandbox/
+
 # Ignore any other files you don't want to track

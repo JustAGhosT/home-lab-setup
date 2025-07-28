@@ -58,23 +58,26 @@ function Add-DNSRecord {
     # Import required modules
     try {
         Import-Module HomeLab.Core -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "Failed to import HomeLab.Core module: $_"
         return
     }
     
     try {
         Import-Module HomeLab.Azure -ErrorAction Stop
-    } catch {
-        Write-Error "Failed to import HomeLab.Azure module: $_"
+    }
+    catch {
+        Write-Error "Failed to import HomeLab.Azure module - $($_.Exception.Message)"
         return
     }
     
     # Set subscription context
     try {
         Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
-    } catch {
-        Write-Error "Failed to set Azure subscription context to $SubscriptionId: $_"
+    }
+    catch {
+        Write-Error "Failed to set Azure subscription context to $SubscriptionId - $($_.Exception.Message)"
         return
     }
     
@@ -103,7 +106,8 @@ function Add-DNSRecord {
             try {
                 $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType A -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
                 Add-AzDnsRecordConfig -RecordSet $recordSet -Ipv4Address $Value
-            } catch {
+            }
+            catch {
                 Write-Error "Failed to create A record set: $_"
                 return
             }
@@ -112,7 +116,8 @@ function Add-DNSRecord {
             try {
                 $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType CNAME -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
                 Add-AzDnsRecordConfig -RecordSet $recordSet -Cname $Value
-            } catch {
+            }
+            catch {
                 Write-Error "Failed to create CNAME record set: $_"
                 return
             }
@@ -131,7 +136,8 @@ function Add-DNSRecord {
             try {
                 $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType MX -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
                 Add-AzDnsRecordConfig -RecordSet $recordSet -Exchange $exchange -Preference $priority
-            } catch {
+            }
+            catch {
                 Write-Error "Failed to create MX record set: $_"
                 return
             }
@@ -140,7 +146,8 @@ function Add-DNSRecord {
             try {
                 $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType TXT -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop
                 Add-AzDnsRecordConfig -RecordSet $recordSet -Value $Value
-            } catch {
+            }
+            catch {
                 Write-Error "Failed to create TXT record set: $_"
                 return
             }
@@ -156,7 +163,8 @@ function Add-DNSRecord {
     # Save the record set
     try {
         Set-AzDnsRecordSet -RecordSet $recordSet -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "Failed to save DNS record set: $_"
         return $null
     }

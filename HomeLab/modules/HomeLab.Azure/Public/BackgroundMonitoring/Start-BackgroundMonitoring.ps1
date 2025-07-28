@@ -37,35 +37,35 @@
 function Start-BackgroundMonitoring {
     [CmdletBinding(DefaultParameterSetName = "StandardMonitoring")]
     param(
-        [Parameter(Mandatory=$true, ParameterSetName="StandardMonitoring")]
-        [Parameter(Mandatory=$false, ParameterSetName="CustomMonitoring")]
+        [Parameter(Mandatory = $true, ParameterSetName = "StandardMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "CustomMonitoring")]
         [string]$ResourceGroup,
         
-        [Parameter(Mandatory=$true, ParameterSetName="StandardMonitoring")]
-        [Parameter(Mandatory=$false, ParameterSetName="CustomMonitoring")]
+        [Parameter(Mandatory = $true, ParameterSetName = "StandardMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "CustomMonitoring")]
         [ValidateSet("vnet-gateway", "nat-gateway", "vnet", "deployment")]
         [string]$ResourceType,
         
-        [Parameter(Mandatory=$true, ParameterSetName="StandardMonitoring")]
-        [Parameter(Mandatory=$false, ParameterSetName="CustomMonitoring")]
+        [Parameter(Mandatory = $true, ParameterSetName = "StandardMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "CustomMonitoring")]
         [string]$ResourceName,
         
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$DeploymentName,
         
-        [Parameter(Mandatory=$false, ParameterSetName="StandardMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "StandardMonitoring")]
         [string]$DesiredState = "Succeeded",
         
-        [Parameter(Mandatory=$false, ParameterSetName="StandardMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "StandardMonitoring")]
         [int]$PollIntervalSeconds = 30,
         
-        [Parameter(Mandatory=$false, ParameterSetName="StandardMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "StandardMonitoring")]
         [int]$TimeoutMinutes = 60,
         
-        [Parameter(Mandatory=$true, ParameterSetName="CustomMonitoring")]
+        [Parameter(Mandatory = $true, ParameterSetName = "CustomMonitoring")]
         [scriptblock]$CustomScriptBlock,
         
-        [Parameter(Mandatory=$false, ParameterSetName="CustomMonitoring")]
+        [Parameter(Mandatory = $false, ParameterSetName = "CustomMonitoring")]
         [hashtable]$CustomParameters = @{}
     )
     
@@ -171,14 +171,14 @@ function Start-BackgroundMonitoring {
                     
                     # Check if deployment has completed or failed
                     if ($currentStatus -eq $DesiredState) {
-                        "$(Get-Date) - ✓ Deployment completed successfully after $formattedTime" | Out-File -FilePath $logFile -Append
+                        "$(Get-Date) - SUCCESS: Deployment completed successfully after $formattedTime" | Out-File -FilePath $logFile -Append
                         $completed = $true
                         return @{
-                            Status = "Succeeded"
-                            ElapsedTime = $formattedTime
-                            LogFile = $logFile
-                            ResourceName = $ResourceName
-                            ResourceType = $displayType
+                            Status        = "Succeeded"
+                            ElapsedTime   = $formattedTime
+                            LogFile       = $logFile
+                            ResourceName  = $ResourceName
+                            ResourceType  = $displayType
                             ResourceGroup = $ResourceGroup
                         }
                     }
@@ -186,11 +186,11 @@ function Start-BackgroundMonitoring {
                         "$(Get-Date) - ✗ Deployment failed after $formattedTime" | Out-File -FilePath $logFile -Append
                         $completed = $true
                         return @{
-                            Status = "Failed"
-                            ElapsedTime = $formattedTime
-                            LogFile = $logFile
-                            ResourceName = $ResourceName
-                            ResourceType = $displayType
+                            Status        = "Failed"
+                            ElapsedTime   = $formattedTime
+                            LogFile       = $logFile
+                            ResourceName  = $ResourceName
+                            ResourceType  = $displayType
                             ResourceGroup = $ResourceGroup
                         }
                     }
@@ -202,22 +202,22 @@ function Start-BackgroundMonitoring {
                 # Timeout reached
                 "$(Get-Date) - ⚠ Monitoring timeout reached after $TimeoutMinutes minutes" | Out-File -FilePath $logFile -Append
                 return @{
-                    Status = "Timeout"
-                    ElapsedTime = $formattedTime
-                    LogFile = $logFile
-                    ResourceName = $ResourceName
-                    ResourceType = $displayType
+                    Status        = "Timeout"
+                    ElapsedTime   = $formattedTime
+                    LogFile       = $logFile
+                    ResourceName  = $ResourceName
+                    ResourceType  = $displayType
                     ResourceGroup = $ResourceGroup
                 }
             }
             catch {
                 "$(Get-Date) - Error monitoring deployment: $_" | Out-File -FilePath $logFile -Append
                 return @{
-                    Status = "Error"
-                    ErrorMessage = $_
-                    LogFile = $logFile
-                    ResourceName = $ResourceName
-                    ResourceType = $displayType
+                    Status        = "Error"
+                    ErrorMessage  = $_
+                    LogFile       = $logFile
+                    ResourceName  = $ResourceName
+                    ResourceType  = $displayType
                     ResourceGroup = $ResourceGroup
                 }
             }
@@ -231,15 +231,15 @@ function Start-BackgroundMonitoring {
     
     # Create job info object with enhanced metadata
     $jobInfo = [PSCustomObject]@{
-        JobId = $jobId
-        Job = $job
-        StartTime = [DateTime]::Now
-        Command = $scriptBlock.ToString()
+        JobId             = $jobId
+        Job               = $job
+        StartTime         = [DateTime]::Now
+        Command           = $scriptBlock.ToString()
         ResourceGroupName = $ResourceGroup
-        ResourceType = $displayResourceType
-        ResourceName = $ResourceName
-        DeploymentName = $DeploymentName
-        Parameters = if ($PSCmdlet.ParameterSetName -eq "CustomMonitoring") { $CustomParameters } else { @{} }
+        ResourceType      = $displayResourceType
+        ResourceName      = $ResourceName
+        DeploymentName    = $DeploymentName
+        Parameters        = if ($PSCmdlet.ParameterSetName -eq "CustomMonitoring") { $CustomParameters } else { @{} }
     }
     
     # Save job info

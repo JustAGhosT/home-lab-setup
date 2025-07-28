@@ -32,7 +32,12 @@ function Test-ResourceGroup {
         }
     }
     catch {
-        Write-Log -Message "Error testing resource group: $_" -Level Error
+        if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
+            Write-Log -Message "Error testing resource group: $_" -Level Error
+        }
+        else {
+            Write-Host "Error testing resource group: $_" -ForegroundColor Red
+        }
         return $false
     }
 }

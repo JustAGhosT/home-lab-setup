@@ -10,7 +10,7 @@ Describe "Workflow Input Validation Tests" {
                 )
                 
                 # Clean subdomain (remove non-alphanumeric chars)
-                $cleanSubdomain = $Subdomain -replace '[^a-zA-Z0-9]', '' -replace '[A-Z]', { $_.Value.ToLower() }
+                $cleanSubdomain = ($Subdomain -replace '[^a-zA-Z0-9]', '').ToLower()
                 
                 # Generate names
                 $appName = "$cleanSubdomain-$Environment"
@@ -18,9 +18,9 @@ Describe "Workflow Input Validation Tests" {
                 $fullDomain = "$Subdomain.$CustomDomain"
                 
                 return @{
-                    AppName = $appName
+                    AppName       = $appName
                     ResourceGroup = $resourceGroup
-                    FullDomain = $fullDomain
+                    FullDomain    = $fullDomain
                 }
             }
         }

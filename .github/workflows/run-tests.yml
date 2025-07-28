@@ -2,21 +2,21 @@ name: HomeLab Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
+      - "**.md"
+      - "docs/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
+      - "**.md"
+      - "docs/**"
   workflow_dispatch:
     inputs:
       test_type:
-        description: 'Type of tests to run'
+        description: "Type of tests to run"
         required: true
-        default: 'All'
+        default: "All"
         type: choice
         options:
           - All
@@ -28,43 +28,45 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install required modules
-      shell: pwsh
-      run: |
-        Install-Module -Name Pester -Force -SkipPublisherCheck
-        Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
-        Install-Module -Name Az.Resources -Force -SkipPublisherCheck
-        Install-Module -Name Az.Network -Force -SkipPublisherCheck
-        Install-Module -Name Az.Websites -Force -SkipPublisherCheck
-        Install-Module -Name Az.Dns -Force -SkipPublisherCheck
-    
-    - name: Run tests
-      shell: pwsh
-      run: |
-        $testType = '${{ github.event.inputs.test_type }}'
-        if ([string]::IsNullOrEmpty($testType)) {
-          $testType = 'All'
-        }
-        
-        Write-Host "Running $testType tests..."
-        cd tests
-        ./Run-HomeLab-Tests.ps1 -TestType $testType -GenerateReport
-      
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: |
-          tests/TestResults.xml
-          tests/TestReport.html
-    
-    - name: Publish test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
-      with:
-        files: tests/TestResults.xml
+      - name: Install required modules
+        shell: pwsh
+        run: |
+          Write-Host "Installing PowerShell modules..."
+          Install-Module -Name Pester -Force -SkipPublisherCheck
+          Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
+          Install-Module -Name Az.Resources -Force -SkipPublisherCheck
+          Install-Module -Name Az.Network -Force -SkipPublisherCheck
+          Install-Module -Name Az.Websites -Force -SkipPublisherCheck
+          Install-Module -Name Az.Dns -Force -SkipPublisherCheck
+          Install-Module -Name PowerShell-Yaml -Force -SkipPublisherCheck
+          Write-Host "Module installation completed."
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $testType = '${{ github.event.inputs.test_type }}'
+          if ([string]::IsNullOrEmpty($testType)) {
+            $testType = 'All'
+          }
+
+          Write-Host "Running $testType tests..."
+          cd tests
+          ./Run-HomeLab-Tests.ps1 -TestType $testType -GenerateReport
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            tests/TestResults.xml
+            tests/TestReport.html
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: tests/TestResults.xml

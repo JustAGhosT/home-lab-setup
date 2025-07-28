@@ -19,13 +19,13 @@
 function Set-VpnGatewayState {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ResourceGroup,
         
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$GatewayName,
         
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("Enable", "Disable")]
         [string]$Action
     )
@@ -35,7 +35,12 @@ function Set-VpnGatewayState {
         $vpnExists = az network vnet-gateway show --resource-group $ResourceGroup --name $GatewayName --query "name" -o tsv 2>$null
         
         if (-not $vpnExists -or $LASTEXITCODE -ne 0) {
-            Write-ColorOutput "VPN Gateway '$GatewayName' does not exist in resource group '$ResourceGroup'." -ForegroundColor Red
+            if (Get-Command Write-ColorOutput -ErrorAction SilentlyContinue) {
+                Write-ColorOutput "VPN Gateway '$GatewayName' does not exist in resource group '$ResourceGroup'." -ForegroundColor Red
+            }
+            else {
+                Write-Host "VPN Gateway '$GatewayName' does not exist in resource group '$ResourceGroup'." -ForegroundColor Red
+            }
             return $false
         }
         
@@ -73,7 +78,12 @@ function Set-VpnGatewayState {
         }
     }
     catch {
-        Write-ColorOutput "Error changing VPN Gateway state: $_" -ForegroundColor Red
+        if (Get-Command Write-ColorOutput -ErrorAction SilentlyContinue) {
+            Write-ColorOutput "Error changing VPN Gateway state: $_" -ForegroundColor Red
+        }
+        else {
+            Write-Host "Error changing VPN Gateway state: $_" -ForegroundColor Red
+        }
         return $false
     }
 }

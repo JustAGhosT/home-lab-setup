@@ -58,7 +58,7 @@ if (Test-Path -Path $privatePath) {
         }
     }
     
-    Write-Host "  ✓ Loaded $privateCount private functions" -ForegroundColor Green
+    Write-Host "  SUCCESS: Loaded $privateCount private functions" -ForegroundColor Green
 }
 else {
     Write-Warning "Private directory not found: $privatePath"
@@ -85,7 +85,7 @@ if (Test-Path -Path $publicPath) {
         }
     }
     
-    Write-Host "  ✓ Loaded $publicCount public functions" -ForegroundColor Green
+    Write-Host "  SUCCESS: Loaded $publicCount public functions" -ForegroundColor Green
 }
 else {
     Write-Warning "Public directory not found: $publicPath"

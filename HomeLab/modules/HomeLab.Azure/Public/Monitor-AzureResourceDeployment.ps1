@@ -25,23 +25,23 @@
 function Monitor-AzureResourceDeployment {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ResourceGroup,
         
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet("vnet-gateway", "nat-gateway", "vnet")]
         [string]$ResourceType,
         
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ResourceName,
         
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$DesiredState = "Succeeded",
         
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [int]$PollIntervalSeconds = 30,
         
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [int]$TimeoutMinutes = 60
     )
     
@@ -106,12 +106,12 @@ function Monitor-AzureResourceDeployment {
             # Check if deployment has completed or failed
             if ($currentStatus -eq $DesiredState) {
                 Write-Host ""  # Add a newline
-                Write-ColorOutput "✓ Deployment of $ResourceType '$ResourceName' completed successfully after $formattedTime" -ForegroundColor Green
+                Write-ColorOutput "SUCCESS: Deployment of $ResourceType '$ResourceName' completed successfully after $formattedTime" -ForegroundColor Green
                 return $true
             }
             elseif ($currentStatus -eq "Failed") {
                 Write-Host ""  # Add a newline
-                Write-ColorOutput "✗ Deployment of $ResourceType '$ResourceName' failed after $formattedTime" -ForegroundColor Red
+                Write-ColorOutput "ERROR: Deployment of $ResourceType '$ResourceName' failed after $formattedTime" -ForegroundColor Red
                 return $false
             }
             
@@ -126,7 +126,7 @@ function Monitor-AzureResourceDeployment {
     }
     catch {
         Write-Host ""  # Add a newline
-        Write-ColorOutput "Error monitoring deployment: $_" -ForegroundColor Red
+        Write-ColorOutput "Error monitoring deployment: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }

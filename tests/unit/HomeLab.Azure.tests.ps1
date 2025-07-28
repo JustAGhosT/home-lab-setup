@@ -2,28 +2,33 @@
 
 Describe "HomeLab.Azure Module Tests" {
     BeforeAll {
+        # Import required dependencies first
+        Import-Module "$PSScriptRoot\..\..\HomeLab\modules\HomeLab.Logging" -Force -ErrorAction SilentlyContinue
+        Import-Module "$PSScriptRoot\..\..\HomeLab\modules\HomeLab.Core" -Force -ErrorAction SilentlyContinue
+
         # Import the actual HomeLab.Azure module
         Import-Module "$PSScriptRoot\..\..\HomeLab\modules\HomeLab.Azure" -Force
-        
+
         # Import the mock module for Azure cmdlets
         $mockPath = "$PSScriptRoot\HomeLab.Azure.Mock.ps1"
         if (Test-Path $mockPath) {
             . $mockPath
-        } else {
+        }
+        else {
             Write-Warning "Mock module not found at path: $mockPath"
         }
     }
 
     Context "Azure Resource Deployment" {
         It "Should deploy infrastructure successfully" {
-            $result = Deploy-Infrastructure -ResourceGroupName "test-rg" -Location "eastus"
+            $result = Deploy-Infrastructure -ResourceGroup "test-rg"
             $result | Should -Not -BeNullOrEmpty
         }
     }
 
     Context "VPN Gateway Management" {
         It "Should set VPN Gateway state successfully" {
-            $result = Set-VpnGatewayState -State "Enabled" -ResourceGroupName "test-rg" -VpnGatewayName "test-vpn"
+            $result = Set-VpnGatewayState -Action "Enable" -ResourceGroup "test-rg" -GatewayName "test-vpn"
             $result | Should -Not -BeNullOrEmpty
         }
         
