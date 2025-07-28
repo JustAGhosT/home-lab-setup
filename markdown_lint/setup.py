@@ -21,7 +21,7 @@ setup(
     long_description_content_type="text/markdown",
     author="VeritasVault Team",
     author_email="dev@veritasvault.net",
-    url="https://github.com/yourusername/markdown-lint",
+    url="https://github.com/JustAGhosT/home-lab-setup",
     packages=find_packages(),
     package_data={
         "markdown_lint": ["py.typed"],
@@ -49,7 +49,7 @@ setup(
     python_requires=">=3.8",
     keywords="markdown lint linter formatter style checker",
     project_urls={
-        "Bug Reports": "https://github.com/yourusername/markdown-lint/issues",
-        "Source": "https://github.com/yourusername/markdown-lint",
+        "Bug Reports": "https://github.com/JustAGhosT/home-lab-setup/issues",
+        "Source": "https://github.com/JustAGhosT/home-lab-setup",
     },
 )

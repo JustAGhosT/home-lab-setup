@@ -1,6 +1,7 @@
 """Core markdown linter implementation."""
 
 import re
+import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Pattern, Set, Tuple, Union
 
@@ -26,7 +27,8 @@ class MarkdownLinter:
     # Common markdown patterns - Fixed ReDoS vulnerability
     HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>[^\r\n]*)$")
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
-    HTML_COMMENT_PATTERN = re.compile(r"^<!--.*?-->\s*$")
+    HTML_COMMENT_START = re.compile(r"<!--")
+    HTML_COMMENT_END = re.compile(r"-->")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
 
     def __init__(self, config: Optional[dict] = None):
@@ -43,35 +45,48 @@ class MarkdownLinter:
         try:
             # Read file content
             content = file_path.read_text(encoding="utf-8")
-            lines = content.splitlines(keepends=False)
+            lines = content.splitlines(keepends=True)
 
             # Initialize state
             in_code_block = False
             in_html_comment = False
-            in_list = False
-            list_indent = 0
             prev_line = ""
+            blank_line_count = 0
 
             # Process each line
             for i, line in enumerate(lines, 1):
-                # Skip empty lines
+                # Handle empty lines and check for multiple blank lines
                 if not line.strip():
+                    blank_line_count += 1
+                    if not self.config["allow_multiple_blank_lines"] and blank_line_count > 1:
+                        self._add_issue(
+                            report, i, "Multiple consecutive blank lines", "MD012"
+                        )
                     prev_line = line
                     continue
+                else:
+                    blank_line_count = 0
 
                 # Check for code blocks
                 if self.CODE_BLOCK_PATTERN.match(line):
                     in_code_block = not in_code_block
                     continue
 
-                # Skip code blocks and HTML comments
-                if in_code_block or in_html_comment:
+                # Check for HTML comment start/end
+                if not in_html_comment and self.HTML_COMMENT_START.search(line):
+                    in_html_comment = True
+                    if self.HTML_COMMENT_END.search(line):
+                        in_html_comment = False  # Single line comment
+                    prev_line = line
+                    continue
+                elif in_html_comment and self.HTML_COMMENT_END.search(line):
+                    in_html_comment = False
                     prev_line = line
                     continue
 
-                # Check for HTML comments
-                if self.HTML_COMMENT_PATTERN.match(line):
-                    in_html_comment = False  # Single line comment
+                # Skip code blocks and HTML comments
+                if in_code_block or in_html_comment:
+                    prev_line = line
                     continue
 
                 # Check line length
@@ -80,7 +95,7 @@ class MarkdownLinter:
                 # Check for trailing whitespace
                 if self.config["trim_trailing_whitespace"] and line.rstrip() != line:
                     self._add_issue(
-                        report, i, "Trim trailing whitespace", "MD009", fix=lambda l: l.rstrip()
+                        report, i, "Trim trailing whitespace", "MD009", fix=lambda line: line.rstrip()
                     )
 
                 # Check for consistent line endings
@@ -90,7 +105,7 @@ class MarkdownLinter:
                         i,
                         "Inconsistent line endings (CRLF)",
                         "MD001",
-                        fix=lambda l: l.replace("\r\n", "\n"),
+                        fix=lambda line: line.replace("\r\n", "\n"),
                     )
 
                 # Check headings
@@ -164,7 +179,7 @@ class MarkdownLinter:
 
         # Auto-fix text paragraphs and list items
         if self._can_wrap_text(stripped):
-            return lambda l: self._wrap_text_line(l, max_length)
+            return lambda line: self._wrap_text_line(line, max_length)
 
         return None
 
@@ -212,9 +227,9 @@ class MarkdownLinter:
             self._add_issue(
                 report,
                 line_num,
-                f"Missing space after heading marker",
+                "Missing space after heading marker",
                 "MD018",
-                fix=lambda l: f"{'#' * level} {l.lstrip('#').lstrip()}",
+                fix=lambda line: f"{'#' * level} {line.lstrip('#').lstrip()}",
             )
 
         # Check for trailing hashes
@@ -224,7 +239,7 @@ class MarkdownLinter:
                 line_num,
                 "Remove trailing hash characters from heading",
                 "MD026",
-                fix=lambda l: l.split(" #")[0].rstrip(),
+                fix=lambda line: line.split(" #")[0].rstrip(),
             )
 
         # Check for proper capitalization (first word only)
@@ -234,8 +249,8 @@ class MarkdownLinter:
                 line_num,
                 "First word in heading should be capitalized",
                 "MD002",
-                fix=lambda l: re.sub(
-                    r"^(#+\s*)([a-z])", lambda m: m.group(1) + m.group(2).upper(), l
+                fix=lambda line: re.sub(
+                    r"^(#+\s*)([a-z])", lambda m: m.group(1) + m.group(2).upper(), line
                 ),
             )
 
@@ -251,7 +266,7 @@ class MarkdownLinter:
                 line_num,
                 "List items should be indented with multiples of 2 spaces",
                 "MD007",
-                fix=lambda l: " " * (indent + 1) + l.lstrip(),
+                fix=lambda line: " " * (indent + 1) + line.lstrip(),
             )
 
     def _check_common_mistakes(
@@ -280,13 +295,13 @@ class MarkdownLinter:
                     )
 
         # Check for multiple spaces after list markers
-        if re.match(r"^\s*[*+-]\s{2,}\S", line):
+        if re.match(r"^\s{0,20}[*+-]\s{2,10}\S", line):
             self._add_issue(
                 report,
                 line_num,
                 "Use a single space after list markers",
                 "MD030",
-                fix=lambda l: re.sub(r"^([*+-])\s+", r"\1 ", l),
+                fix=lambda line: re.sub(r"^([*+-])\s{1,10}", r"\1 ", line),
             )
 
     def _add_issue(

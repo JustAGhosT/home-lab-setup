@@ -95,7 +95,6 @@ on:
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -484,7 +483,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to ${{ matrix.environment }}
-        uses: ./.github/workflows/deploy-azure.yml
+        uses: ./.github/workflows/deploy-azure.yml@main
         with:
           deployment_type: ${{ github.event.inputs.deployment_type }}
           environment: ${{ matrix.environment }}

@@ -46,11 +46,29 @@ on:
         required: false
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      deployment_type:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      subdomain:
+        required: true
+        type: string
+      custom_domain:
+        required: false
+        type: string
+        default: 'liquidmesh.ai'
+      azure_location:
+        required: true
+        type: string
+        default: 'eastus'
 
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
