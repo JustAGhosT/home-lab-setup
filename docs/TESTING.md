@@ -89,15 +89,15 @@ tests/
 ### Unit Test Example
 
 ```powershell
-Describe "Get-HomeLab-Configuration" {
+Describe "Get-HomeLabConfiguration" {
     Context "When configuration file exists" {
         It "Should return valid configuration object" {
             # Arrange
             Mock Test-Path { $true }
             Mock Get-Content { '{"environment":"dev"}' }
-            
+
             # Act
-            $result = Get-HomeLab-Configuration
+            $result = Get-HomeLabConfiguration
             
             # Assert
             $result.environment | Should -Be "dev"

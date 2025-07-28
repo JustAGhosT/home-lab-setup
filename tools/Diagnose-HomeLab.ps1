@@ -37,7 +37,7 @@ function Write-DiagLog {
             [Console]::WriteLine($logMessage)
             [Console]::ForegroundColor = $originalColor
         }
-        "Warning"  { 
+        "Warning" { 
             $originalColor = [Console]::ForegroundColor
             [Console]::ForegroundColor = [ConsoleColor]::Yellow
             [Console]::WriteLine($logMessage)
@@ -84,7 +84,7 @@ $originalImportModule = (Get-Command Import-Module).ScriptBlock
 function global:Import-Module {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0, Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]$Name,
         
         [Parameter()]
@@ -136,11 +136,17 @@ $originalGetCommand = (Get-Command Get-Command).ScriptBlock
 function global:Get-Command {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0)]
+        [Parameter(Position = 0)]
         [string]$Name,
-        
+
         [Parameter()]
-        [string]$CommandType
+        [string]$CommandType,
+
+        [Parameter()]
+        [string[]]$Module,
+
+        [Parameter(ValueFromRemainingArguments)]
+        [object[]]$RemainingArguments
     )
     
     $key = "GetCommand:$Name"
@@ -164,8 +170,14 @@ function global:Get-Command {
         $script:LastStackTraces[$key] = $stackTrace
     }
     
-    # Call original Get-Command using the module-qualified name
-    Microsoft.PowerShell.Core\Get-Command -Name $Name -CommandType $CommandType -ErrorAction Continue
+    # Build parameters for the original command
+    $params = @{}
+    if ($Name) { $params['Name'] = $Name }
+    if ($CommandType) { $params['CommandType'] = $CommandType }
+    if ($Module) { $params['Module'] = $Module }
+
+    # Call original Get-Command using the module-qualified name with all parameters
+    Microsoft.PowerShell.Core\Get-Command @params -ErrorAction Continue
 }
 
 # Create a wrapper for Get-ChildItem to track file system operations
@@ -173,14 +185,29 @@ $originalGetChildItem = (Get-Command Get-ChildItem).ScriptBlock
 function global:Get-ChildItem {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0)]
+        [Parameter(Position = 0)]
         [string]$Path,
-        
+
         [Parameter()]
         [string]$Filter,
-        
+
         [Parameter()]
-        [switch]$Recurse
+        [switch]$Recurse,
+
+        [Parameter()]
+        [switch]$Directory,
+
+        [Parameter()]
+        [switch]$File,
+
+        [Parameter()]
+        [string[]]$Include,
+
+        [Parameter()]
+        [string[]]$Exclude,
+
+        [Parameter(ValueFromRemainingArguments)]
+        [object[]]$RemainingArguments
     )
     
     $key = "GetChildItem:$Path"
@@ -204,8 +231,18 @@ function global:Get-ChildItem {
         $script:LastStackTraces[$key] = $stackTrace
     }
     
-    # Call original Get-ChildItem using the module-qualified name
-    Microsoft.PowerShell.Management\Get-ChildItem -Path $Path -Filter $Filter -Recurse:$Recurse -ErrorAction Continue
+    # Build parameters for the original command
+    $params = @{}
+    if ($Path) { $params['Path'] = $Path }
+    if ($Filter) { $params['Filter'] = $Filter }
+    if ($Recurse) { $params['Recurse'] = $Recurse }
+    if ($Directory) { $params['Directory'] = $Directory }
+    if ($File) { $params['File'] = $File }
+    if ($Include) { $params['Include'] = $Include }
+    if ($Exclude) { $params['Exclude'] = $Exclude }
+
+    # Call original Get-ChildItem using the module-qualified name with all parameters
+    Microsoft.PowerShell.Management\Get-ChildItem @params -ErrorAction Continue
 }
 
 # Function to test module loading
@@ -316,8 +353,8 @@ function Start-DiagnosticTest {
     
     # Report top function calls
     $topCalls = $script:FunctionCallCounts.GetEnumerator() | 
-                Sort-Object -Property Value -Descending | 
-                Select-Object -First 10
+    Sort-Object -Property Value -Descending | 
+    Select-Object -First 10
     
     Write-DiagLog -Message "Top function calls:" -Level INFO
     foreach ($call in $topCalls) {
@@ -326,8 +363,8 @@ function Start-DiagnosticTest {
     
     # Report top module loads
     $topModules = $script:ModuleLoadCounts.GetEnumerator() | 
-                  Sort-Object -Property Value -Descending | 
-                  Select-Object -First 10
+    Sort-Object -Property Value -Descending | 
+    Select-Object -First 10
     
     Write-DiagLog -Message "Top module loads:" -Level INFO
     foreach ($module in $topModules) {
@@ -344,15 +381,16 @@ function global:Get-ErrorDetails {
     if ($Exception -and $Exception.InnerException) {
         try {
             return $Exception.InnerException.Message
-        } catch {
+        }
+        catch {
             return $Exception.Message
         }
     }
     return $null
 }
 
-# Suppress errors from script blocks
-$ErrorActionPreference = 'SilentlyContinue'
+# Use -ErrorAction on specific commands instead of global suppression
+# $ErrorActionPreference = 'SilentlyContinue'  # Removed to avoid hiding important errors
 
 # Run the diagnostic test
 Start-DiagnosticTest

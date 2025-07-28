@@ -236,10 +236,11 @@ Value: {verification-id}
 - Use environment-specific service principals
 
 ### Workflow Security
-- Pin action versions to specific commits
+- **Pin action versions to specific commits or exact versions** (not moving tags like @v4)
 - Use `permissions` blocks to limit token scope
 - Validate inputs in reusable workflows
 - Enable branch protection rules
+- Regularly audit and update pinned action versions
 
 ### Example Secure Workflow
 ```yaml
@@ -251,13 +252,40 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/login@v1
+      - uses: actions/checkout@v4.1.2  # Pin to specific version
+      - uses: azure/login@v1.4.6       # Pin to specific version
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 ```
+
+### Finding Specific Action Versions
+
+To find specific commit SHAs or version numbers for pinning:
+
+1. **Using GitHub Releases**: Visit the action's repository releases page
+   ```
+   https://github.com/actions/checkout/releases
+   https://github.com/Azure/login/releases
+   ```
+
+2. **Using Commit SHA**: For maximum security, pin to specific commits
+   ```yaml
+   - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.2
+   - uses: azure/login@92a5484dfaf04ca78a94597f4f19fea633851fa2     # v1.4.6
+   ```
+
+3. **Automated Updates**: Use Dependabot to keep pinned versions updated
+   ```yaml
+   # .github/dependabot.yml
+   version: 2
+   updates:
+     - package-ecosystem: "github-actions"
+       directory: "/"
+       schedule:
+         interval: "weekly"
+   ```
 
 ## Monitoring and Troubleshooting
 

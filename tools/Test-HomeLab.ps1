@@ -88,6 +88,12 @@ if (-not $IntegrationOnly) {
     }
 }
 
+if (-not $UnitOnly) {
+    if (Test-Path $integrationTestPath) {
+        $testPaths += $integrationTestPath
+    }
+}
+
 # Filter by module if specified
 if ($Module) {
     $filteredPaths = @()
@@ -136,7 +142,8 @@ foreach ($path in $testPaths) {
             Write-Error "No results returned from Pester for path: $path"
             continue
         }
-    } catch {
+    }
+    catch {
         Write-Error "Failed to run tests for path '$path': $_"
         $totalFailed += 1
         continue
@@ -159,6 +166,7 @@ Write-Host "Test results saved to: $OutputPath" -ForegroundColor White
 # Return exit code based on test results
 if ($totalFailed -gt 0) {
     exit 1
-} else {
+}
+else {
     exit 0
 }

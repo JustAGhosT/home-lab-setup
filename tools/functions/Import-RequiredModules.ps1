@@ -11,7 +11,9 @@
 
 function Import-RequiredModules {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$ForceReload
+    )
     
     # First import HomeLab.Logging as it's needed by other modules
     $loggingModule = $script:RequiredModules | Where-Object { $_.Name -eq "HomeLab.Logging" }

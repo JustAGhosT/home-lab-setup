@@ -143,7 +143,7 @@ The module recognizes these environment variables:
 ## Dependencies
 
 ### Required PowerShell Modules
-- **Az.Accounts** (>= 2.0.0): Azure authentication
+- **Az.Accounts** (>= 2.12.5): Azure authentication
 - **Az.Profile** (>= 1.0.0): Azure profile management
 
 ### Optional Dependencies
@@ -268,5 +268,5 @@ When contributing to the HomeLab.Core module:
 
 For issues specific to the Core module:
 1. Check the troubleshooting section above
-2. Review the main [Troubleshooting Guide](../../../docs/TROUBLESHOOTING.md)
+2. Review the main [Troubleshooting Guide](../../docs/TROUBLESHOOTING.md)
 3. Open an issue in the GitHub repository

@@ -1,6 +1,6 @@
 # HomeLab Testing Implementation
 
-This document describes the implementation of the HomeLab testing strategy as outlined in [AZURE-HOMELAB-TESTING-STRATEGY.md](../docs/AZURE-HOMELAB-TESTING-STRATEGY.md).
+This document describes the implementation of the HomeLab testing strategy as outlined in [TESTING-STRATEGY-DETAILED.md](../TESTING-STRATEGY-DETAILED.md).
 
 ## Test Structure
 

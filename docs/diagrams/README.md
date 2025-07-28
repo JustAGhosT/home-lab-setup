@@ -11,24 +11,23 @@ This section contains various network diagrams that visualize different aspects 
 
 ### Core Architecture
 
-- [High-Level Architecture](high-level-architecture.html) - Overview of the entire Azure virtual network design
-- [Subnet Layout](subnet-layout.html) - Detailed subnet organization and IP addressing scheme
+- [High-Level Architecture](high-level-architecture.md) - Overview of the entire Azure virtual network design
+- [Subnet Layout](subnet-layout.md) - Detailed subnet organization and IP addressing scheme
 
 ### Network Traffic & Security
 
-- [Traffic Flow and Routing](traffic-flow-and-routing.html) - How traffic is routed within the virtual network
-- [Network Security](network-security.html) - Security groups, policies, and protection mechanisms
-- [NAT Gateway Configuration](nat-gateway-configuration.html) - Outbound internet connectivity configuration
+- [Traffic Flow and Routing](traffic-flow-and-routing.md) - How traffic is routed within the virtual network
+- [Network Security](network-security.md) - Security groups, policies, and protection mechanisms
+- [NAT Gateway Configuration](nat-gateway-configuration.md) - Outbound internet connectivity configuration
 
 ### VPN Configuration
 
-- [Point-to-Site VPN Connection Flow](point-to-site-vpn-connection-flow.html) - How clients connect to the VPN
-- [Certificate Management Flow](certificate-management-flow.html) - Certificate lifecycle for VPN authentication
-- [Client Certificate Management](client-certificate-management.html) - Managing client certificates for VPN access
+- [Point-to-Site VPN Connection Flow](point-to-site-vpn-connection-flow.md) - How clients connect to the VPN
+- [Certificate Management Flow](certificate-management-flow.md) - Certificate lifecycle for VPN authentication
 
 ### Optimization & Strategy
 
-- [Cost Optimization Strategy](cost-optimization-strategy.html) - Approaches to minimize Azure costs
+- [Cost Optimization Strategy](cost-optimization-strategy.md) - Approaches to minimize Azure costs
 
 ## Using the Diagrams
 

@@ -128,8 +128,8 @@ graph TD
 #### Function Naming
 ```powershell
 # Use approved verbs
-Get-HomeLab-Configuration    # ✓ Good
-Retrieve-HomeLab-Config      # ✗ Bad
+Get-HomeLabConfiguration     # ✓ Good
+Retrieve-HomeLabConfig       # ✗ Bad
 
 # Use PascalCase for functions
 Deploy-VPNGateway           # ✓ Good

@@ -9,6 +9,11 @@ from typing import Any, Dict, List, Optional
 from .linter import MarkdownLinter
 from .models import IssueSeverity
 
+try:
+    from . import __version__
+except ImportError:
+    __version__ = "unknown"
+
 
 def parse_args(args: List[str]) -> argparse.Namespace:
     """Parse command line arguments."""
@@ -116,7 +121,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {__import__('markdown_lint').__version__}",
+        version=f"%(prog)s {__version__}",
     )
 
     return parser.parse_args(args)
@@ -211,16 +216,23 @@ def main() -> int:
             return 1
 
     # Filter issues by severity
+    severity_order = {
+        IssueSeverity.STYLE: 1,
+        IssueSeverity.WARNING: 2,
+        IssueSeverity.ERROR: 3,
+    }
     min_severity = {
-        "error": IssueSeverity.ERROR,
-        "warning": IssueSeverity.WARNING,
         "style": IssueSeverity.STYLE,
+        "warning": IssueSeverity.WARNING,
+        "error": IssueSeverity.ERROR,
     }[args.severity.lower()]
 
     filtered_reports = {}
     for path, report in linter.reports.items():
         filtered_issues = [
-            issue for issue in report.issues if issue.severity.value >= min_severity.value
+            issue
+            for issue in report.issues
+            if severity_order[issue.severity] >= severity_order[min_severity]
         ]
         if filtered_issues:
             filtered_reports[path] = {"issues": filtered_issues}

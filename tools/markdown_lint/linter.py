@@ -58,7 +58,10 @@ class MarkdownLinter:
                 # Handle empty lines and check for multiple blank lines
                 if not line.strip():
                     blank_line_count += 1
-                    if not self.config["allow_multiple_blank_lines"] and blank_line_count > 1:
+                    if (
+                        not self.config["allow_multiple_blank_lines"]
+                        and blank_line_count > 1
+                    ):
                         self._add_issue(
                             report, i, "Multiple consecutive blank lines", "MD012"
                         )
@@ -97,17 +100,34 @@ class MarkdownLinter:
                 # Check for trailing whitespace
                 if self.config["trim_trailing_whitespace"] and line.rstrip() != line:
                     self._add_issue(
-                        report, i, "Trim trailing whitespace", "MD009", fix=lambda line: line.rstrip()
+                        report,
+                        i,
+                        "Trim trailing whitespace",
+                        "MD009",
+                        fix=lambda line: line.rstrip(),
                     )
 
                 # Check for consistent line endings
-                if "\r\n" in line:
+                expected_eol = self.config["end_of_line"]
+                if expected_eol == "lf" and "\r\n" in line:
                     self._add_issue(
                         report,
                         i,
                         "Inconsistent line endings (CRLF)",
                         "MD001",
                         fix=lambda line: line.replace("\r\n", "\n"),
+                    )
+                elif (
+                    expected_eol == "crlf"
+                    and "\r\n" not in line
+                    and line.endswith("\n")
+                ):
+                    self._add_issue(
+                        report,
+                        i,
+                        "Inconsistent line endings (LF)",
+                        "MD001",
+                        fix=lambda line: line.rstrip("\n") + "\r\n",
                     )
 
                 # Check headings
@@ -127,7 +147,11 @@ class MarkdownLinter:
                 prev_line = line
 
             # Check for final newline
-            if self.config["insert_final_newline"] and content and not content.endswith("\n"):
+            if (
+                self.config["insert_final_newline"]
+                and content
+                and not content.endswith("\n")
+            ):
                 self._add_issue(
                     report,
                     len(lines),
@@ -143,7 +167,11 @@ class MarkdownLinter:
 
         except Exception as e:
             self._add_issue(
-                report, 0, f"Error processing file: {str(e)}", "ERROR", severity=IssueSeverity.ERROR
+                report,
+                0,
+                f"Error processing file: {str(e)}",
+                "ERROR",
+                severity=IssueSeverity.ERROR,
             )
 
         return report
@@ -162,7 +190,9 @@ class MarkdownLinter:
                 fix=fix_func,
             )
 
-    def _get_line_length_fix(self, line: str, max_length: int) -> Optional[Callable[[str], str]]:
+    def _get_line_length_fix(
+        self, line: str, max_length: int
+    ) -> Optional[Callable[[str], str]]:
         """Determine if and how to fix a long line."""
         stripped = line.strip()
 
@@ -215,11 +245,19 @@ class MarkdownLinter:
         # Find word boundary before break point
         space_before = content.rfind(" ", 0, break_point)
         if space_before > break_point // 2:  # Reasonable break point found
-            return indent + content[:space_before] + "\n" + indent + content[space_before:].lstrip()
+            return (
+                indent
+                + content[:space_before]
+                + "\n"
+                + indent
+                + content[space_before:].lstrip()
+            )
 
         return line  # Can't find good break point
 
-    def _check_heading(self, report: FileReport, line_num: int, line: str, match: re.Match) -> None:
+    def _check_heading(
+        self, report: FileReport, line_num: int, line: str, match: re.Match
+    ) -> None:
         """Check heading formatting and spacing."""
         level = len(match.group("level"))
         content = match.group("content")
@@ -281,13 +319,13 @@ class MarkdownLinter:
         if "http://" in line or "https://" in line:
             # Check for URLs that are not part of markdown links
             url_pattern = re.compile(r'(https?://[^\s<>"]+)')
-            link_pattern = re.compile(r'\[[^\]]*\]\([^\)]*\)')
-            
+            link_pattern = re.compile(r"\[[^\]]*\]\([^\)]*\)")
+
             # Find all URLs in the line
             for url_match in url_pattern.finditer(line):
                 url = url_match.group(1)
                 url_start = url_match.start()
-                
+
                 # Check if URL starts with http://
                 if url.startswith("http://"):
                     self._add_issue(
@@ -297,14 +335,14 @@ class MarkdownLinter:
                         "SEC001",
                         severity=IssueSeverity.WARNING,
                     )
-                
+
                 # Check if URL is part of a markdown link
                 is_in_link = False
                 for link_match in link_pattern.finditer(line):
                     if link_match.start() <= url_start <= link_match.end():
                         is_in_link = True
                         break
-                
+
                 if not is_in_link:
                     self._add_issue(
                         report,
@@ -349,18 +387,18 @@ class MarkdownLinter:
         # Separate line-level and file-level fixes
         line_fixes = [i for i in issues if i.fixable and i.line > 0]
         file_fixes = [i for i in issues if i.fixable and i.line == 0]
-        
+
         # Start with original content
         current_content = content
-        
+
         # Apply file-level fixes first (they work on entire content)
         for issue in file_fixes:
             if issue.fix:
                 current_content = issue.fix(current_content)
-        
+
         # Convert to lines for line-level fixes
         lines = current_content.splitlines(keepends=True)
-        
+
         # Apply line-level fixes from bottom to top to avoid offset issues
         sorted_line_fixes = sorted(line_fixes, key=lambda x: x.line, reverse=True)
         for issue in sorted_line_fixes:
@@ -374,7 +412,7 @@ class MarkdownLinter:
         self, directory: Union[str, Path], exclude: Optional[List[str]] = None
     ) -> Dict[Path, FileReport]:
         """Check all markdown files in a directory."""
-        from find_markdown_files import find_markdown_files  # type: ignore
+        from .find_markdown_files import find_markdown_files  # type: ignore
 
         directory = Path(directory).resolve()
         exclude = exclude or []
@@ -382,7 +420,13 @@ class MarkdownLinter:
         # Find all markdown files
         files = find_markdown_files(
             directory,
-            exclude_dirs={".git", "node_modules", "__pycache__", ".pytest_cache", ".mypy_cache"},
+            exclude_dirs={
+                ".git",
+                "node_modules",
+                "__pycache__",
+                ".pytest_cache",
+                ".mypy_cache",
+            },
             exclude_files=exclude,
         )
 

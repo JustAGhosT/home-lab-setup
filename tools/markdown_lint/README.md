@@ -76,9 +76,9 @@ Create a `.mdlintrc` file in your project root to configure the linter:
 
 ## Rules
 
-### MD001 - Inconsistent line endings
+### MD001 - Heading levels should only increment by one level at a time
 
-**Description**: Inconsistent line endings (CRLF vs LF)
+**Description**: Heading levels should only increment by one level at a time
 
 **Fixable**: Yes
 

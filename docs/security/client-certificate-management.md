@@ -127,17 +127,14 @@ Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -like "*Cli
 3. Remove the certificate from the client device
 
 ```powershell
-# Example: Create a CRL
-$rootCert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -eq "CN=P2SRootCert" }
-$revocationList = New-Object System.Security.Cryptography.X509Certificates.X509RevocationList
+# Note: For Azure VPN Gateway, certificate revocation is managed through the Azure Portal
+# 1. Navigate to VPN Gateway → Point-to-site configuration → Revoked certificates
+# 2. Add the certificate thumbprint to revoke access
+# 3. Remove the certificate from client devices manually
 
-# Add certificate to revocation list
+# To get certificate thumbprint for revocation:
 $clientCert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -eq "CN=P2SClientCert" }
-$revocationList.AddCertificate($clientCert)
-
-# Export CRL
-$crlPath = "C:\Certs\revocation.crl"
-$revocationList.Export("Crl") | Set-Content -Path $crlPath -Encoding Byte
+Write-Host "Certificate thumbprint to revoke: $($clientCert.Thumbprint)"
 ```
 
 ### Renewing Certificates

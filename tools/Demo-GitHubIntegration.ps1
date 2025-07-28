@@ -6,7 +6,13 @@ Write-Host ""
 
 # Import the module
 Write-Host "1. Loading HomeLab.GitHub module..." -ForegroundColor Yellow
-Import-Module .\HomeLab\modules\HomeLab.GitHub -Force
+try {
+    Import-Module -Name 'HomeLab.GitHub' -Force -ErrorAction Stop
+}
+catch {
+    $scriptDir = Split-Path -Parent $PSCommandPath
+    Import-Module "$scriptDir\..\HomeLab\modules\HomeLab.GitHub" -Force
+}
 
 # Show available functions
 Write-Host ""

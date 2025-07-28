@@ -17,6 +17,8 @@ This document explores universal docking station options for a home lab setup, p
 
 ## Recommended Docking Station Options
 
+> **Note**: Prices and availability are subject to change. Links were verified as of July 28, 2025.
+
 ### Entry-Level Options
 
 #### Anker PowerExpand 7-in-1 USB-C Hub
@@ -196,7 +198,7 @@ Based on your home lab setup with P1 (Mini-PC), L1 (Laptop 1), L2 (Laptop 2), an
 |             |     |                 |     |             |
 | S2 ---------|-----|----------------|-----|-- L1 Laptop  |
 |             |     |                 |     |             |
-| S3 ---------|-----|----------------|-----|-- L1 Laptop  |
+| S3 ---------|-----|----------------|-----|-- P1 Mini-PC |
 |             |     |                 |     |             |
 | S4 ---------|-----|----------------|-----|-- L2 Laptop  |
 +-------------+     |                 |     +-------------+
@@ -257,12 +259,12 @@ Before purchasing a docking station, verify:
 
 ### Initial Investment vs. Long-Term Benefits
 
-| Solution | Initial Cost | Longevity | Expandability | Convenience |
-|----------|-------------|-----------|--------------|-------------|
-| Basic USB-C Hub | $35-60 | 1-2 years | Limited | Moderate |
-| Mid-range Dock | $150-250 | 3-4 years | Moderate | High |
-| Premium Dock | $300-400 | 5+ years | Excellent | Very High |
-| Dock with KVM | $250-350 | 4-5 years | Good | Excellent |
+| Solution        | Initial Cost | Longevity | Expandability | Convenience |
+| --------------- | ------------ | --------- | ------------- | ----------- |
+| Basic USB-C Hub | $35-60       | 1-2 years | Limited       | Moderate    |
+| Mid-range Dock  | $150-250     | 3-4 years | Moderate      | High        |
+| Premium Dock    | $300-400     | 5+ years  | Excellent     | Very High   |
+| Dock with KVM   | $250-350     | 4-5 years | Good          | Excellent   |
 
 ### Return on Investment
 

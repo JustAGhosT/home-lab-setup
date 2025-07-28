@@ -101,10 +101,10 @@ Unlike managed services, this infrastructure requires ongoing maintenance:
 
 If you're convinced this infrastructure meets your needs, refer to our detailed architecture diagrams and implementation guides:
 
-- [High-Level Architecture](diagrams/high-level-architecture.html) - Start here for an overview
-- [Subnet Layout](diagrams/subnet-layout.html) - Understand the network organization
-- [Point-to-Site VPN Connection Flow](diagrams/point-to-site-vpn-connection-flow.html) - Learn how clients connect
-- [Cost Optimization Strategy](diagrams/cost-optimization-strategy.html) - Keep expenses under control
+- [High-Level Architecture](../diagrams/high-level-architecture.md) - Start here for an overview
+- [Subnet Layout](../diagrams/subnet-layout.md) - Understand the network organization
+- [Point-to-Site VPN Connection Flow](../diagrams/point-to-site-vpn-connection-flow.md) - Learn how clients connect
+- [Cost Optimization Strategy](../diagrams/cost-optimization-strategy.md) - Keep expenses under control
 
 ## Conclusion
 

@@ -11,7 +11,9 @@
 
 function Test-ModuleAvailability {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$SkipModuleCheck
+    )
     
     $allModulesAvailable = $true
     $modulesToInstall = @()

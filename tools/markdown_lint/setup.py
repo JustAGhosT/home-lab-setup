@@ -4,12 +4,22 @@
 from setuptools import find_packages, setup
 
 # Read the README file
-with open("README.md", "r", encoding="utf-8") as f:
-    long_description = f.read()
+try:
+    with open("README.md", "r", encoding="utf-8") as f:
+        long_description = f.read()
+except FileNotFoundError:
+    long_description = (
+        "A markdown linter and fixer with support for common style issues."
+    )
 
 # Read requirements
-with open("requirements.txt", "r", encoding="utf-8") as f:
-    requirements = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+try:
+    with open("requirements.txt", "r", encoding="utf-8") as f:
+        requirements = [
+            line.strip() for line in f if line.strip() and not line.startswith("#")
+        ]
+except FileNotFoundError:
+    requirements = []
 
 setup(
     name="markdown-lint",

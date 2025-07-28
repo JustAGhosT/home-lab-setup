@@ -124,7 +124,7 @@ See the [Subnet Layout](docs/diagrams/subnet-layout.md) diagram for details on t
 - Split tunneling options
 - Custom DNS and routing configurations
 
-For details on the VPN connection process, see the [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection.md) diagram.
+For details on the VPN connection process, see the [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection-flow.md) diagram.
 
 ### VPN Certificate Management
 
@@ -212,7 +212,7 @@ HomeLab/
 │   │   ├── high-level-architecture.md
 │   │   ├── nat-gateway-configuration.md
 │   │   ├── network-security.md
-│   │   ├── point-to-site-vpn-connection.md
+│   │   ├── point-to-site-vpn-connection-flow.md
 │   │   ├── subnet-layout.md
 │   │   └── traffic-flow-and-routing.md
 │   ├── PREREQUISITES.MD

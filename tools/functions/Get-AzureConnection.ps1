@@ -76,9 +76,13 @@ function Get-AzureConnection {
         else {
             Write-Log -Message "Not connected to Azure" -Level "Warning"
 
-            # Ask if user wants to connect
-            $connect = Read-Host "You are not connected to Azure. Connect now? (Y/N)"
-            if ($connect -eq "Y" -or $connect -eq "y") {
+            # Ask if user wants to connect with proper validation
+            do {
+                $connect = Read-Host "You are not connected to Azure. Connect now? (Y/N)"
+                $connect = $connect.Trim().ToUpper()
+            } while ($connect -notin @('Y', 'N', 'YES', 'NO'))
+
+            if ($connect -in @('Y', 'YES')) {
                 # Connect to Azure
                 $context = Connect-AzAccount -ErrorAction Stop
 

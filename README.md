@@ -263,8 +263,8 @@ home-lab-setup/
 │   │   ├── HomeLab.UI/              # User interface
 │   │   ├── HomeLab.Monitoring/      # Monitoring
 │   │   └── HomeLab.GitHub/          # GitHub integration
-│   ├── HomeLab.psd1                 # Module manifest
-│   └── HomeLab.psm1                 # Module entry point
+│   ├── HomeLab.psd1                 # Module manifest (entry point)
+│   └── HomeLab.psm1                 # Module implementation
 ├── tests/                            # Test suite
 │   ├── unit/                        # Unit tests
 │   ├── integration/                 # Integration tests
@@ -284,7 +284,7 @@ home-lab-setup/
 │   └── actions/                     # Custom actions
 ├── markdown_lint/                   # Markdown linting tools
 ├── yaml_lint/                       # YAML linting tools
-└── scripts/                         # Utility scripts
+└── tools/                           # Utility scripts
 ```
 
 ## Troubleshooting
