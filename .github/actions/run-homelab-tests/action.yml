@@ -48,14 +48,86 @@ runs:
       shell: pwsh
       run: |
         cd $env:GITHUB_WORKSPACE
-        ./Test-HomeLab.ps1 -TestType "${{ inputs.test_type }}" -OutputPath "./TestResults"
-        
-        # Set outputs based on test results
-        $success = $LASTEXITCODE -eq 0
-        echo "success=$success" >> $env:GITHUB_OUTPUT
-        echo "total_tests=0" >> $env:GITHUB_OUTPUT
-        echo "passed_tests=0" >> $env:GITHUB_OUTPUT
-        echo "failed_tests=0" >> $env:GITHUB_OUTPUT
-        echo "skipped_tests=0" >> $env:GITHUB_OUTPUT
-        echo "pass_rate=0" >> $env:GITHUB_OUTPUT
-        echo "issues_fixed=false" >> $env:GITHUB_OUTPUT
+
+        # Check if Test-HomeLab.ps1 script exists
+        if (-not (Test-Path "./Test-HomeLab.ps1")) {
+          Write-Host "Error: Test-HomeLab.ps1 script not found in workspace root" -ForegroundColor Red
+          echo "success=false" >> $env:GITHUB_OUTPUT
+          echo "total_tests=0" >> $env:GITHUB_OUTPUT
+          echo "passed_tests=0" >> $env:GITHUB_OUTPUT
+          echo "failed_tests=0" >> $env:GITHUB_OUTPUT
+          echo "skipped_tests=0" >> $env:GITHUB_OUTPUT
+          echo "pass_rate=0" >> $env:GITHUB_OUTPUT
+          echo "issues_fixed=false" >> $env:GITHUB_OUTPUT
+          exit 1
+        }
+
+        # Run tests with error handling
+        try {
+          ./Test-HomeLab.ps1 -TestType "${{ inputs.test_type }}" -OutputPath "./TestResults"
+          $testSuccess = $LASTEXITCODE -eq 0
+        }
+        catch {
+          Write-Host "Error executing Test-HomeLab.ps1: $($_.Exception.Message)" -ForegroundColor Red
+          $testSuccess = $false
+        }
+
+        # Initialize default values
+        $totalTests = 0
+        $passedTests = 0
+        $failedTests = 0
+        $skippedTests = 0
+        $passRate = 0
+        $issuesFixed = $false
+
+        # Parse test results if TestResults directory exists
+        if (Test-Path "./TestResults") {
+          try {
+            # Look for XML test result files (NUnit format)
+            $xmlFiles = Get-ChildItem "./TestResults" -Filter "*.xml" -ErrorAction SilentlyContinue
+            if ($xmlFiles) {
+              foreach ($xmlFile in $xmlFiles) {
+                try {
+                  [xml]$testResults = Get-Content $xmlFile.FullName
+                  if ($testResults.'test-results') {
+                    $totalTests += [int]$testResults.'test-results'.total
+                    $passedTests += [int]$testResults.'test-results'.passed
+                    $failedTests += [int]$testResults.'test-results'.failures
+                    $skippedTests += [int]$testResults.'test-results'.skipped
+                  }
+                  elseif ($testResults.'test-run') {
+                    $totalTests += [int]$testResults.'test-run'.total
+                    $passedTests += [int]$testResults.'test-run'.passed
+                    $failedTests += [int]$testResults.'test-run'.failed
+                    $skippedTests += [int]$testResults.'test-run'.skipped
+                  }
+                }
+                catch {
+                  Write-Host "Warning: Could not parse test results from $($xmlFile.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+                }
+              }
+            }
+
+            # Calculate pass rate
+            if ($totalTests -gt 0) {
+              $passRate = [math]::Round(($passedTests / $totalTests) * 100, 2)
+            }
+          }
+          catch {
+            Write-Host "Warning: Could not parse test results: $($_.Exception.Message)" -ForegroundColor Yellow
+          }
+        }
+
+        # Set GitHub Actions outputs with real values
+        echo "success=$testSuccess" >> $env:GITHUB_OUTPUT
+        echo "total_tests=$totalTests" >> $env:GITHUB_OUTPUT
+        echo "passed_tests=$passedTests" >> $env:GITHUB_OUTPUT
+        echo "failed_tests=$failedTests" >> $env:GITHUB_OUTPUT
+        echo "skipped_tests=$skippedTests" >> $env:GITHUB_OUTPUT
+        echo "pass_rate=$passRate" >> $env:GITHUB_OUTPUT
+        echo "issues_fixed=$issuesFixed" >> $env:GITHUB_OUTPUT
+
+        # Exit with appropriate code
+        if (-not $testSuccess) {
+          exit 1
+        }

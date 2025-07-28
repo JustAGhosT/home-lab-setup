@@ -41,10 +41,35 @@ function Deploy-GitHubRepository {
         if ($Force) { $cloneParams.Force = $true }
         
         $repoPath = Clone-GitHubRepository @cloneParams
-        
+
         if (-not $repoPath -or -not (Test-Path $repoPath)) {
             throw "Failed to clone repository"
         }
+
+        # Validate repository path for security
+        $allowedBasePath = $env:TEMP
+        if (-not $allowedBasePath) {
+            $allowedBasePath = [System.IO.Path]::GetTempPath()
+        }
+
+        # Resolve paths to prevent path traversal attacks
+        $resolvedRepoPath = [System.IO.Path]::GetFullPath($repoPath)
+        $resolvedBasePath = [System.IO.Path]::GetFullPath($allowedBasePath)
+
+        # Ensure the repository path is within the allowed base directory
+        if (-not $resolvedRepoPath.StartsWith($resolvedBasePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Repository path '$resolvedRepoPath' is outside the allowed directory '$resolvedBasePath'. This may indicate a security risk."
+        }
+
+        # Additional validation: ensure path doesn't contain suspicious patterns
+        $suspiciousPatterns = @('..', '~', '$', '`', ';', '|', '&', '<', '>')
+        foreach ($pattern in $suspiciousPatterns) {
+            if ($resolvedRepoPath.Contains($pattern)) {
+                throw "Repository path contains suspicious characters that may indicate a security risk: '$pattern'"
+            }
+        }
+
+        Write-Host "Repository path validated: $resolvedRepoPath" -ForegroundColor Green
         
         Write-Host ""
         
@@ -180,6 +205,21 @@ function Get-RepositoryDeploymentConfig {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+                if (-not (Test-Path $_ -PathType Container)) {
+                    throw "Path '$_' does not exist or is not a directory."
+                }
+                # Additional security validation
+                $resolvedPath = [System.IO.Path]::GetFullPath($_)
+                $suspiciousPatterns = @('..', '~', '$', '`', ';', '|', '&', '<', '>')
+                foreach ($pattern in $suspiciousPatterns) {
+                    if ($resolvedPath.Contains($pattern)) {
+                        throw "Path contains suspicious characters that may indicate a security risk: '$pattern'"
+                    }
+                }
+                return $true
+            })]
         [string]$Path
     )
 
@@ -230,15 +270,48 @@ function Get-RepositoryDeploymentConfig {
     $config.HasDockerfile = (Get-ChildItem -Path $Path -Filter "Dockerfile" -ErrorAction SilentlyContinue).Count -gt 0
     $config.HasStaticContent = (Get-ChildItem -Path $Path -Filter "index.html" -Recurse -ErrorAction SilentlyContinue).Count -gt 0
 
-    # Detect web frameworks
-    if (Test-Path (Join-Path $Path "package.json")) {
-        $packageJson = Get-Content (Join-Path $Path "package.json") -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
-        if ($packageJson.dependencies) {
-            if ($packageJson.dependencies.react) { $config.WebFramework = "React" }
-            elseif ($packageJson.dependencies.vue) { $config.WebFramework = "Vue" }
-            elseif ($packageJson.dependencies.angular) { $config.WebFramework = "Angular" }
-            elseif ($packageJson.dependencies.next) { $config.WebFramework = "Next.js" }
-            else { $config.WebFramework = "Node.js" }
+    # Detect web frameworks with proper error handling
+    $packageJsonPath = Join-Path $Path "package.json"
+    if (Test-Path $packageJsonPath) {
+        try {
+            Write-Verbose "Reading package.json from: $packageJsonPath"
+            $packageJsonContent = Get-Content $packageJsonPath -Raw -ErrorAction Stop
+            $packageJson = ConvertFrom-Json $packageJsonContent -ErrorAction Stop
+
+            if ($packageJson.dependencies) {
+                if ($packageJson.dependencies.react) {
+                    $config.WebFramework = "React"
+                    Write-Verbose "Detected React framework"
+                }
+                elseif ($packageJson.dependencies.vue) {
+                    $config.WebFramework = "Vue"
+                    Write-Verbose "Detected Vue framework"
+                }
+                elseif ($packageJson.dependencies.angular) {
+                    $config.WebFramework = "Angular"
+                    Write-Verbose "Detected Angular framework"
+                }
+                elseif ($packageJson.dependencies.next) {
+                    $config.WebFramework = "Next.js"
+                    Write-Verbose "Detected Next.js framework"
+                }
+                else {
+                    $config.WebFramework = "Node.js"
+                    Write-Verbose "Detected Node.js framework"
+                }
+            }
+            else {
+                Write-Verbose "No dependencies found in package.json"
+            }
+        }
+        catch [System.ArgumentException] {
+            Write-Warning "Failed to parse package.json: Invalid JSON format. $($_.Exception.Message)"
+        }
+        catch [System.IO.IOException] {
+            Write-Warning "Failed to read package.json: File access error. $($_.Exception.Message)"
+        }
+        catch {
+            Write-Warning "Failed to process package.json: $($_.Exception.Message)"
         }
     }
 

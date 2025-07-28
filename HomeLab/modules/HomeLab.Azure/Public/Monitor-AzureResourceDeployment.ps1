@@ -126,7 +126,12 @@ function Monitor-AzureResourceDeployment {
     }
     catch {
         Write-Host ""  # Add a newline
-        Write-ColorOutput "Error monitoring deployment: $($_.Exception.Message)" -ForegroundColor Red
+        if (Get-Command Write-ColorOutput -ErrorAction SilentlyContinue) {
+            Write-ColorOutput "Error monitoring deployment: $($_.Exception.Message)" -ForegroundColor Red
+        }
+        else {
+            Write-Host "Error monitoring deployment: $($_.Exception.Message)" -ForegroundColor Red
+        }
         return $false
     }
 }

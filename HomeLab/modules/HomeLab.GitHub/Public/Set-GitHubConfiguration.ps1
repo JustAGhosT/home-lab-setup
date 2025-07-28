@@ -80,10 +80,20 @@ function Set-GitHubConfiguration {
 function Get-GitHubConfiguration {
     [CmdletBinding()]
     param()
-    
+
+    # Define default configuration once to avoid duplication
+    $defaultConfig = @{
+        Username           = $null
+        Name               = $null
+        Email              = $null
+        ConnectedAt        = $null
+        SelectedRepository = $null
+        DefaultClonePath   = Join-Path $env:USERPROFILE "Source\GitHub"
+    }
+
     try {
         $configPath = Get-GitHubConfigPath
-        
+
         if (Test-Path $configPath) {
             $configJson = Get-Content -Path $configPath -Raw -Encoding UTF8
             $configObject = $configJson | ConvertFrom-Json
@@ -97,27 +107,13 @@ function Get-GitHubConfiguration {
         }
         else {
             # Return default configuration
-            return @{
-                Username           = $null
-                Name               = $null
-                Email              = $null
-                ConnectedAt        = $null
-                SelectedRepository = $null
-                DefaultClonePath   = Join-Path $env:USERPROFILE "Source\GitHub"
-            }
+            return $defaultConfig
         }
     }
     catch {
         Write-Verbose "Failed to get GitHub configuration: $($_.Exception.Message)"
         # Return default configuration on error
-        return @{
-            Username           = $null
-            Name               = $null
-            Email              = $null
-            ConnectedAt        = $null
-            SelectedRepository = $null
-            DefaultClonePath   = Join-Path $env:USERPROFILE "Source\GitHub"
-        }
+        return $defaultConfig
     }
 }
 

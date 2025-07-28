@@ -23,18 +23,21 @@ function Deploy-Infrastructure {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [ValidateSet("network", "vpngateway", "natgateway")]
+        [ValidateSet("network", "vpngateway", "natgateway", "storage", "compute", "security")]
         [string]$ComponentsOnly,
-        
+
         [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateLength(1, 90)]
+        [ValidatePattern('^[a-zA-Z0-9._\-()]+$')]
         [string]$ResourceGroup,
-        
+
         [Parameter(Mandatory = $false)]
         [switch]$Force,
-        
+
         [Parameter(Mandatory = $false)]
         [switch]$Monitor,
-        
+
         [Parameter(Mandatory = $false)]
         [switch]$BackgroundMonitor
     )

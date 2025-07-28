@@ -6,8 +6,24 @@ function Disconnect-GitHub {
     )
     
     try {
-        # Check if currently connected
-        $isConnected = Test-GitHubConnection -Quiet
+        # Check if Test-GitHubConnection function is available
+        $testConnectionCmd = Get-Command -Name Test-GitHubConnection -ErrorAction SilentlyContinue
+        if (-not $testConnectionCmd) {
+            Write-Warning "Test-GitHubConnection function is not available. The HomeLab.GitHub module may not be fully loaded."
+            Write-Host "Proceeding with disconnection anyway..." -ForegroundColor Yellow
+            $isConnected = $true  # Assume connected to proceed with cleanup
+        }
+        else {
+            # Check if currently connected
+            try {
+                $isConnected = Test-GitHubConnection -Quiet
+            }
+            catch {
+                Write-Warning "Failed to test GitHub connection: $($_.Exception.Message)"
+                Write-Host "Proceeding with disconnection anyway..." -ForegroundColor Yellow
+                $isConnected = $true  # Assume connected to proceed with cleanup
+            }
+        }
         
         if (-not $isConnected) {
             Write-Host "Not currently connected to GitHub." -ForegroundColor Yellow

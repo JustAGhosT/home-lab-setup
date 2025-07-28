@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., v1.0.1)'
+        description: "Version to release (e.g., v1.0.1)"
         required: true
         type: string
 
@@ -28,11 +28,11 @@ jobs:
           } else {
             $version = "${{ github.event.inputs.version }}"
           }
-          
+
           if (-not $version.StartsWith("v")) {
             $version = "v$version"
           }
-          
+
           echo "version=$version" >> $env:GITHUB_OUTPUT
           echo "Version: $version"
         shell: pwsh
@@ -74,25 +74,25 @@ jobs:
         run: |
           $version = "${{ needs.validate.outputs.version }}"
           $versionNumber = $version.TrimStart('v')
-          
+
           # Update HomeLab.psd1
           $manifestPath = "HomeLab/HomeLab.psd1"
           $content = Get-Content $manifestPath -Raw
           $content = $content -replace "ModuleVersion\s*=\s*'[^']*'", "ModuleVersion = '$versionNumber'"
           $content = $content -replace "ReleaseNotes\s*=\s*'[^']*'", "ReleaseNotes = '$version - See CHANGELOG.md for details'"
           Set-Content -Path $manifestPath -Value $content
-          
+
           Write-Host "Updated module version to $versionNumber"
         shell: pwsh
 
       - name: Create release package
         run: |
           $version = "${{ needs.validate.outputs.version }}"
-          
+
           # Create release directory
           $releaseDir = "release"
           New-Item -ItemType Directory -Path $releaseDir -Force
-          
+
           # Copy essential files
           Copy-Item -Path "HomeLab" -Destination "$releaseDir/HomeLab" -Recurse
           Copy-Item -Path "functions" -Destination "$releaseDir/functions" -Recurse
@@ -103,11 +103,11 @@ jobs:
           Copy-Item -Path "CHANGELOG.md" -Destination "$releaseDir/"
           Copy-Item -Path "CONTRIBUTING.md" -Destination "$releaseDir/"
           Copy-Item -Path "SECURITY.md" -Destination "$releaseDir/"
-          
+
           # Create ZIP archive
           $archiveName = "HomeLab-$version.zip"
           Compress-Archive -Path "$releaseDir/*" -DestinationPath $archiveName
-          
+
           Write-Host "Created release package: $archiveName"
         shell: pwsh
 
@@ -135,7 +135,7 @@ jobs:
         id: changelog
         run: |
           version="${{ needs.validate.outputs.version }}"
-          
+
           # Extract changelog section for this version
           if [ -f "CHANGELOG.md" ]; then
             # Get content between version headers
@@ -146,13 +146,13 @@ jobs:
           else
             changelog="Release $version"
           fi
-          
+
           # Save changelog to file for GitHub release
           echo "$changelog" > release-notes.md
           echo "Changelog extracted for $version"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate.outputs.version }}
           name: Release ${{ needs.validate.outputs.version }}
@@ -180,13 +180,13 @@ jobs:
         run: |
           $archiveName = Get-ChildItem -Name "HomeLab-*.zip"
           Expand-Archive -Path $archiveName -DestinationPath "extracted"
-          
+
           # Verify module structure
           if (-not (Test-Path "extracted/HomeLab/HomeLab.psd1")) {
             Write-Error "Module manifest not found in expected location"
             exit 1
           }
-          
+
           Write-Host "Module prepared for PowerShell Gallery"
         shell: pwsh
 
@@ -213,7 +213,7 @@ jobs:
           echo "**Version:** ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.release.result }}" = "success" ]; then
             echo "✅ Release created successfully" >> $GITHUB_STEP_SUMMARY
             echo "📦 Release package available in GitHub Releases" >> $GITHUB_STEP_SUMMARY

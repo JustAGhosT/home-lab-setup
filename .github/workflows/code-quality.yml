@@ -2,9 +2,9 @@ name: Code Quality
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 
 jobs:
@@ -24,13 +24,13 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Running PSScriptAnalyzer on PowerShell files..."
-          
+
           # Get all PowerShell files
           $psFiles = Get-ChildItem -Path . -Include "*.ps1", "*.psm1", "*.psd1" -Recurse | 
                      Where-Object { $_.FullName -notlike "*\node_modules\*" }
-          
+
           Write-Host "Found $($psFiles.Count) PowerShell files to analyze"
-          
+
           $issues = @()
           foreach ($file in $psFiles) {
             Write-Host "Analyzing: $($file.Name)"
@@ -39,7 +39,7 @@ jobs:
               $issues += $results
             }
           }
-          
+
           if ($issues.Count -gt 0) {
             Write-Host "Found $($issues.Count) issues:" -ForegroundColor Yellow
             foreach ($issue in $issues) {
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install markdownlint-cli
         run: npm install -g markdownlint-cli
@@ -85,9 +85,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Install yamllint
         run: pip install yamllint
@@ -107,16 +107,16 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
   dependency-check:
     runs-on: windows-latest
@@ -128,11 +128,11 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Checking PowerShell module dependencies..."
-          
+
           # Check if all required modules are properly declared
           $manifestFiles = Get-ChildItem -Path . -Name "*.psd1" -Recurse | 
                           Where-Object { $_ -notlike "*node_modules*" }
-          
+
           foreach ($manifest in $manifestFiles) {
             Write-Host "Checking manifest: $manifest"
             try {
@@ -167,7 +167,7 @@ jobs:
       - name: Verify project structure
         run: |
           echo "Verifying project structure..."
-          
+
           # Check for essential files
           essential_files=(
             "README.md"
@@ -179,14 +179,14 @@ jobs:
             "HomeLab/HomeLab.psd1"
             "HomeLab/HomeLab.psm1"
           )
-          
+
           missing_files=()
           for file in "${essential_files[@]}"; do
             if [ ! -f "$file" ]; then
               missing_files+=("$file")
             fi
           done
-          
+
           if [ ${#missing_files[@]} -gt 0 ]; then
             echo "❌ Missing essential files:"
             printf '%s\n' "${missing_files[@]}"
@@ -194,7 +194,7 @@ jobs:
           else
             echo "✅ All essential files present"
           fi
-          
+
           # Check for proper module structure
           if [ -d "HomeLab/modules" ]; then
             echo "✅ Module directory structure exists"
@@ -208,7 +208,15 @@ jobs:
           fi
 
   summary:
-    needs: [powershell-analysis, markdown-lint, yaml-lint, security-scan, dependency-check, file-structure-check]
+    needs:
+      [
+        powershell-analysis,
+        markdown-lint,
+        yaml-lint,
+        security-scan,
+        dependency-check,
+        file-structure-check,
+      ]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -216,7 +224,7 @@ jobs:
         run: |
           echo "# 🔍 Code Quality Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Check results of each job
           jobs=(
             "powershell-analysis:PowerShell Analysis"
@@ -226,7 +234,7 @@ jobs:
             "dependency-check:Dependency Check"
             "file-structure-check:File Structure Check"
           )
-          
+
           for job_info in "${jobs[@]}"; do
             job_name="${job_info%%:*}"
             job_display="${job_info##*:}"
@@ -249,6 +257,6 @@ jobs:
                 ;;
             esac
           done
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "For detailed results, check the individual job logs above." >> $GITHUB_STEP_SUMMARY
