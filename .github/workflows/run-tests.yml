@@ -65,8 +65,12 @@ jobs:
             tests/TestResults.xml
             tests/TestReport.html
 
-      - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Display test summary
         if: always()
-        with:
-          files: tests/TestResults.xml
+        shell: pwsh
+        run: |
+          if (Test-Path "tests/TestResults.xml") {
+            Write-Host "Test results available in artifacts" -ForegroundColor Green
+          } else {
+            Write-Host "No test results file found" -ForegroundColor Yellow
+          }
