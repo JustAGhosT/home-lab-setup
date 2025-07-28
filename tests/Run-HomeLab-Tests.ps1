@@ -98,11 +98,11 @@ if ($GenerateReport) {
             Paragraph "Test Type: $TestType"
             
             Table -Name "Test Results Summary" -Hashtable @{
-                "Total Tests" = $testResults.TotalCount
-                "Passed"      = $testResults.PassedCount
-                "Failed"      = $testResults.FailedCount
-                "Skipped"     = $testResults.SkippedCount
-                "Pass Rate"   = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
+                "TotalTests" = $testResults.TotalCount
+                "Passed"     = $testResults.PassedCount
+                "Failed"     = $testResults.FailedCount
+                "Skipped"    = $testResults.SkippedCount
+                "PassRate"   = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
             }
         }
         
@@ -111,9 +111,9 @@ if ($GenerateReport) {
                 Paragraph "Code coverage analysis results:"
                 
                 Table -Name "Coverage Summary" -Hashtable @{
-                    "Files Analyzed"   = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
-                    "Commands Covered" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
-                    "Coverage %"       = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
+                    "FilesAnalyzed"   = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
+                    "CommandsCovered" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
+                    "CoveragePercent" = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
                         [math]::Round(($testResults.CodeCoverage.NumberOfCommandsExecuted / $testResults.CodeCoverage.NumberOfCommandsAnalyzed) * 100, 2) 
                     }
                     else { 0 }
