@@ -32,17 +32,71 @@ function Get-DeploymentParameters {
         [string]$ProjectPath
     )
     
-    # Get deployment parameters
-    $resourceGroup = Read-Host "Enter resource group name"
-    $appName = Read-Host "Enter application name"
+    # Get deployment parameters with validation
+
+    # Validate Resource Group Name (Azure naming rules)
+    do {
+        $resourceGroup = Read-Host "Enter resource group name"
+        $isValidRG = $true
+        $errorMessage = ""
+
+        if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+            $isValidRG = $false
+            $errorMessage = "Resource group name cannot be empty."
+        }
+        elseif ($resourceGroup.Length -lt 1 -or $resourceGroup.Length -gt 90) {
+            $isValidRG = $false
+            $errorMessage = "Resource group name must be 1-90 characters long."
+        }
+        elseif ($resourceGroup -notmatch '^[a-zA-Z0-9._\-()]+$') {
+            $isValidRG = $false
+            $errorMessage = "Resource group name can only contain alphanumeric characters, periods, hyphens, underscores, or parentheses."
+        }
+        elseif ($resourceGroup.EndsWith('.')) {
+            $isValidRG = $false
+            $errorMessage = "Resource group name cannot end with a period."
+        }
+
+        if (-not $isValidRG) {
+            Write-Host "Invalid resource group name: $errorMessage" -ForegroundColor Red
+            Write-Host "Please try again." -ForegroundColor Yellow
+        }
+    } while (-not $isValidRG)
+
+    # Validate Application Name (Azure App Service naming rules)
+    do {
+        $appName = Read-Host "Enter application name"
+        $isValidApp = $true
+        $errorMessage = ""
+
+        if ([string]::IsNullOrWhiteSpace($appName)) {
+            $isValidApp = $false
+            $errorMessage = "Application name cannot be empty."
+        }
+        elseif ($appName.Length -lt 1 -or $appName.Length -gt 60) {
+            $isValidApp = $false
+            $errorMessage = "Application name must be 1-60 characters long."
+        }
+        elseif ($appName -notmatch '^[a-zA-Z0-9\-]+$') {
+            $isValidApp = $false
+            $errorMessage = "Application name can only contain alphanumeric characters or hyphens."
+        }
+
+        if (-not $isValidApp) {
+            Write-Host "Invalid application name: $errorMessage" -ForegroundColor Red
+            Write-Host "Please try again." -ForegroundColor Yellow
+        }
+    } while (-not $isValidApp)
+
+    # Get location with default
     $location = Read-Host "Enter location (default: eastus)"
     if ([string]::IsNullOrWhiteSpace($location)) { $location = "eastus" }
     
     $params = @{
         DeploymentType = $DeploymentType
-        ResourceGroup = $resourceGroup
-        AppName = $appName
-        Location = $location
+        ResourceGroup  = $resourceGroup
+        AppName        = $appName
+        Location       = $location
         SubscriptionId = $Config.SubscriptionId
     }
     
@@ -54,15 +108,12 @@ function Get-DeploymentParameters {
             $branch = Read-Host "Enter branch name (default: main)"
             if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
             
-            # Securely capture GitHub token
+            # Securely capture GitHub token (keep as SecureString for security)
             $secureGitHubToken = Read-Host "Enter GitHub personal access token" -AsSecureString
-            $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureGitHubToken)
-            $gitHubToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
-            
+
             $params.RepoUrl = $repoUrl
             $params.Branch = $branch
-            $params.GitHubToken = $gitHubToken
+            $params.GitHubToken = $secureGitHubToken  # Keep as SecureString
         }
         else {
             # Get project path if not provided
@@ -71,6 +122,7 @@ function Get-DeploymentParameters {
                 if ($projectPathFunc) {
                     $ProjectPath = Get-ProjectPathForDeployment
                     if (-not $ProjectPath) {
+                        Write-Host "Project path selection was cancelled or failed. Deployment cannot continue." -ForegroundColor Yellow
                         return $null
                     }
                 }
@@ -85,6 +137,7 @@ function Get-DeploymentParameters {
             if ($projectPathFunc) {
                 $ProjectPath = Get-ProjectPathForDeployment
                 if (-not $ProjectPath) {
+                    Write-Host "Project path selection was cancelled or failed. Deployment cannot continue." -ForegroundColor Yellow
                     return $null
                 }
             }

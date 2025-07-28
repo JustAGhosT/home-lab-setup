@@ -245,13 +245,40 @@ function Deploy-Website {
         )
         
         Write-Host "Deploying Azure App Service: $AppName"
-        
+
         # Create app service plan
         $planName = "$AppName-plan"
-        New-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Location $Location -Tier Basic -WorkerSize Small -Linux
-        
+        try {
+            Write-Host "Creating App Service Plan: $planName" -ForegroundColor Yellow
+            $appServicePlan = New-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Location $Location -Tier Basic -WorkerSize Small -Linux -ErrorAction Stop
+            Write-Host "Successfully created App Service Plan: $planName" -ForegroundColor Green
+        }
+        catch {
+            Write-Error "Failed to create App Service Plan '$planName': $($_.Exception.Message)"
+            throw
+        }
+
         # Create web app
-        $webApp = New-AzWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -AppServicePlan $planName -RuntimeStack "NODE|18-lts"
+        try {
+            Write-Host "Creating Web App: $AppName" -ForegroundColor Yellow
+            $webApp = New-AzWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -AppServicePlan $planName -RuntimeStack "NODE|18-lts" -ErrorAction Stop
+            Write-Host "Successfully created Web App: $AppName" -ForegroundColor Green
+        }
+        catch {
+            Write-Error "Failed to create Web App '$AppName': $($_.Exception.Message)"
+
+            # Cleanup: Remove the app service plan if web app creation failed
+            try {
+                Write-Host "Cleaning up App Service Plan due to Web App creation failure..." -ForegroundColor Yellow
+                Remove-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Force -ErrorAction SilentlyContinue
+                Write-Host "App Service Plan cleanup completed" -ForegroundColor Yellow
+            }
+            catch {
+                Write-Warning "Failed to cleanup App Service Plan '$planName': $($_.Exception.Message)"
+            }
+
+            throw
+        }
         
         # Configure deployment from GitHub
         if ($RepoUrl -and $GitHubToken) {

@@ -21,14 +21,16 @@ function Invoke-WebsiteHandler {
     # Import required modules
     try {
         Import-Module HomeLab.Core -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "Failed to import HomeLab.Core module: $_"
         return
     }
     
     try {
         Import-Module HomeLab.Web -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "Failed to import HomeLab.Web module: $_"
         return
     }
@@ -36,7 +38,8 @@ function Invoke-WebsiteHandler {
     # Get configuration
     try {
         $config = Get-Configuration -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "Failed to retrieve configuration: $_"
         return
     }
@@ -90,13 +93,13 @@ function Invoke-WebsiteHandler {
             Write-Host "`nAnalyzing project structure..." -ForegroundColor Yellow
             
             $projectInfo = @{
-                Path = $projectPath
-                Files = @(Get-ChildItem -Path $projectPath -File | Select-Object -ExpandProperty Name)
-                Folders = @(Get-ChildItem -Path $projectPath -Directory | Select-Object -ExpandProperty Name)
-                HasPackageJson = Test-Path -Path "$projectPath\package.json"
-                HasIndexHtml = Test-Path -Path "$projectPath\index.html"
+                Path               = $projectPath
+                Files              = @(Get-ChildItem -Path $projectPath -File | Select-Object -ExpandProperty Name)
+                Folders            = @(Get-ChildItem -Path $projectPath -Directory | Select-Object -ExpandProperty Name)
+                HasPackageJson     = Test-Path -Path "$projectPath\package.json"
+                HasIndexHtml       = Test-Path -Path "$projectPath\index.html"
                 HasRequirementsTxt = Test-Path -Path "$projectPath\requirements.txt"
-                HasCsproj = (Get-ChildItem -Path $projectPath -Filter "*.csproj" | Measure-Object).Count -gt 0
+                HasCsproj          = (Get-ChildItem -Path $projectPath -Filter "*.csproj" | Measure-Object).Count -gt 0
             }
             
             # Display project information
@@ -149,23 +152,23 @@ function Invoke-WebsiteHandler {
                 $packageJson -ne $null -and
                 $packageJson.dependencies -ne $null -and
                 ($packageJson.dependencies.express -or 
-                 $packageJson.dependencies.koa -or 
-                 $packageJson.dependencies.fastify -or 
-                 $packageJson.dependencies.hapi)) {
+                $packageJson.dependencies.koa -or 
+                $packageJson.dependencies.fastify -or 
+                $packageJson.dependencies.hapi)) {
                 Write-Host "  App Service (Node.js backend detected)" -ForegroundColor Yellow
             }
             elseif ($projectInfo.HasRequirementsTxt -and 
-                   ((Test-Path -Path "$projectPath\wsgi.py") -or 
-                    (Test-Path -Path "$projectPath\asgi.py") -or 
-                    (Test-Path -Path "$projectPath\manage.py"))) {
+                ((Test-Path -Path "$projectPath\wsgi.py") -or 
+                (Test-Path -Path "$projectPath\asgi.py") -or 
+                (Test-Path -Path "$projectPath\manage.py"))) {
                 Write-Host "  App Service (Python backend detected)" -ForegroundColor Yellow
             }
             elseif ($projectInfo.HasCsproj) {
                 Write-Host "  App Service (.NET application detected)" -ForegroundColor Yellow
             }
             elseif ($projectInfo.HasIndexHtml -or 
-                   (Test-Path -Path "$projectPath\build\index.html") -or 
-                   (Test-Path -Path "$projectPath\dist\index.html")) {
+                (Test-Path -Path "$projectPath\build\index.html") -or 
+                (Test-Path -Path "$projectPath\dist\index.html")) {
                 Write-Host "  Static Web App (Static website detected)" -ForegroundColor Yellow
             }
             else {
@@ -186,7 +189,7 @@ function Invoke-WebsiteHandler {
             Write-Host "=== Deploy Static Website ===" -ForegroundColor Cyan
             
             # Import the helper function
-            . "$PSScriptRoot\..\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
             
             # Get deployment parameters using the helper function
             $params = Get-DeploymentParameters -DeploymentType "static" -Config $config
@@ -210,7 +213,7 @@ function Invoke-WebsiteHandler {
             Write-Host "=== Deploy App Service Website ===" -ForegroundColor Cyan
             
             # Import the helper function
-            . "$PSScriptRoot\..\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
             
             # Get deployment parameters using the helper function
             $params = Get-DeploymentParameters -DeploymentType "appservice" -Config $config
@@ -234,7 +237,7 @@ function Invoke-WebsiteHandler {
             Write-Host "=== Auto-Detect and Deploy Website ===" -ForegroundColor Cyan
             
             # Import the helper function
-            . "$PSScriptRoot\..\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
             
             # Get deployment parameters using the helper function
             $params = Get-DeploymentParameters -DeploymentType "auto" -Config $config
@@ -316,9 +319,9 @@ function Invoke-WebsiteHandler {
             
             # Add GitHub workflows
             $params = @{
-                ProjectPath = $projectPath
+                ProjectPath    = $projectPath
                 DeploymentType = $deploymentType
-                CustomDomain = $customDomain
+                CustomDomain   = $customDomain
             }
             
             # Ask for GitHub token if needed
@@ -378,7 +381,8 @@ function Invoke-WebsiteHandler {
                 else {
                     Get-AzStaticWebApp -ResourceGroupName $resourceGroup -ErrorAction Stop | Format-Table Name, ResourceGroupName, DefaultHostname
                 }
-            } catch {
+            }
+            catch {
                 Write-Host "Failed to retrieve Static Web Apps: $_" -ForegroundColor Red
             }
             
@@ -391,7 +395,8 @@ function Invoke-WebsiteHandler {
                 else {
                     Get-AzWebApp -ResourceGroupName $resourceGroup -ErrorAction Stop | Format-Table Name, ResourceGroup, DefaultHostName
                 }
-            } catch {
+            }
+            catch {
                 Write-Host "Failed to retrieve App Services: $_" -ForegroundColor Red
             }
             

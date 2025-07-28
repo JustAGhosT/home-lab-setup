@@ -21,7 +21,8 @@ foreach ($module in $requiredModules) {
         $manifestPath = Join-Path $siblingPath "$module.psd1"
         if (Test-Path $manifestPath) {
             Import-Module $manifestPath -Force -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             Import-Module $module -Force -ErrorAction SilentlyContinue
         }
     }
@@ -44,15 +45,19 @@ if (Test-Path $publicPath) {
         try {
             . $_.FullName
             
-            # Extract function name from file
+            # Extract function name from file with improved robustness
             $content = Get-Content $_.FullName -Raw
-            if ($content -match 'function\s+([A-Za-z0-9\-_]+)') {
-                $functionName = $matches[1]
-                if ($functionName -and $functionName -ne 'returns') {
+            # Extract all function definitions (excluding commented lines)
+            $functionMatches = [regex]::Matches($content, '^\s*function\s+([\w-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Multiline)
+            foreach ($match in $functionMatches) {
+                $functionName = $match.Groups[1].Value
+                # Verify the function actually exists in current scope and is not a reserved word
+                if ($functionName -and $functionName -ne 'returns' -and (Get-Command $functionName -ErrorAction SilentlyContinue)) {
                     $publicFunctions += $functionName
                 }
             }
-        } catch {
+        }
+        catch {
             Write-Warning "Failed to load function from $($_.Name): $($_.Exception.Message)"
         }
     }
