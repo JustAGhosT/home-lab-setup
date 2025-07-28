@@ -25,7 +25,7 @@ class MarkdownLinter:
     }
 
     # Common markdown patterns - Fixed ReDoS vulnerability
-    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>(?:[^\r\n])*)$")
+    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>[^\r\n]{0,1000})$")
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     HTML_COMMENT_START = re.compile(r"<!--")
     HTML_COMMENT_END = re.compile(r"-->")
