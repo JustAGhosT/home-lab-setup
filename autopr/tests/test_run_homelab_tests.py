@@ -23,28 +23,28 @@ async def test_run_homelab_tests_success():
         
         All tests passed!
         """,
-        b""
+        b"",
     )
-    
+
     # Create the action
     action = RunHomelabTests()
-    
+
     # Mock the subprocess creation
-    with patch('asyncio.create_subprocess_exec', return_value=mock_process):
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process):
         # Run the action
-        result = await action.run(Inputs(
-            test_type="Unit",
-            coverage=True,
-            generate_report=True
-        ))
-    
+        result = await action.run(
+            Inputs(test_type="Unit", coverage=True, generate_report=True)
+        )
+
     # Verify the results
     assert result.success is True
     assert result.total_tests == 42
     assert result.passed_tests == 42
     assert result.failed_tests == 0
     assert result.skipped_tests == 0
-    assert result.pass_rate == 100.0
+    assert (
+        abs(result.pass_rate - 100.0) < 0.001
+    )  # Use tolerance-based comparison for floating point
     assert "C:\\tests\\TestReport.html" in result.report_path
 
 
@@ -66,26 +66,27 @@ async def test_run_homelab_tests_failure():
         - Test1: Error message
         - Test2: Another error message
         """,
-        b"Error: Test execution failed"
+        b"Error: Test execution failed",
     )
-    
+
     # Create the action
     action = RunHomelabTests()
-    
+
     # Mock the subprocess creation
-    with patch('asyncio.create_subprocess_exec', return_value=mock_process):
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process):
         # Run the action
-        result = await action.run(Inputs(
-            test_type="All",
-            coverage=False,
-            generate_report=False
-        ))
-    
+        result = await action.run(
+            Inputs(test_type="All", coverage=False, generate_report=False)
+        )
+
     # Verify the results
     assert result.success is False
     assert result.total_tests == 42
     assert result.passed_tests == 40
     assert result.failed_tests == 2
     assert result.skipped_tests == 0
-    assert result.pass_rate == 95.23809523809524  # 40/42 * 100
+    expected_pass_rate = (40 / 42) * 100  # Calculate expected pass rate
+    assert (
+        abs(result.pass_rate - expected_pass_rate) < 0.001
+    )  # Use tolerance-based comparison for floating point
     assert "Error: Test execution failed" in result.test_results
