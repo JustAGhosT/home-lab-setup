@@ -73,67 +73,100 @@ $testResults = Invoke-Pester -Configuration $config
 
 # Generate HTML report if requested
 if ($GenerateReport) {
-    
-    # Check if we have the module for report generation
-    if (-not (Get-Module -Name PScribo -ListAvailable)) {
-        Write-Host "Installing PScribo module for report generation..."
-        try {
-            Install-Module -Name PScribo -Force -SkipPublisherCheck -ErrorAction Stop
-        }
-        catch {
-            Write-Error "Failed to install PScribo module: $_"
-            Write-Host "HTML report generation will be skipped" -ForegroundColor Yellow
-            return
-        }
-    }
-    
-    Import-Module -Name PScribo
-    
-    # Generate report
     $reportPath = Join-Path $PSScriptRoot "TestReport.html"
     
-    Document "HomeLab Test Report" {
-        Section "Test Summary" {
-            Paragraph "Test Run Date: $(Get-Date)"
-            Paragraph "Test Type: $TestType"
-            
-            Table -Name "Test Results Summary" -Hashtable @{
-                "TotalTests" = $testResults.TotalCount
-                "Passed"     = $testResults.PassedCount
-                "Failed"     = $testResults.FailedCount
-                "Skipped"    = $testResults.SkippedCount
-                "PassRate"   = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
-            }
+    try {
+        # Try PScribo first
+        if (-not (Get-Module -Name PScribo -ListAvailable)) {
+            Write-Host "Installing PScribo module for report generation..."
+            Install-Module -Name PScribo -Force -SkipPublisherCheck -ErrorAction Stop
         }
         
-        if ($Coverage) {
-            Section "Code Coverage" {
-                Paragraph "Code coverage analysis results:"
+        Import-Module -Name PScribo
+        
+        Document "HomeLab Test Report" {
+            Section "Test Summary" {
+                Paragraph "Test Run Date: $(Get-Date)"
+                Paragraph "Test Type: $TestType"
                 
-                Table -Name "Coverage Summary" -Hashtable @{
-                    "FilesAnalyzed"   = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
-                    "CommandsCovered" = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
-                    "CoveragePercent" = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
+                Paragraph "Total Tests: $($testResults.TotalCount)"
+                Paragraph "Passed: $($testResults.PassedCount)"
+                Paragraph "Failed: $($testResults.FailedCount)"
+                Paragraph "Skipped: $($testResults.SkippedCount)"
+                $passRate = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
+                Paragraph "Pass Rate: $passRate%"
+            }
+            
+            if ($Coverage) {
+                Section "Code Coverage" {
+                    Paragraph "Code coverage analysis results:"
+                    
+                    $filesAnalyzed = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsAnalyzed } else { 0 }
+                    $commandsCovered = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
+                    $coveragePercent = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
                         [math]::Round(($testResults.CodeCoverage.NumberOfCommandsExecuted / $testResults.CodeCoverage.NumberOfCommandsAnalyzed) * 100, 2) 
-                    }
-                    else { 0 }
+                    } else { 0 }
+                    Paragraph "Files Analyzed: $filesAnalyzed"
+                    Paragraph "Commands Covered: $commandsCovered"
+                    Paragraph "Coverage Percentage: $coveragePercent%"
                 }
             }
-        }
+            
+            Section "Test Details" {
+                foreach ($result in $testResults.Tests) {
+                    Section $result.Name {
+                        Paragraph "Result: $($result.Result)"
+                        if ($result.Result -eq "Failed") {
+                            Paragraph "Error: $($result.ErrorRecord)"
+                        }
+                    }
+                }
+            }
+        } | Export-Document -Path $PSScriptRoot -Format HTML -Options @{ 'FileName' = 'TestReport' }
         
-        Section "Test Details" {
-            foreach ($result in $testResults.Tests) {
-                Section $result.Name {
-                    Paragraph "Result: $($result.Result)"
-                    if ($result.Result -eq "Failed") {
-                        Paragraph "Error: $($result.ErrorRecord)"
-                    }
-                }
-            }
-        }
-    } | Export-Document -Path $PSScriptRoot -Format HTML -Options @{ 'FileName' = 'TestReport' }
+        Write-Host "Report generated at: $reportPath" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "PScribo failed, generating simple HTML report..." -ForegroundColor Yellow
+        
+        $passRate = if ($testResults.TotalCount -gt 0) { [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) } else { 0 }
+        
+        $htmlContent = @"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HomeLab Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
+        .summary { margin: 20px 0; }
+        .passed { color: green; }
+        .failed { color: red; }
+        .skipped { color: orange; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>HomeLab Test Report</h1>
+        <p>Test Run Date: $(Get-Date)</p>
+        <p>Test Type: $TestType</p>
+    </div>
     
-    Write-Host "Report generated at: $(Join-Path $PSScriptRoot 'TestReport.html')" -ForegroundColor Green
+    <div class="summary">
+        <h2>Test Summary</h2>
+        <p>Total Tests: $($testResults.TotalCount)</p>
+        <p class="passed">Passed: $($testResults.PassedCount)</p>
+        <p class="failed">Failed: $($testResults.FailedCount)</p>
+        <p class="skipped">Skipped: $($testResults.SkippedCount)</p>
+        <p>Pass Rate: $passRate%</p>
+    </div>
+</body>
+</html>
+"@
+        
+        $htmlContent | Out-File -FilePath $reportPath -Encoding UTF8
+        Write-Host "Fallback report generated at: $reportPath" -ForegroundColor Green
+    }
 }
 
 # Return results summary
