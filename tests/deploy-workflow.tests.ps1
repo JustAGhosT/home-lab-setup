@@ -38,7 +38,7 @@ Describe "End-to-End Deployment Workflow Tests" {
                     [string]$Subdomain = "myapp",
                     [string]$Environment = "dev",
                     [string]$CustomDomain = "example.com",
-                    [string]$Location = "eastus"
+                    [string]$Location = "westeurope"
                 )
                 
                 # Step 1: Generate resource names
@@ -90,7 +90,7 @@ Describe "End-to-End Deployment Workflow Tests" {
                     [string]$Subdomain = "myapi",
                     [string]$Environment = "dev",
                     [string]$CustomDomain = "example.com",
-                    [string]$Location = "eastus"
+                    [string]$Location = "westeurope"
                 )
                 
                 # Step 1: Generate resource names

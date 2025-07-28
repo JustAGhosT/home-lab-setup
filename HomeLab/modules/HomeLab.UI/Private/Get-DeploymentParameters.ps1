@@ -89,8 +89,8 @@ function Get-DeploymentParameters {
     } while (-not $isValidApp)
 
     # Get location with default
-    $location = Read-Host "Enter location (default: eastus)"
-    if ([string]::IsNullOrWhiteSpace($location)) { $location = "eastus" }
+    $location = Read-Host "Enter location (default: westeurope)"
+    if ([string]::IsNullOrWhiteSpace($location)) { $location = "westeurope" }
     
     $params = @{
         DeploymentType = $DeploymentType

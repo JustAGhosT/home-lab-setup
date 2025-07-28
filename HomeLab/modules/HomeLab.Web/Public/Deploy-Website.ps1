@@ -12,16 +12,24 @@ function Select-ProjectFolder {
     [CmdletBinding()]
     param()
     
-    Add-Type -AssemblyName System.Windows.Forms
-    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-    $folderBrowser.Description = "Select the project folder to deploy"
-    $folderBrowser.RootFolder = [System.Environment+SpecialFolder]::MyComputer
-    
-    if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-        return $folderBrowser.SelectedPath
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderBrowser.Description = "Select the project folder to deploy"
+        $folderBrowser.RootFolder = [System.Environment+SpecialFolder]::MyComputer
+
+        if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            return $folderBrowser.SelectedPath
+        }
+
+        return $null
     }
-    
-    return $null
+    catch {
+        Write-Warning "Windows Forms is not available on this system. Cannot use graphical folder browser."
+        Write-Host "Please specify the project folder path manually using the -ProjectPath parameter." -ForegroundColor Yellow
+        Write-Host "Example: Deploy-Website -ProjectPath 'C:\Path\To\Your\Project'" -ForegroundColor Cyan
+        throw "System.Windows.Forms assembly could not be loaded. This may occur on Server Core installations or non-Windows systems. Use -ProjectPath parameter instead."
+    }
 }
 
 function Deploy-Website {
@@ -43,7 +51,7 @@ function Deploy-Website {
         Azure Resource Group name.
     
     .PARAMETER Location
-        Azure region. Default is eastus.
+        Azure region. Default is westeurope.
     
     .PARAMETER AppName
         Application name.
@@ -82,7 +90,7 @@ function Deploy-Website {
         [string]$ResourceGroup,
         
         [Parameter()]
-        [string]$Location = "eastus",
+        [string]$Location = "westeurope",
         
         [Parameter(Mandatory = $true)]
         [string]$AppName,
@@ -94,7 +102,7 @@ function Deploy-Website {
         [string]$CustomDomain,
         
         [Parameter()]
-        [string]$GitHubToken,
+        [SecureString]$GitHubToken,
         
         [Parameter()]
         [string]$RepoUrl,
@@ -141,13 +149,31 @@ function Deploy-Website {
         
         # Check for backend indicators
         if (Test-Path -Path "$Path\package.json") {
-            $packageJson = Get-Content -Path "$Path\package.json" -Raw | ConvertFrom-Json
-            if ($packageJson.dependencies -and 
-                ($packageJson.dependencies.express -or 
-                 $packageJson.dependencies.koa -or 
-                 $packageJson.dependencies.fastify -or 
-                 $packageJson.dependencies.hapi)) {
-                return "appservice"
+            try {
+                Write-Verbose "Reading package.json from: $Path\package.json"
+                $packageJsonContent = Get-Content -Path "$Path\package.json" -Raw -ErrorAction Stop
+                $packageJson = ConvertFrom-Json $packageJsonContent -ErrorAction Stop
+
+                if ($packageJson.dependencies -and
+                    ($packageJson.dependencies.express -or
+                    $packageJson.dependencies.koa -or
+                    $packageJson.dependencies.fastify -or
+                    $packageJson.dependencies.hapi)) {
+                    Write-Verbose "Detected backend Node.js framework, using appservice deployment"
+                    return "appservice"
+                }
+            }
+            catch [System.ArgumentException] {
+                Write-Warning "Failed to parse package.json: Invalid JSON format. $($_.Exception.Message)"
+                Write-Host "Continuing with static deployment as fallback..." -ForegroundColor Yellow
+            }
+            catch [System.IO.IOException] {
+                Write-Warning "Failed to read package.json: File access error. $($_.Exception.Message)"
+                Write-Host "Continuing with static deployment as fallback..." -ForegroundColor Yellow
+            }
+            catch {
+                Write-Warning "Failed to process package.json: $($_.Exception.Message)"
+                Write-Host "Continuing with static deployment as fallback..." -ForegroundColor Yellow
             }
         }
         
@@ -200,7 +226,7 @@ function Deploy-Website {
             [string]$ResourceGroup,
             [string]$RepoUrl,
             [string]$Branch,
-            [string]$GitHubToken,
+            [SecureString]$GitHubToken,
             [string]$Location,
             [string]$CustomDomain,
             [string]$Subdomain
@@ -210,11 +236,34 @@ function Deploy-Website {
         
         # Create the static web app
         try {
-            $staticWebApp = New-AzStaticWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -RepositoryUrl $RepoUrl -Branch $Branch -RepositoryToken $GitHubToken -Sku Free -ErrorAction Stop
+            # Convert SecureString to plain text only at the point of use
+            $plainTextToken = $null
+            if ($GitHubToken) {
+                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($GitHubToken)
+                try {
+                    $plainTextToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                }
+                finally {
+                    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+                }
+            }
+
+            $staticWebApp = New-AzStaticWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -RepositoryUrl $RepoUrl -Branch $Branch -RepositoryToken $plainTextToken -Sku Free -ErrorAction Stop
+
+            # Clear the plain text token from memory immediately
+            $plainTextToken = $null
+
             Write-Host "Static Web App created successfully: $AppName" -ForegroundColor Green
-        } catch {
+        }
+        catch {
             Write-Error "Failed to create Static Web App: $_"
             return $null
+        }
+        finally {
+            # Ensure token is cleared even if an exception occurs
+            if ($plainTextToken) {
+                $plainTextToken = $null
+            }
         }
         
         # Configure custom domain if provided
@@ -222,7 +271,8 @@ function Deploy-Website {
             $domain = "$Subdomain.$CustomDomain"
             try {
                 Configure-CustomDomainStatic -AppName $AppName -ResourceGroup $ResourceGroup -Domain $domain
-            } catch {
+            }
+            catch {
                 Write-Error "Failed to configure custom domain: $_"
                 Write-Warning "Static Web App was created but custom domain configuration failed"
             }
@@ -239,7 +289,7 @@ function Deploy-Website {
             [string]$Location,
             [string]$RepoUrl,
             [string]$Branch,
-            [string]$GitHubToken,
+            [SecureString]$GitHubToken,
             [string]$CustomDomain,
             [string]$Subdomain
         )
@@ -283,8 +333,8 @@ function Deploy-Website {
         # Configure deployment from GitHub
         if ($RepoUrl -and $GitHubToken) {
             $props = @{
-                repoUrl = $RepoUrl
-                branch = $Branch
+                repoUrl             = $RepoUrl
+                branch              = $Branch
                 isManualIntegration = $true
             }
             
@@ -352,8 +402,26 @@ function Deploy-Website {
         return
     }
     
-    # Set subscription
-    Set-AzContext -SubscriptionId $SubscriptionId
+    # Set subscription with error handling
+    try {
+        Write-Host "Setting Azure subscription context..." -ForegroundColor Yellow
+        $context = Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
+        Write-Host "Successfully set subscription context: $($context.Subscription.Name)" -ForegroundColor Green
+    }
+    catch [Microsoft.Azure.Commands.Profile.Errors.AzPSResourceNotFoundCloudException] {
+        Write-Error "Subscription ID '$SubscriptionId' not found. Please verify the subscription ID is correct and you have access to it."
+        Write-Host "To list available subscriptions, run: Get-AzSubscription" -ForegroundColor Cyan
+        return
+    }
+    catch [Microsoft.Azure.Commands.Profile.Errors.AzPSAuthenticationFailedException] {
+        Write-Error "Authentication failed. Please run 'Connect-AzAccount' to authenticate with Azure."
+        return
+    }
+    catch {
+        Write-Error "Failed to set Azure subscription context: $($_.Exception.Message)"
+        Write-Host "Please verify your subscription ID and authentication status." -ForegroundColor Yellow
+        return
+    }
     
     # Create resource group
     New-ResourceGroupIfNotExists -ResourceGroupName $ResourceGroup -Location $Location
@@ -384,7 +452,7 @@ function Deploy-Website {
         if ($addWorkflowsPrompt -eq "y") {
             Write-Host "Adding GitHub workflow files for automatic deployment..." -ForegroundColor Yellow
             $workflowParams = @{
-                ProjectPath = $ProjectPath
+                ProjectPath    = $ProjectPath
                 DeploymentType = $DeploymentType
             }
             

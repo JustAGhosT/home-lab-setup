@@ -105,7 +105,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: "fs"
           scan-ref: "."
@@ -148,6 +148,13 @@ jobs:
               Write-Warning "Failed to parse manifest $manifest`: $($_.Exception.Message)"
             }
           }
+
+      - name: Setup Node.js (if package.json exists)
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
 
       - name: Check Node.js dependencies (if applicable)
         if: hashFiles('package.json') != ''
@@ -238,8 +245,33 @@ jobs:
           for job_info in "${jobs[@]}"; do
             job_name="${job_info%%:*}"
             job_display="${job_info##*:}"
-            
-            case "${{ needs[job_name].result }}" in
+
+            # Get the job result using explicit job names since GitHub Actions expressions can't use shell variables
+            case "$job_name" in
+              "powershell-analysis")
+                result="${{ needs.powershell-analysis.result }}"
+                ;;
+              "markdown-lint")
+                result="${{ needs.markdown-lint.result }}"
+                ;;
+              "yaml-lint")
+                result="${{ needs.yaml-lint.result }}"
+                ;;
+              "security-scan")
+                result="${{ needs.security-scan.result }}"
+                ;;
+              "dependency-check")
+                result="${{ needs.dependency-check.result }}"
+                ;;
+              "file-structure-check")
+                result="${{ needs.file-structure-check.result }}"
+                ;;
+              *)
+                result="unknown"
+                ;;
+            esac
+
+            case "$result" in
               "success")
                 echo "✅ **$job_display**: Passed" >> $GITHUB_STEP_SUMMARY
                 ;;

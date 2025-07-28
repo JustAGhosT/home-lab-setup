@@ -129,9 +129,27 @@ function Add-DNSRecord {
                 Write-Error "MX record value should be in format: 'priority hostname' (e.g., '10 mail.example.com')"
                 return
             }
-            
-            $priority = [int]$parts[0]
+
+            # Validate priority is a valid integer
+            $priority = $null
+            if (-not [int]::TryParse($parts[0], [ref]$priority)) {
+                Write-Error "MX record priority must be a valid integer. Provided value: '$($parts[0])'"
+                return
+            }
+
+            # Validate priority is within valid range (0-65535)
+            if ($priority -lt 0 -or $priority -gt 65535) {
+                Write-Error "MX record priority must be between 0 and 65535. Provided value: $priority"
+                return
+            }
+
             $exchange = $parts[1]
+
+            # Validate exchange hostname is not empty
+            if ([string]::IsNullOrWhiteSpace($exchange)) {
+                Write-Error "MX record exchange hostname cannot be empty"
+                return
+            }
             
             try {
                 $recordSet = New-AzDnsRecordSet -Name $recordSetName -RecordType MX -ZoneName $ZoneName -ResourceGroupName $ResourceGroup -Ttl $TTL -Overwrite -ErrorAction Stop

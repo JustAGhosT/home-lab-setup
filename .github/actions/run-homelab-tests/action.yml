@@ -21,30 +21,42 @@ inputs:
 outputs:
   success:
     description: 'Whether all tests passed'
+    value: ${{ steps.run-tests.outputs.success }}
   total_tests:
     description: 'Total number of tests run'
+    value: ${{ steps.run-tests.outputs.total_tests }}
   passed_tests:
     description: 'Number of tests that passed'
+    value: ${{ steps.run-tests.outputs.passed_tests }}
   failed_tests:
     description: 'Number of tests that failed'
+    value: ${{ steps.run-tests.outputs.failed_tests }}
   skipped_tests:
     description: 'Number of tests that were skipped'
+    value: ${{ steps.run-tests.outputs.skipped_tests }}
   pass_rate:
     description: 'Percentage of tests that passed'
+    value: ${{ steps.run-tests.outputs.pass_rate }}
   test_results:
     description: 'Full test results output'
+    value: ${{ steps.run-tests.outputs.test_results }}
   report_path:
     description: 'Path to the generated HTML report'
+    value: ${{ steps.run-tests.outputs.report_path }}
   failed_test_details:
     description: 'Details about failed tests'
+    value: ${{ steps.run-tests.outputs.failed_test_details }}
   issues_fixed:
     description: 'Whether any issues were automatically fixed'
+    value: ${{ steps.run-tests.outputs.issues_fixed }}
   fix_details:
     description: 'Details about fixes that were applied'
+    value: ${{ steps.run-tests.outputs.fix_details }}
 runs:
   using: 'composite'
   steps:
     - name: Run HomeLab Tests
+      id: run-tests
       shell: pwsh
       run: |
         cd $env:GITHUB_WORKSPACE

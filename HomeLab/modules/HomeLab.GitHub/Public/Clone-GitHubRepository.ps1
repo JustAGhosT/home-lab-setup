@@ -24,24 +24,27 @@ function Clone-GitHubRepository {
                 Write-Host "Getting repository information for '$Repository'..." -ForegroundColor Yellow
                 $repoInfo = Invoke-GitHubApi -Endpoint "/repos/$Repository" -Method GET
                 $repoToClone = [PSCustomObject]@{
-                    Name = $repoInfo.name
-                    FullName = $repoInfo.full_name
-                    CloneUrl = $repoInfo.clone_url
-                    SshUrl = $repoInfo.ssh_url
+                    Name          = $repoInfo.name
+                    FullName      = $repoInfo.full_name
+                    CloneUrl      = $repoInfo.clone_url
+                    SshUrl        = $repoInfo.ssh_url
                     DefaultBranch = $repoInfo.default_branch
-                    Private = $repoInfo.private
+                    Private       = $repoInfo.private
                 }
-            } else {
+            }
+            else {
                 # Repository specified as object
                 $repoToClone = $Repository
             }
-        } else {
+        }
+        else {
             # Use selected repository
             $config = Get-GitHubConfiguration
             if ($config.SelectedRepository) {
                 $repoToClone = $config.SelectedRepository
                 Write-Host "Using selected repository: $($repoToClone.FullName)" -ForegroundColor Gray
-            } else {
+            }
+            else {
                 throw "No repository specified and no repository selected. Use Select-GitHubRepository first or specify -Repository parameter."
             }
         }
@@ -69,7 +72,8 @@ function Clone-GitHubRepository {
             if ($Force) {
                 Write-Host "Removing existing directory: $Path" -ForegroundColor Yellow
                 Remove-Item -Path $Path -Recurse -Force
-            } else {
+            }
+            else {
                 throw "Directory already exists: $Path. Use -Force to overwrite."
             }
         }
@@ -94,7 +98,8 @@ function Clone-GitHubRepository {
         if ($Branch) {
             $gitArgs = @('clone', '--branch', $Branch, $cloneUrl, $Path)
             Write-Host "  Branch: $Branch" -ForegroundColor Gray
-        } else {
+        }
+        else {
             Write-Host "  Branch: $($repoToClone.DefaultBranch) (default)" -ForegroundColor Gray
         }
         
@@ -106,12 +111,15 @@ function Clone-GitHubRepository {
             Write-Host "  Location: $Path" -ForegroundColor Gray
             
             # Get some info about the cloned repository
+            $locationPushed = $false
             try {
                 Push-Location $Path
+                $locationPushed = $true
                 $currentBranch = (git branch --show-current 2>$null).Trim()
                 $lastCommit = (git log -1 --format="%h %s" 2>$null).Trim()
                 Pop-Location
-                
+                $locationPushed = $false
+
                 if ($currentBranch) {
                     Write-Host "  Current branch: $currentBranch" -ForegroundColor Gray
                 }
@@ -120,14 +128,21 @@ function Clone-GitHubRepository {
                 }
             }
             catch {
-                if (Get-Location | Where-Object { $_.Path -ne (Get-Location).Path }) {
-                    Pop-Location
+                # Clean up location stack if we pushed but haven't popped yet
+                if ($locationPushed) {
+                    try {
+                        Pop-Location
+                    }
+                    catch {
+                        Write-Verbose "Failed to pop location during error cleanup: $($_.Exception.Message)"
+                    }
                 }
                 Write-Verbose "Could not get git info: $($_.Exception.Message)"
             }
             
             return $Path
-        } else {
+        }
+        else {
             throw "Git clone failed with exit code $($process.ExitCode)"
         }
     }
