@@ -408,7 +408,8 @@ class MarkdownLinter:
                 return line_content
 
             # Create a closure to capture the expected number
-            fix_func = lambda content: fix_ordered_number(content, expected_number)
+            def fix_func(content):
+                return fix_ordered_number(content, expected_number)
 
             self._add_issue(
                 report,
