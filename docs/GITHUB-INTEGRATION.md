@@ -91,7 +91,7 @@ base_subdomain: "myapp"
 
 ## Repository Deployment Feature
 
-### Overview
+### GitHub Repository Deployment
 
 The HomeLab system can deploy GitHub repositories directly to Azure using the `Deploy-GitHubRepository` function.
 

@@ -173,18 +173,18 @@ Tests run automatically on:
 
 ### Common Issues
 
-**Pester Module Not Found**
+### Pester Module Not Found
 ```powershell
 Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck
 ```
 
-**Azure Authentication Failures**
+### Azure Authentication Failures
 ```powershell
 Connect-AzAccount
 Set-AzContext -SubscriptionId "your-subscription-id"
 ```
 
-**Test Timeouts**
+### Test Timeouts
 - Increase timeout values in test configuration
 - Check Azure service availability
 - Verify network connectivity

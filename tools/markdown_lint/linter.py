@@ -43,7 +43,7 @@ class MarkdownLinter:
     EMAIL_PATTERN = re.compile(
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
-    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+.{0,1000}\s+#{1,6}\s*$")
+    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+[^\s]{1,1000}(?:\s+[^\s]+)*\s+#{1,6}\s*$")
 
     def __init__(self, config: Optional[dict] = None):
         """Initialize the linter with the given configuration."""

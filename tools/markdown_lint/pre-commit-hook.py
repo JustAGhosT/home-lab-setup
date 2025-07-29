@@ -13,12 +13,12 @@ from pathlib import Path
 def get_file_hash(file_path):
     """Get MD5 hash of a file."""
     try:
-        hash_md5 = hashlib.md5()
+        hash_sha256 = hashlib.sha256()
         with open(file_path, "rb") as f:
             # Read file in chunks to handle large files safely
             for chunk in iter(lambda: f.read(8192), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
+                hash_sha256.update(chunk)
+        return hash_sha256.hexdigest()
     except (OSError, IOError):
         return None
 
