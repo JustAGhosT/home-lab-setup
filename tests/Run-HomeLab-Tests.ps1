@@ -15,7 +15,7 @@ param(
 if (-not (Get-Module -Name Pester -ListAvailable)) {
     Write-Host "Installing Pester module..."
     try {
-        Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck
+        Install-Module -Name Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
         Write-Host "Pester module installed successfully" -ForegroundColor Green
     }
     catch {
@@ -79,7 +79,7 @@ if ($GenerateReport) {
         # Try PScribo first
         if (-not (Get-Module -Name PScribo -ListAvailable)) {
             Write-Host "Installing PScribo module for report generation..."
-            Install-Module -Name PScribo -Force -SkipPublisherCheck -ErrorAction Stop
+            Install-Module -Name PScribo -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction Stop
         }
         
         Import-Module -Name PScribo

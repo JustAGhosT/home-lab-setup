@@ -25,13 +25,23 @@ def main():
         print("No markdown files to process")
         return 0
 
+    # Validate Python is available
+    try:
+        subprocess.run([sys.executable, "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("ERROR: Python is not available")
+        return 1
+
     files = sys.argv[1:]
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent.parent
-
-    # Change to markdown linter directory
-    original_cwd = Path.cwd()
     linter_dir = script_dir
+    
+    # Validate linter module exists
+    linter_script = linter_dir / "__main__.py"
+    if not linter_script.exists():
+        print(f"ERROR: Markdown linter module not found: {linter_script}")
+        return 1
 
     modified_files = []
     files_processed = 0
@@ -60,19 +70,12 @@ def main():
 
         # Run markdown linter with --fix
         try:
-            # Change to linter directory and run the linter
-            import os
-
-            os.chdir(linter_dir)
-
             result = subprocess.run(
-                [sys.executable, "__main__.py", str(full_path), "--fix"],
+                [sys.executable, str(linter_script), str(full_path), "--fix"],
                 capture_output=True,
                 text=True,
+                cwd=linter_dir,
             )
-
-            # Change back to original directory
-            os.chdir(original_cwd)
 
             if result.returncode == 0:
                 # Get file hash after processing

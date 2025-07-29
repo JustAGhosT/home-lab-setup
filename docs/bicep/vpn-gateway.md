@@ -96,7 +96,7 @@ After deploying the VPN Gateway, additional configuration is required:
 2. Create client certificates for each connecting device
 3. Download and configure the VPN client on each device
 
-These steps are handled by the HomeLab PowerShell module. For details, see the [VPN Gateway Guide](../VPN-GATEWAY.README.md) and [Certificate Management Guide](../client-certificate-management.md).
+These steps are handled by the HomeLab PowerShell module. For details, see the [VPN Gateway Guide](../networking/vpn-gateway.md) and [Certificate Management Guide](../security/client-certificate-management.md).
 
 ## Limitations
 

@@ -1,10 +1,11 @@
 """Core markdown linter implementation."""
 
 import re
+import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Pattern, Set, Tuple, Union
 
-from models import FileReport, IssueSeverity, LintIssue
+from .models import FileReport, IssueSeverity, LintIssue
 
 
 class MarkdownLinter:
@@ -767,7 +768,7 @@ class MarkdownLinter:
         self, directory: Union[str, Path], exclude: Optional[List[str]] = None
     ) -> Dict[Path, FileReport]:
         """Check all markdown files in a directory."""
-        from tools.find_markdown_files import find_markdown_files
+        from .find_markdown_files import find_markdown_files
 
         directory = Path(directory).resolve()
         exclude = exclude or []

@@ -12,8 +12,15 @@
 function Wait-BeforeSplash {
     [CmdletBinding()]
     param(
+        [ValidateRange(0,60)]
         [int]$Seconds = 2
     )
+    # Check if we're in an interactive host
+    if (-not ($Host.UI -and $Host.UI.RawUI)) {
+        Start-Sleep -Seconds $Seconds
+        return
+    }
+    
     Write-Host "Press any key to continue, or wait $Seconds seconds..."
     
     # We can wait for either a key press or for $Seconds to elapse

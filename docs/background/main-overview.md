@@ -30,7 +30,7 @@ Key paths:
 Key paths:
 - HomeLab/modules/HomeLab.Security/Public/
 - docs/client-certificate-management.md
-- docs/VPN-GATEWAY.README.md
+- docs/networking/vpn-gateway.md
 
 ### Website and DNS Management (Importance: 85)
 - Azure App Service and Static Web App deployment

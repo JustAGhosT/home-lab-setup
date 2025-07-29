@@ -6,8 +6,16 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from linter import MarkdownLinter
-from models import IssueSeverity
+from .linter import MarkdownLinter
+from .models import IssueSeverity
+
+
+def get_version():
+    """Get package version safely."""
+    try:
+        return __import__('tools.markdown_lint', fromlist=['__version__']).__version__
+    except (ImportError, AttributeError):
+        return "unknown"
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
@@ -152,7 +160,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {__import__('tools.markdown_lint', fromlist=['__version__']).__version__}",
+        version=f"%(prog)s {get_version()}",
     )
 
     return parser.parse_args(args)
