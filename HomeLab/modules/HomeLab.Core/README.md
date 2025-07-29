@@ -67,7 +67,7 @@ if (-not $prereqCheck.IsValid) {
 }
 ```
 
-#### `Get-HomeLabVersion`
+### `Get-HomeLabVersion`
 Returns version information for the HomeLab module and its components.
 
 ```powershell
