@@ -3,7 +3,7 @@
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Pattern, Set, Tuple, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from .models import FileReport, IssueSeverity, LintIssue
 
@@ -31,19 +31,19 @@ class MarkdownLinter:
     }
 
     # Common markdown patterns
-    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>.+)$")
+    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>.{0,1000})$")
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
     HTML_COMMENT_PATTERN = re.compile(r"^<!--.*?-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
-    ORDERED_LIST_PATTERN = re.compile(r"^\s*(?P<number>\d+)\.(?P<content>\s+.*)$")
+    ORDERED_LIST_PATTERN = re.compile(r"^\s*(?P<number>\d+)\.(?P<content>\s+.{0,1000})$")
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
     BARE_URL_PATTERN = re.compile(r"(?<![<\[\(])(https?://[^\s<>\[\]()]+)(?![>\]\)])")
     EMAIL_PATTERN = re.compile(
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
-    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#+\s+.*\s+#+\s*$")
+    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+.{0,1000}\s+#{1,6}\s*$")
 
     def __init__(self, config: Optional[dict] = None):
         """Initialize the linter with the given configuration."""
@@ -65,7 +65,7 @@ class MarkdownLinter:
             in_code_block = False
             in_html_comment = False
             in_list = False
-            list_indent = 0
+
             prev_line = ""
             prev_line_blank = True  # Start as if previous line was blank
             current_list_type = None  # 'ordered' or 'unordered'
@@ -131,7 +131,7 @@ class MarkdownLinter:
                 # Check for trailing whitespace
                 if self.config["trim_trailing_whitespace"] and line.rstrip() != line:
                     self._add_issue(
-                        report, i, "Trim trailing whitespace", "MD009", fix=lambda l: l.rstrip()
+                        report, i, "Trim trailing whitespace", "MD009", fix=lambda line: line.rstrip()
                     )
 
                 # Check for consistent line endings
@@ -141,7 +141,7 @@ class MarkdownLinter:
                         i,
                         "Inconsistent line endings (CRLF)",
                         "MD001",
-                        fix=lambda l: l.replace("\r\n", "\n"),
+                        fix=lambda line: line.replace("\r\n", "\n"),
                     )
 
                 # Check headings
@@ -255,7 +255,7 @@ class MarkdownLinter:
 
         # Auto-fix text paragraphs and list items
         if self._can_wrap_text(stripped):
-            return lambda l: self._wrap_text_line(l, max_length)
+            return lambda line: self._wrap_text_line(line, max_length)
 
         return None
 
@@ -305,7 +305,7 @@ class MarkdownLinter:
                 line_num,
                 f"Missing space after heading marker",
                 "MD018",
-                fix=lambda l: f"{'#' * level} {l.lstrip('#').lstrip()}",
+                fix=lambda line: f"{'#' * level} {line.lstrip('#').lstrip()}",
             )
 
         # Check for trailing hashes
@@ -315,7 +315,7 @@ class MarkdownLinter:
                 line_num,
                 "Remove trailing hash characters from heading",
                 "MD026",
-                fix=lambda l: l.split(" #")[0].rstrip(),
+                fix=lambda line: line.split(" #")[0].rstrip(),
             )
 
         # Check for proper capitalization (first word only)
@@ -325,8 +325,8 @@ class MarkdownLinter:
                 line_num,
                 "First word in heading should be capitalized",
                 "MD002",
-                fix=lambda l: re.sub(
-                    r"^(#+\s*)([a-z])", lambda m: m.group(1) + m.group(2).upper(), l
+                fix=lambda line: re.sub(
+                    r"^(#+\s*)([a-z])", lambda m: m.group(1) + m.group(2).upper(), line
                 ),
             )
 
@@ -517,19 +517,29 @@ class MarkdownLinter:
 
             import requests
 
-            # Try to fetch the page title
+            # Try to fetch the page title with size limit
             response = requests.get(
                 url,
                 timeout=5,
                 headers={
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                 },
+                stream=True,
             )
             response.raise_for_status()
+            
+            # Read only up to 1MB to prevent memory exhaustion
+            content = ""
+            max_size = 1024 * 1024  # 1MB limit
+            for chunk in response.iter_content(chunk_size=8192, decode_unicode=True):
+                content += chunk
+                if len(content) > max_size:
+                    break
+            response.close()
 
             # Extract title from HTML
             title_match = regex_module.search(
-                r"<title[^>]*>([^<]+)</title>", response.text, regex_module.IGNORECASE
+                r"<title[^>]*>([^<]+)</title>", content, regex_module.IGNORECASE
             )
             if title_match:
                 title = title_match.group(1).strip()
@@ -576,7 +586,7 @@ class MarkdownLinter:
                 line_num,
                 "List items should be indented with multiples of 2 spaces",
                 "MD007",
-                fix=lambda l: " " * (indent + 1) + l.lstrip(),
+                fix=lambda line: " " * (indent + 1) + line.lstrip(),
             )
 
     def _check_common_mistakes(
@@ -647,7 +657,7 @@ class MarkdownLinter:
                 line_num,
                 "Use a single space after list markers",
                 "MD030",
-                fix=lambda l: re.sub(r"^([*+-])\s+", r"\1 ", l),
+                fix=lambda line: re.sub(r"^([*+-])\s+", r"\1 ", line),
             )
 
     def _add_issue(

@@ -11,7 +11,7 @@ $ErrorActionPreference = "Continue"
 
 # Get the script directory and repository root
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = Resolve-Path (Join-Path $ScriptDir "../..")
+$RepoRoot = & git rev-parse --show-toplevel
 
 # Change to markdown linter directory
 Set-Location $ScriptDir

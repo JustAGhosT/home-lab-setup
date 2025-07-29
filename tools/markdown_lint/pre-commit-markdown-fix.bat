@@ -3,6 +3,16 @@ REM Enhanced Markdown Linter Pre-commit Hook
 REM Automatically fixes markdown issues and re-stages files
 setlocal enabledelayedexpansion
 
+REM Validate Python is available
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Python is not available in PATH
+    exit /b 1
+)
+
+REM Get repository root dynamically
+for /f "delims=" %%i in ('git rev-parse --show-toplevel') do set "repo_root=%%i"
+
 REM Change to the markdown linter directory
 cd /d "%~dp0"
 
@@ -17,17 +27,17 @@ REM Process each file passed as argument
 for %%f in (%*) do (
     echo Checking: %%f
 
-    REM Get file modification time before processing
-    for %%i in ("%%f") do set "before_time=%%~ti"
+    REM Calculate file hash before processing
+    for /f %%i in ('certutil -hashfile "%%f" MD5 ^| find /v ":" ^| find /v "CertUtil"') do set "before_hash=%%i"
 
     REM Run markdown linter with --fix on the specific file
     python __main__.py "%%f" --fix
 
-    REM Get file modification time after processing
-    for %%i in ("%%f") do set "after_time=%%~ti"
+    REM Calculate file hash after processing
+    for /f %%i in ('certutil -hashfile "%%f" MD5 ^| find /v ":" ^| find /v "CertUtil"') do set "after_hash=%%i"
 
     REM Check if file was modified
-    if not "!before_time!"=="!after_time!" (
+    if not "!before_hash!"=="!after_hash!" (
         echo File modified: %%f
         echo %%f >> "%temp_file%"
         set "files_modified=1"
@@ -40,12 +50,15 @@ if "!files_modified!"=="1" (
     echo Re-staging modified markdown files...
 
     REM Change back to repository root
-    cd /d "%~dp0..\.."
+    cd /d "!repo_root!"
 
     REM Re-stage each modified file
-    for /f "tokens=*" %%a in (%temp_file%) do (
+    for /f "tokens=*" %%a in ("%temp_file%") do (
         echo Staging: %%a
         git add "%%a"
+        if errorlevel 1 (
+            echo WARNING: Failed to stage %%a
+        )
     )
 
     echo Modified files have been re-staged for commit.
