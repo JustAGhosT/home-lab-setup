@@ -18,7 +18,9 @@ function Start-MainLoop {
         [switch]$DebugMode
     )
     
-    try {
+    do {
+        $shouldRestart = $false
+        try {
         # Add a diagnostic wrapper
         if ($DebugMode) {
             Write-Host "=== DIAGNOSTIC MODE ENABLED ===" -ForegroundColor Magenta
@@ -76,12 +78,11 @@ function Start-MainLoop {
         # Ask user if they want to restart the application
         Write-Host "`nWould you like to restart the application? (Y/N)" -ForegroundColor Yellow
         $restart = Read-Host
-        if ($restart -eq "Y" -or $restart -eq "y") {
-            Start-MainLoop -DebugMode:$DebugMode  # Recursive call to restart
+        $shouldRestart = ($restart -eq "Y" -or $restart -eq "y")
+        if (-not $shouldRestart) {
+            return $false
         }
-        
-        return $false
-    }
+    } while ($shouldRestart)
 }
 
 

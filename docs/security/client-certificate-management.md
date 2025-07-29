@@ -103,7 +103,10 @@ $rootCertData | Out-File -FilePath "C:\Certs\$rootCertName.txt"
 #### Export Client Certificate with Private Key
 
 ```powershell
-$password = ConvertTo-SecureString -String "YourSecurePassword" -Force -AsPlainText
+# Generate a secure password or prompt user
+$password = Read-Host -AsSecureString -Prompt "Enter a secure password for the certificate"
+# OR use a generated password:
+# $password = ConvertTo-SecureString -String (New-Guid).Guid -Force -AsPlainText
 $clientCert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -eq "CN=$clientCertName" }
 Export-PfxCertificate -Cert $clientCert -FilePath "C:\Certs\$clientCertName.pfx" -Password $password
 ```
@@ -127,15 +130,27 @@ Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -like "*Cli
 2. Add the certificate thumbprint to revoke access
 3. Remove the certificate from client devices manually
 
-**Azure CLI Method:**
-```bash
-# Add revoked certificate using Azure CLI
-az network vnet-gateway revoked-cert add \
-  --gateway-name "YourVPNGateway" \
-  --resource-group "YourResourceGroup" \
-  --name "RevokedClientCert" \
-  --thumbprint "CERTIFICATE_THUMBPRINT"
+**Azure PowerShell Method:**
+```powershell
+# Add revoked certificate using Azure PowerShell
+$RevokedClientCert1    = "RevokedClientCert"
+$RevokedThumbprint1    = "CERTIFICATE_THUMBPRINT"
+$GWName                = "YourVPNGateway"
+$RG                    = "YourResourceGroup"
+
+Add-AzVpnClientRevokedCertificate `
+  -VpnClientRevokedCertificateName $RevokedClientCert1 `
+  -VirtualNetworkGatewayName      $GWName `
+  -ResourceGroupName              $RG `
+  -Thumbprint                     $RevokedThumbprint1
+
+# Verify revocation
+Get-AzVpnClientRevokedCertificate `
+  -VirtualNetworkGatewayName $GWName `
+  -ResourceGroupName         $RG
 ```
+
+**Note:** You can also revoke certificates via the Azure Portal under Virtual network gateway → Point-to-site configuration → Revoked certificates.
 
 **Get Certificate Thumbprint:**
 ```powershell
@@ -236,4 +251,4 @@ After generating certificates:
 5. Install the client certificate (.pfx) on each device that needs VPN access
 6. Configure and connect using the downloaded VPN client
 
-For more advanced VPN Gateway configuration options, refer to the [VPN Gateway Advanced Configuration Guide](VPN-GATEWAY.README.md).
+For more advanced VPN Gateway configuration options, refer to the [VPN Gateway Advanced Configuration Guide](../networking/vpn-gateway.md).

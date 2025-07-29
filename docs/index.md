@@ -81,7 +81,7 @@ This repository includes comprehensive documentation to help you deploy, manage,
 
 - [Prerequisites Guide](docs/PREREQUISITES.MD) - Requirements before starting
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
-- [VPN Gateway Guide](docs/VPN-GATEWAY.README.md) - Advanced VPN configuration options
+- [VPN Gateway Guide](docs/networking/vpn-gateway.md) - Advanced VPN configuration options
 - [Certificate Management Guide](docs/client-certificate-management.md) - Managing certificates for VPN authentication
 
 ### Network Diagrams
@@ -217,7 +217,8 @@ HomeLab/
 │   │   └── traffic-flow-and-routing.md
 │   ├── PREREQUISITES.MD
 │   ├── SETUP.md
-│   ├── VPN-GATEWAY.README.md
+│   ├── networking/
+│   │   └── vpn-gateway.md
 │   └── client-certificate-management.md
 ├── HomeLab.psd1
 ├── HomeLab.psm1

@@ -58,7 +58,7 @@ function Test-ModuleAvailability {
                 foreach ($moduleName in $modulesToInstall) {
                     try {
                         Write-Log -Message "Installing/updating module: $moduleName" -Level "Info"
-                        Install-Module -Name $moduleName -Force -AllowClobber -Scope CurrentUser
+                        Install-Module -Name $moduleName -Force -AllowClobber -Scope CurrentUser -Repository PSGallery -Confirm:$false
                         Write-Log -Message "Successfully installed/updated module: $moduleName" -Level "Success"
                     }
                     catch {

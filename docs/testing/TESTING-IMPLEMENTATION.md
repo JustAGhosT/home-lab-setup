@@ -104,3 +104,9 @@ Test reports are generated in two formats:
 3. Implement additional workflow tests
 4. Set up scheduled test runs
 5. Implement test result tracking and trending
+
+## References
+
+- [Testing Strategy](../TESTING-STRATEGY-DETAILED.md)
+- [Main Testing Guide](../TESTING.md)
+- [Development Documentation](../DEVELOPMENT.md)

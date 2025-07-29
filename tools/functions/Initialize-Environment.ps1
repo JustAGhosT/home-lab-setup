@@ -57,8 +57,8 @@ function Initialize-Environment {
     
     try {
         # Set environment variables to prevent Azure module registration issues
-        $env:AZURE_SKIP_MODULE_REGISTRATION = 'true'
-        $env:AZURE_SKIP_CREDENTIAL_VALIDATION = 'true'
+        $env:AZURE_PS_SKIP_MODULE_REGISTRATION = 'true'
+        $env:AZURE_PS_SKIP_CREDENTIALS_VALIDATION = 'true'
         
         # Initialize script-level variables if not already set
         if (-not $script:RequiredModules) {
@@ -125,11 +125,18 @@ function Initialize-Environment {
 
             # Initialize logging
             if (Get-Command -Name Initialize-Logging -ErrorAction SilentlyContinue) {
-                Initialize-Logging -LogFilePath $LogFilePath -LogLevel $LogLevel            
-                Write-Log -Message "HomeLab environment initialization started" -Level "Info"
+                try {
+                    Initialize-Logging -LogFilePath $LogFilePath -LogLevel $LogLevel
+                    Write-Log -Message "HomeLab environment initialization started" -Level "Info"
+                }
+                catch {
+                    Write-Host "Failed to initialize logging: $_" -ForegroundColor Red
+                    return $false
+                }
             }
             else {
                 Write-Host "Initialize-Logging function not found in HomeLab.Logging module" -ForegroundColor Red
+                return $false
             }
         }
         else {
