@@ -200,7 +200,6 @@ class MarkdownLinter:
                 if self.config["check_common_mistakes"]:
                     self._check_common_mistakes(report, i, line)
 
-                prev_line = line
                 prev_line_blank = False
 
             # Check for final newline
