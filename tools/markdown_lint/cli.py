@@ -240,29 +240,26 @@ def print_report(reports: Dict[Path, Any], args: argparse.Namespace) -> int:
     return 1 if issue_count > 0 else 0
 
 
-def main() -> int:
-    """Main entry point for the CLI."""
-    args = parse_args(sys.argv[1:])
+def _create_linter_config(args: argparse.Namespace) -> Dict[str, Any]:
+    """Create linter configuration from command line arguments."""
+    return {
+        "max_line_length": args.max_line_length,
+        "require_blank_line_before_heading": args.require_blank_line_before_heading,
+        "require_blank_line_after_heading": args.require_blank_line_after_heading,
+        "allow_multiple_blank_lines": args.allow_multiple_blank_lines,
+        "trim_trailing_whitespace": args.trim_trailing_whitespace,
+        "insert_final_newline": args.insert_final_newline,
+        "check_blank_lines_around_headings": args.check_blank_lines_around_headings,
+        "check_blank_lines_around_lists": args.check_blank_lines_around_lists,
+        "check_ordered_list_numbering": args.check_ordered_list_numbering,
+        "check_fenced_code_blocks": args.check_fenced_code_blocks,
+        "check_duplicate_headings": args.check_duplicate_headings,
+        "check_bare_urls": args.check_bare_urls,
+    }
 
-    # Initialize linter with configuration
-    linter = MarkdownLinter(
-        {
-            "max_line_length": args.max_line_length,
-            "require_blank_line_before_heading": args.require_blank_line_before_heading,
-            "require_blank_line_after_heading": args.require_blank_line_after_heading,
-            "allow_multiple_blank_lines": args.allow_multiple_blank_lines,
-            "trim_trailing_whitespace": args.trim_trailing_whitespace,
-            "insert_final_newline": args.insert_final_newline,
-            "check_blank_lines_around_headings": args.check_blank_lines_around_headings,
-            "check_blank_lines_around_lists": args.check_blank_lines_around_lists,
-            "check_ordered_list_numbering": args.check_ordered_list_numbering,
-            "check_fenced_code_blocks": args.check_fenced_code_blocks,
-            "check_duplicate_headings": args.check_duplicate_headings,
-            "check_bare_urls": args.check_bare_urls,
-        }
-    )
 
-    # Process each path
+def _process_paths(linter: MarkdownLinter, args: argparse.Namespace) -> int:
+    """Process all input paths and return error code if any path is invalid."""
     paths = [Path(p) for p in args.paths]
     for path in paths:
         if not path.exists():
@@ -275,8 +272,13 @@ def main() -> int:
         else:
             print(f"Error: {path} is not a file or directory", file=sys.stderr)
             return 1
+    return 0
 
-    # Filter issues by severity
+
+def _filter_reports_by_severity(
+    linter: MarkdownLinter, args: argparse.Namespace
+) -> Dict[Path, Any]:
+    """Filter linter reports by minimum severity level."""
     min_severity = {
         "error": IssueSeverity.ERROR,
         "warning": IssueSeverity.WARNING,
@@ -292,8 +294,11 @@ def main() -> int:
         ]
         if filtered_issues:
             filtered_reports[path] = {"issues": filtered_issues}
+    return filtered_reports
 
-    # Apply fixes if requested
+
+def _handle_fixes(linter: MarkdownLinter, args: argparse.Namespace) -> None:
+    """Handle fix application based on command line arguments."""
     if args.fix and not args.dry_run:
         fixed_count = linter.fix_files(dry_run=False)
         if fixed_count > 0:
@@ -302,7 +307,26 @@ def main() -> int:
         print("The following files would be fixed:")
         linter.fix_files(dry_run=True)
 
-    # Print report
+
+def main() -> int:
+    """Main entry point for the CLI."""
+    args = parse_args(sys.argv[1:])
+
+    # Initialize linter with configuration
+    linter = MarkdownLinter(_create_linter_config(args))
+
+    # Process all paths
+    path_error = _process_paths(linter, args)
+    if path_error:
+        return path_error
+
+    # Filter reports by severity
+    filtered_reports = _filter_reports_by_severity(linter, args)
+
+    # Handle fixes
+    _handle_fixes(linter, args)
+
+    # Print report if not fixing or if dry run
     if not args.fix or args.dry_run:
         return print_report(filtered_reports, args)
 

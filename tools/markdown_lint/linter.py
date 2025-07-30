@@ -47,7 +47,7 @@ class MarkdownLinter:
     EMAIL_PATTERN = re.compile(
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
-    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+.*?\s+#{1,6}\s*$")
+    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+[^\s].*[^\s]\s+#{1,6}\s*$")
 
     # Constants for repeated messages
     MSG_FENCED_CODE_BLOCKS_SPACING = (

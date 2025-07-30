@@ -10,7 +10,7 @@ import time
 OLD_PATTERN = re.compile(r"^#{1,6}\s+[^\s](?:[^\s]*(?:\s+[^\s]+)*)?[^\s]\s+#{1,6}\s*$")
 
 # New safe pattern
-NEW_PATTERN = re.compile(r"^#{1,6}\s+.*?\s+#{1,6}\s*$")
+NEW_PATTERN = re.compile(r"^#{1,6}\s+[^\s].*[^\s]\s+#{1,6}\s*$")
 
 def test_patterns():
     """Test both patterns with valid and malicious inputs"""
