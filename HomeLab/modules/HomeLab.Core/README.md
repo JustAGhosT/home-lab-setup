@@ -117,7 +117,7 @@ The HomeLab configuration file (`config.json`) supports the following structure:
 
 The module provides standardized error handling through:
 
-#### `New-HomeLabError`
+### `New-HomeLabError`
 Creates standardized error objects with context information.
 
 ```powershell

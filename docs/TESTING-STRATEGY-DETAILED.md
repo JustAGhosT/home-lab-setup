@@ -22,14 +22,15 @@
 This testing strategy outlines a comprehensive approach for validating the HomeLab PowerShell modules, Azure resource deployments, and end-to-end functionality. It focuses on ensuring reliable infrastructure deployment, secure VPN connectivity, and proper certificate management across all HomeLab components.
 
 ## 2. Testing Goals & Scope
-| Goal | Metric / KPI | Success Threshold |
-|------|--------------|-------------------|
-| Validate PowerShell module functionality | Unit test pass rate | ≥ 95% |
-| Ensure Azure resource deployments succeed | Deployment success rate | 100% |
-| Verify VPN connectivity | Connection success rate | ≥ 98% |
-| Validate certificate management | Certificate validation success | 100% |
-| Verify website deployments | Deployment success rate | ≥ 95% |
-| Validate DNS management | DNS record validation | 100% |
+
+| Goal                                      | Metric / KPI                   | Success Threshold |
+| ----------------------------------------- | ------------------------------ | ----------------- |
+| Validate PowerShell module functionality  | Unit test pass rate            | ≥ 95%             |
+| Ensure Azure resource deployments succeed | Deployment success rate        | 100%              |
+| Verify VPN connectivity                   | Connection success rate        | ≥ 98%             |
+| Validate certificate management           | Certificate validation success | 100%              |
+| Verify website deployments                | Deployment success rate        | ≥ 95%             |
+| Validate DNS management                   | DNS record validation          | 100%              |
 
 ### In Scope
 - PowerShell module functions (HomeLab.Core, HomeLab.Azure, HomeLab.Security, etc.)
@@ -49,11 +50,12 @@ This testing strategy outlines a comprehensive approach for validating the HomeL
 - Third-party integration testing
 
 ## 3. Testing Pyramid for HomeLab
-| Test Level | Target Coverage | HomeLab Focus | Automation Level | Tools |
-|------------|-----------------|---------------|------------------|-------|
-| **Unit Tests** | 70% | Individual PowerShell functions | 100% | Pester |
-| **Integration Tests** | 20% | Module interactions, Azure API calls | 90% | Pester, Az PowerShell mocks |
-| **System / E2E Tests** | 10% | Complete workflows, Azure deployments | 70% | Pester, Az PowerShell |
+
+| Test Level             | Target Coverage | HomeLab Focus                         | Automation Level | Tools                       |
+| ---------------------- | --------------- | ------------------------------------- | ---------------- | --------------------------- |
+| **Unit Tests**         | 70%             | Individual PowerShell functions       | 100%             | Pester                      |
+| **Integration Tests**  | 20%             | Module interactions, Azure API calls  | 90%              | Pester, Az PowerShell mocks |
+| **System / E2E Tests** | 10%             | Complete workflows, Azure deployments | 70%              | Pester, Az PowerShell       |
 
 > **Note:** Percentages reflect test *volume* distribution, not effort.
 
@@ -95,14 +97,15 @@ This testing strategy outlines a comprehensive approach for validating the HomeL
 - **DNS Resolution**: Test DNS name resolution
 
 ## 5. Test Data Strategy
-| Data Set | Purpose | Source | Anonymization | Volume |
-|----------|---------|--------|---------------|--------|
-| Mock configuration data | Unit testing | Generated | N/A | Small |
-| Sample certificates | Certificate testing | Generated during tests | N/A | 5-10 certs |
-| Azure resource templates | Deployment testing | Project templates | N/A | All templates |
-| Test VPN profiles | VPN testing | Generated during tests | N/A | 2-3 profiles |
-| Sample websites | Web deployment testing | Static HTML templates | N/A | 2-3 sites |
-| DNS record samples | DNS testing | Generated during tests | N/A | 10-15 records |
+
+| Data Set                 | Purpose                | Source                 | Anonymization | Volume        |
+| ------------------------ | ---------------------- | ---------------------- | ------------- | ------------- |
+| Mock configuration data  | Unit testing           | Generated              | N/A           | Small         |
+| Sample certificates      | Certificate testing    | Generated during tests | N/A           | 5-10 certs    |
+| Azure resource templates | Deployment testing     | Project templates      | N/A           | All templates |
+| Test VPN profiles        | VPN testing            | Generated during tests | N/A           | 2-3 profiles  |
+| Sample websites          | Web deployment testing | Static HTML templates  | N/A           | 2-3 sites     |
+| DNS record samples       | DNS testing            | Generated during tests | N/A           | 10-15 records |
 
 ## 6. Tooling & Automation
 - **CI Pipeline**: GitHub Actions
@@ -132,14 +135,15 @@ exit_criteria:
 ```
 
 ### Schedule & Milestones
-| Phase | Tests | Owner | Start | End |
-|-------|-------|-------|-------|-----|
-| Unit Test Development | All modules | Dev team | Week 1 | Week 2 |
-| Integration Testing | Module interactions | Dev team | Week 2 | Week 3 |
-| Azure Deployment Testing | Resource creation | Dev team | Week 3 | Week 4 |
-| VPN & Certificate Testing | Security functions | Dev team | Week 4 | Week 5 |
-| Website Deployment Testing | Web hosting | Dev team | Week 5 | Week 6 |
-| DNS Management Testing | DNS functions | Dev team | Week 6 | Week 7 |
+
+| Phase                      | Tests               | Owner    | Start  | End    |
+| -------------------------- | ------------------- | -------- | ------ | ------ |
+| Unit Test Development      | All modules         | Dev team | Week 1 | Week 2 |
+| Integration Testing        | Module interactions | Dev team | Week 2 | Week 3 |
+| Azure Deployment Testing   | Resource creation   | Dev team | Week 3 | Week 4 |
+| VPN & Certificate Testing  | Security functions  | Dev team | Week 4 | Week 5 |
+| Website Deployment Testing | Web hosting         | Dev team | Week 5 | Week 6 |
+| DNS Management Testing     | DNS functions       | Dev team | Week 6 | Week 7 |
 
 ## 8. Continuous Testing & Monitoring
 - **Pre-commit**: Linting and basic validation
@@ -150,24 +154,26 @@ exit_criteria:
 - **Monitoring**: Resource health checks and alerts
 
 ## 9. Risk Areas & Mitigations
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Azure API changes | Medium | High | Use stable API versions, monitor for changes |
-| Certificate expiration | Low | High | Implement expiration monitoring and alerts |
-| Resource deployment failures | Medium | Medium | Implement retry logic, detailed error logging |
-| VPN connectivity issues | Medium | High | Comprehensive connection testing, fallback options |
-| Cost overruns | Medium | Medium | Implement cost monitoring, auto-shutdown of unused resources |
-| DNS propagation delays | Medium | Low | Add verification steps with appropriate wait times |
+
+| Risk                         | Likelihood | Impact | Mitigation                                                   |
+| ---------------------------- | ---------- | ------ | ------------------------------------------------------------ |
+| Azure API changes            | Medium     | High   | Use stable API versions, monitor for changes                 |
+| Certificate expiration       | Low        | High   | Implement expiration monitoring and alerts                   |
+| Resource deployment failures | Medium     | Medium | Implement retry logic, detailed error logging                |
+| VPN connectivity issues      | Medium     | High   | Comprehensive connection testing, fallback options           |
+| Cost overruns                | Medium     | Medium | Implement cost monitoring, auto-shutdown of unused resources |
+| DNS propagation delays       | Medium     | Low    | Add verification steps with appropriate wait times           |
 
 ## 10. Roles & Responsibilities (RACI)
-| Activity | Dev | QA | DevOps | PM |
-|----------|-----|----|----|-----|
-| Unit Test Development | R | A | C | I |
-| Integration Test | R | A | C | I |
-| Deployment Test | R | C | A | I |
-| VPN & Certificate Test | R | A | C | I |
-| Website Deployment Test | R | A | C | I |
-| DNS Management Test | R | A | C | I |
+
+| Activity                | Dev | QA  | DevOps | PM  |
+| ----------------------- | --- | --- | ------ | --- |
+| Unit Test Development   | R   | A   | C      | I   |
+| Integration Test        | R   | A   | C      | I   |
+| Deployment Test         | R   | C   | A      | I   |
+| VPN & Certificate Test  | R   | A   | C      | I   |
+| Website Deployment Test | R   | A   | C      | I   |
+| DNS Management Test     | R   | A   | C      | I   |
 
 ## 11. Reporting & Metrics
 - **Test Coverage %**: Target 80%+ for critical modules
