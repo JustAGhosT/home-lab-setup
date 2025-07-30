@@ -5,12 +5,12 @@
     - High error rates
     - Performance degradation
 
-1. **Manual Rollback**
+2. **Manual Rollback**
     - Via CI/CD pipeline
     - Previous version promotion
     - Database rollback if needed
 
-1. **Blue/Green Deployment**
+3. **Blue/Green Deployment**
     - Zero-downtime deployments
     - Instant rollback capability
     - Traffic shifting between versions

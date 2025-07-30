@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2024-01-XX
 
-### Added
+### Added - Core Infrastructure
 - Initial HomeLab PowerShell module structure
 - Azure Virtual Network deployment
 - VPN Gateway configuration and management

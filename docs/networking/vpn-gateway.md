@@ -84,8 +84,8 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
    ```powershell
    # Generate a secure password or prompt user
 $password = Read-Host -AsSecureString -Prompt "Enter a secure password for the certificate"
-OR use a generated password
-$password = ConvertTo-SecureString -String (New-Guid).Guid -Force -AsPlainText
+# OR use a cryptographically secure random password for automation scenarios
+$password = ConvertTo-SecureString -String ([System.Web.Security.Membership]::GeneratePassword(16, 4)) -Force -AsPlainText
    Export-PfxCertificate -Cert "Cert:\CurrentUser\My\CLIENT_CERT_THUMBPRINT" `
      -FilePath "C:\certs\P2SClientCert.pfx" -Password $password
    ```

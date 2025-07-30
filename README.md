@@ -30,7 +30,7 @@ The HomeLab system uses a modular architecture with the following components:
 - **HomeLab.DNS**: DNS zone management and configuration
 - **HomeLab.GitHub**: GitHub repository deployment and integration
 
-For a visual overview of the system architecture, see the [High-Level Architecture Diagram](docs/diagrams/high-level-architecture.md).
+For a visual overview of the system architecture, see the [High-Level Architecture Diagram](docs/diagrams/architecture.md).
 
 ## Prerequisites
 
@@ -100,7 +100,7 @@ This repository includes comprehensive documentation to help you deploy, manage,
 
 To better understand the network architecture and components, refer to these diagrams:
 
-- [High-Level Architecture](docs/diagrams/high-level-architecture.md) - Overview of the entire system
+- [High-Level Architecture](docs/diagrams/architecture.md) - Overview of the entire system
 - [Point-to-Site VPN Connection Flow](docs/diagrams/point-to-site-vpn-connection-flow.md) - VPN connection process
 - [Network Security Implementation](docs/diagrams/network-security.md) - Security components and configurations
 - [NAT Gateway Configuration](docs/diagrams/nat-gateway-configuration.md) - Outbound internet access setup

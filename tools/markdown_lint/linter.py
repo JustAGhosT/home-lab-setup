@@ -48,7 +48,7 @@ class MarkdownLinter:
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
     CLOSED_ATX_HEADING_PATTERN = re.compile(
-        r"^#{1,6}\s+[^\s]{1,1000}(?:\s+[^\s]+)*\s+#{1,6}\s*$"
+        r"^#{1,6}\s+[^\s](?:[^\s]*(?:\s+[^\s]+)*)?[^\s]\s+#{1,6}\s*$"
     )
 
     # Constants for repeated messages
@@ -682,10 +682,11 @@ class MarkdownLinter:
             # Try to fetch the page title with size limit
             response = requests.get(
                 url,
-                timeout=5,
+                timeout=(5, 10),  # (connection timeout, read timeout)
                 headers={"User-Agent": "HomeLab-MarkdownLinter/1.0"},
                 stream=True,
                 allow_redirects=True,
+                verify=True,  # Explicitly verify SSL certificates
             )
             response.raise_for_status()
 

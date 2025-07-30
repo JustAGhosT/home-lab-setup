@@ -25,7 +25,7 @@ function Import-RequiredModules {
     if ($loggingModule) {
         try {
             Write-Host "Loading module: HomeLab.Logging" -ForegroundColor Yellow
-            Import-Module -Name $loggingModule.Path -Force:$ForceReload -ErrorAction Stop -Global -DisableNameChecking
+            Import-Module -Name $loggingModule.Path -Force:$ForceReload -ErrorAction Stop -Global
             Write-Log -Message "Successfully loaded module: HomeLab.Logging" -Level "Success"
         }
         catch {
@@ -39,7 +39,7 @@ function Import-RequiredModules {
     if ($coreModule) {
         try {
             Write-Log -Message "Loading module: HomeLab.Core" -Level "Info"
-            Import-Module -Name $coreModule.Path -Force:$ForceReload -ErrorAction Stop -Global -DisableNameChecking
+            Import-Module -Name $coreModule.Path -Force:$ForceReload -ErrorAction Stop -Global
             Write-Log -Message "Successfully loaded module: HomeLab.Core" -Level "Success"
         }
         catch {
@@ -62,7 +62,7 @@ function Import-RequiredModules {
             
             # For local modules, use the Path
             if ($module.Path) {
-                Import-Module -Name $module.Path -Force:$ForceReload -ErrorAction Stop -Global -DisableNameChecking
+                Import-Module -Name $module.Path -Force:$ForceReload -ErrorAction Stop -Global
             }
             # For external modules like Az, use the Name
             else {

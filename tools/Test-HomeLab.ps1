@@ -145,7 +145,16 @@ foreach ($path in $testPaths) {
     }
     catch {
         Write-Error "Failed to run tests for path '$path': $_"
-        $totalFailed += 1
+        # Create a mock result to represent the failure
+        $mockResult = @{
+            TotalCount  = 1
+            PassedCount = 0
+            FailedCount = 1
+        }
+        $totalTests += $mockResult.TotalCount
+        $totalPassed += $mockResult.PassedCount
+        $totalFailed += $mockResult.FailedCount
+        $allResults += $mockResult
         continue
     }
     

@@ -105,8 +105,8 @@ $rootCertData | Out-File -FilePath "C:\Certs\$rootCertName.txt"
 ```powershell
 # Generate a secure password or prompt user
 $password = Read-Host -AsSecureString -Prompt "Enter a secure password for the certificate"
-# OR use a generated password:
-# $password = ConvertTo-SecureString -String (New-Guid).Guid -Force -AsPlainText
+# OR use a cryptographically secure random password for automation scenarios
+# $password = ConvertTo-SecureString -String ([System.Web.Security.Membership]::GeneratePassword(16, 4)) -Force -AsPlainText
 $clientCert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -eq "CN=$clientCertName" }
 Export-PfxCertificate -Cert $clientCert -FilePath "C:\Certs\$clientCertName.pfx" -Password $password
 ```

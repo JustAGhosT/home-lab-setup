@@ -13,6 +13,17 @@ $ErrorActionPreference = "Continue"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = & git rev-parse --show-toplevel
 
+# Validate prerequisites
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    Write-Error "Python is not available in PATH"
+    exit 1
+}
+
+if (-not (Test-Path "$ScriptDir\__main__.py")) {
+    Write-Error "Markdown linter not found at expected location"
+    exit 1
+}
+
 # Change to markdown linter directory
 Set-Location $ScriptDir
 

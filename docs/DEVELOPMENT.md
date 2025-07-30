@@ -32,7 +32,7 @@ Install-Module -Name PScribo -Force  # For report generation
 Install-Module -Name ImportExcel -Force  # For Excel integration
 ```
 
-1. **Configure Development Environment**
+2. **Configure Development Environment**
 ```powershell
 # Set up development configuration
 $devConfig = @{
@@ -272,18 +272,18 @@ BeforeAll {
 git checkout -b feature/new-deployment-type
 ```
 
-1. **Implement Feature**
+2. **Implement Feature**
 - Write function with proper documentation
 - Add parameter validation
 - Include error handling
 - Follow coding standards
 
-1. **Write Tests**
+3. **Write Tests**
 - Unit tests for all functions
 - Integration tests for Azure interactions
 - Workflow tests for end-to-end scenarios
 
-1. **Run Quality Checks**
+4. **Run Quality Checks**
 ```powershell
 # Run tests
 .\tests\Run-HomeLab-Tests.ps1
@@ -295,7 +295,7 @@ Invoke-ScriptAnalyzer -Path .\HomeLab\ -Recurse
 # Use VS Code PowerShell extension formatter
 ```
 
-1. **Submit Pull Request**
+5. **Submit Pull Request**
 - Include clear description
 - Reference related issues
 - Ensure all checks pass

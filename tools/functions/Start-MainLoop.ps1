@@ -20,6 +20,7 @@ function Start-MainLoop {
     
     do {
         $shouldRestart = $false
+        $result = $false  # Initialize result to prevent undefined variable
         try {
             # Add a diagnostic wrapper
             if ($DebugMode) {

@@ -462,5 +462,5 @@ try {
 }
 finally {
     # Ensure cleanup happens even if script fails
-    Restore-OriginalCommands
+    Restore-OriginalCommand
 }
