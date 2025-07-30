@@ -623,7 +623,7 @@ class MarkdownLinter:
                         self._add_issue(
                             report,
                             line_num,
-                            f"Bare URL used, converting to markdown link with title",
+                            "Bare URL used, converting to markdown link with title",
                             "MD034",
                             fix=create_url_fix(url),
                         )
