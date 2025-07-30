@@ -179,51 +179,52 @@ def format_issue(issue, path: Path, verbose: int = 0) -> str:
         return f"{str(path)}:{issue.line}:{issue.column}: {severity}: {issue.message}"
 
 
-def print_report(reports: Dict[Path, Any], args: argparse.Namespace) -> int:
-    """Print a report of all issues found."""
+def _format_json_output(reports: Dict[Path, Any]) -> List[Dict]:
+    """Format reports as JSON output."""
+    output = []
+    for path, report in reports.items():
+        if report["issues"]:
+            output.append({
+                "file": str(path),
+                "issues": [{
+                    "line": issue.line,
+                    "column": issue.column,
+                    "code": issue.code,
+                    "message": issue.message,
+                    "severity": issue.severity.name.lower(),
+                    "fixable": issue.fixable,
+                } for issue in report["issues"]]
+            })
+    return output
+
+def _print_text_output(reports: Dict[Path, Any], args: argparse.Namespace) -> tuple:
+    """Print text output and return counts."""
     issue_count = 0
     file_count = 0
+    
+    for path, report in sorted(reports.items()):
+        if report["issues"]:
+            file_count += 1
+            issue_count += len(report["issues"])
+            print(f"\n{path}:")
+            for issue in sorted(report["issues"], key=lambda x: x.line):
+                print(f"  {format_issue(issue, path, args.verbose)}")
+    
+    if issue_count > 0 or args.verbose > 0:
+        print(f"\nFound {issue_count} issue(s) in {file_count} file(s)")
+    
+    return issue_count, file_count
 
+def print_report(reports: Dict[Path, Any], args: argparse.Namespace) -> int:
+    """Print a report of all issues found."""
     if args.format == "json":
-        output = []
-        for path, report in reports.items():
-            if report["issues"]:
-                file_count += 1
-                issue_count += len(report["issues"])
-                output.append(
-                    {
-                        "file": str(path),
-                        "issues": [
-                            {
-                                "line": issue.line,
-                                "column": issue.column,
-                                "code": issue.code,
-                                "message": issue.message,
-                                "severity": issue.severity.name.lower(),
-                                "fixable": issue.fixable,
-                            }
-                            for issue in report["issues"]
-                        ],
-                    }
-                )
-
+        output = _format_json_output(reports)
+        issue_count = sum(len(item["issues"]) for item in output)
         if output or args.verbose > 0:
             print(json.dumps(output, indent=2))
     else:
-        # Text output
-        for path, report in sorted(reports.items()):
-            if report["issues"]:
-                file_count += 1
-                issue_count += len(report["issues"])
-
-                print(f"\n{path}:")
-                for issue in sorted(report["issues"], key=lambda x: x.line):
-                    print(f"  {format_issue(issue, path, args.verbose)}")
-
-        # Print summary
-        if issue_count > 0 or args.verbose > 0:
-            print(f"\nFound {issue_count} issue(s) in {file_count} file(s)")
-
+        issue_count, _ = _print_text_output(reports, args)
+    
     return 1 if issue_count > 0 else 0
 
 
