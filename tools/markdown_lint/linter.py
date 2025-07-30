@@ -651,7 +651,7 @@ class MarkdownLinter:
                         self._add_issue(
                             report,
                             line_num,
-                            f"Bare email address used, converting to angle bracket format",
+                            "Bare email address used, converting to angle bracket format",
                             "MD034",
                             fix=create_email_fix(email),
                         )
