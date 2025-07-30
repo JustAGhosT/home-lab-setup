@@ -20,7 +20,7 @@ git clone https://github.com/JustAGhosT/home-lab-setup.git
 cd home-lab-setup
 ```
 
-1. **Install Development Dependencies**
+2. **Install Development Dependencies**
 ```powershell
 # Install required modules
 Install-Module -Name Pester -MinimumVersion 5.0 -Force
@@ -43,7 +43,7 @@ $devConfig = @{
 $devConfig | ConvertTo-Json | Out-File "$env:USERPROFILE\HomeLab\dev-config.json"
 ```
 
-1. **Verify Setup**
+3. **Verify Setup**
 ```powershell
 # Import the module
 Import-Module .\HomeLab.psd1

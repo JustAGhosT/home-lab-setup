@@ -16,7 +16,7 @@ function Import-RequiredModules {
     )
 
     if (-not $script:RequiredModules) {
-        Write-Log -Message "Required modules collection is not defined" -Level "Error"
+        Write-Error "Required modules collection is not defined"
         return $false
     }
 

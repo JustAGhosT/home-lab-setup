@@ -16,7 +16,7 @@ function Test-ModuleAvailability {
     )
 
     if (-not $script:RequiredModules) {
-        Write-Log -Message "Required modules collection is not defined" -Level "Error"
+        Write-Error "Required modules collection is not defined"
         return $false
     }
 
@@ -30,7 +30,7 @@ function Test-ModuleAvailability {
         if ($module.Path) {
             if (-not (Test-Path -Path $module.Path)) {
                 $allModulesAvailable = $false
-                Write-Log -Message "Required local module not found: $($module.Path)" -Level "Warning"
+                Write-Warning "Required local module not found: $($module.Path)"
             }
         }
         # For external modules like Az, check if they're installed
@@ -41,7 +41,7 @@ function Test-ModuleAvailability {
             if (-not $moduleInstalled) {
                 $allModulesAvailable = $false
                 $modulesToInstall += $moduleName
-                Write-Log -Message "Required external module not found: $moduleName" -Level "Warning"
+                Write-Warning "Required external module not found: $moduleName"
             }
             elseif ($minVersion) {
                 # Check version
@@ -49,14 +49,14 @@ function Test-ModuleAvailability {
                 if ($latestVersion -lt [Version]$minVersion) {
                     $allModulesAvailable = $false
                     $modulesToInstall += $moduleName
-                    Write-Log -Message "Module $moduleName version $latestVersion is below required version $minVersion" -Level "Warning"
+                    Write-Warning "Module $moduleName version $latestVersion is below required version $minVersion"
                 }
             }
         }
     }
     
     if (-not $allModulesAvailable -and -not $SkipModuleCheck) {
-        Write-Log -Message "Some required modules are missing or outdated" -Level "Warning"
+        Write-Warning "Some required modules are missing or outdated"
         
         # Only try to install external modules (like Az)
         if ($modulesToInstall.Count -gt 0) {
@@ -64,18 +64,18 @@ function Test-ModuleAvailability {
             if ($installModules -eq "Y" -or $installModules -eq "y") {
                 foreach ($moduleName in $modulesToInstall) {
                     try {
-                        Write-Log -Message "Installing/updating module: $moduleName" -Level "Info"
+                        Write-Host "Installing/updating module: $moduleName" -ForegroundColor Yellow
                         Install-Module -Name $moduleName -Force -AllowClobber -Scope CurrentUser -Repository PSGallery -Confirm:$false
-                        Write-Log -Message "Successfully installed/updated module: $moduleName" -Level "Success"
+                        Write-Host "Successfully installed/updated module: $moduleName" -ForegroundColor Green
                     }
                     catch {
-                        Write-Log -Message "Failed to install module $moduleName`: $_" -Level "Error"
+                        Write-Error "Failed to install module $moduleName`: $_"
                         return $false
                     }
                 }
             }
             else {
-                Write-Log -Message "User chose not to install missing modules" -Level "Warning"
+                Write-Warning "User chose not to install missing modules"
                 return $false
             }
         }

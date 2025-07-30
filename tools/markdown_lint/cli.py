@@ -13,7 +13,7 @@ from .models import IssueSeverity
 def get_version():
     """Get package version safely."""
     try:
-        return __import__('tools.markdown_lint', fromlist=['__version__']).__version__
+        return __import__("tools.markdown_lint", fromlist=["__version__"]).__version__
     except (ImportError, AttributeError):
         return "unknown"
 
@@ -168,15 +168,20 @@ def parse_args(args: List[str]) -> argparse.Namespace:
 
 def format_issue(issue, path: Path, verbose: int = 0) -> str:
     """Format an issue as a string."""
-    severity = issue.severity.name.lower()
+    severity = getattr(issue.severity, "name", "unknown").lower()
+    line = getattr(issue, "line", 0)
+    column = getattr(issue, "column", 0)
+    message = getattr(issue, "message", "No message")
+    code = getattr(issue, "code", "")
+    context = getattr(issue, "context", "")
 
     if verbose >= 1:
         return (
-            f"{str(path)}:{issue.line}:{issue.column}: {severity}: {issue.code}: {issue.message}\n"
-            f"  {issue.context or ''}"
+            f"{str(path)}:{line}:{column}: {severity}: {code}: {message}\n"
+            f"  {context or ''}"
         )
     else:
-        return f"{str(path)}:{issue.line}:{issue.column}: {severity}: {issue.message}"
+        return f"{str(path)}:{line}:{column}: {severity}: {message}"
 
 
 def _format_json_output(reports: Dict[Path, Any]) -> List[Dict]:
@@ -184,24 +189,30 @@ def _format_json_output(reports: Dict[Path, Any]) -> List[Dict]:
     output = []
     for path, report in reports.items():
         if report["issues"]:
-            output.append({
-                "file": str(path),
-                "issues": [{
-                    "line": issue.line,
-                    "column": issue.column,
-                    "code": issue.code,
-                    "message": issue.message,
-                    "severity": issue.severity.name.lower(),
-                    "fixable": issue.fixable,
-                } for issue in report["issues"]]
-            })
+            output.append(
+                {
+                    "file": str(path),
+                    "issues": [
+                        {
+                            "line": issue.line,
+                            "column": issue.column,
+                            "code": issue.code,
+                            "message": issue.message,
+                            "severity": issue.severity.name.lower(),
+                            "fixable": issue.fixable,
+                        }
+                        for issue in report["issues"]
+                    ],
+                }
+            )
     return output
+
 
 def _print_text_output(reports: Dict[Path, Any], args: argparse.Namespace) -> tuple:
     """Print text output and return counts."""
     issue_count = 0
     file_count = 0
-    
+
     for path, report in sorted(reports.items()):
         if report["issues"]:
             file_count += 1
@@ -209,11 +220,12 @@ def _print_text_output(reports: Dict[Path, Any], args: argparse.Namespace) -> tu
             print(f"\n{path}:")
             for issue in sorted(report["issues"], key=lambda x: x.line):
                 print(f"  {format_issue(issue, path, args.verbose)}")
-    
+
     if issue_count > 0 or args.verbose > 0:
         print(f"\nFound {issue_count} issue(s) in {file_count} file(s)")
-    
+
     return issue_count, file_count
+
 
 def print_report(reports: Dict[Path, Any], args: argparse.Namespace) -> int:
     """Print a report of all issues found."""
@@ -224,7 +236,7 @@ def print_report(reports: Dict[Path, Any], args: argparse.Namespace) -> int:
             print(json.dumps(output, indent=2))
     else:
         issue_count, _ = _print_text_output(reports, args)
-    
+
     return 1 if issue_count > 0 else 0
 
 
@@ -253,6 +265,9 @@ def main() -> int:
     # Process each path
     paths = [Path(p) for p in args.paths]
     for path in paths:
+        if not path.exists():
+            print(f"Error: Path {path} does not exist", file=sys.stderr)
+            return 1
         if path.is_file():
             linter.check_file(path)
         elif path.is_dir():
@@ -271,7 +286,9 @@ def main() -> int:
     filtered_reports = {}
     for path, report in linter.reports.items():
         filtered_issues = [
-            issue for issue in report.issues if issue.severity.value >= min_severity.value
+            issue
+            for issue in report.issues
+            if issue.severity.value >= min_severity.value
         ]
         if filtered_issues:
             filtered_reports[path] = {"issues": filtered_issues}
