@@ -20,7 +20,7 @@ git clone https://github.com/JustAGhosT/home-lab-setup.git
 cd home-lab-setup
 ```
 
-2. **Install Development Dependencies**
+1. **Install Development Dependencies**
 ```powershell
 # Install required modules
 Install-Module -Name Pester -MinimumVersion 5.0 -Force
@@ -32,7 +32,7 @@ Install-Module -Name PScribo -Force  # For report generation
 Install-Module -Name ImportExcel -Force  # For Excel integration
 ```
 
-2. **Configure Development Environment**
+1. **Configure Development Environment**
 ```powershell
 # Set up development configuration
 $devConfig = @{
@@ -43,7 +43,7 @@ $devConfig = @{
 $devConfig | ConvertTo-Json | Out-File "$env:USERPROFILE\HomeLab\dev-config.json"
 ```
 
-3. **Verify Setup**
+1. **Verify Setup**
 ```powershell
 # Import the module
 Import-Module .\HomeLab.psd1
@@ -272,13 +272,13 @@ BeforeAll {
 git checkout -b feature/new-deployment-type
 ```
 
-2. **Implement Feature**
+1. **Implement Feature**
 - Write function with proper documentation
 - Add parameter validation
 - Include error handling
 - Follow coding standards
 
-3. **Write Tests**
+1. **Write Tests**
 - Unit tests for all functions
 - Integration tests for Azure interactions
 - Workflow tests for end-to-end scenarios
