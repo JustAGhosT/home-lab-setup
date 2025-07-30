@@ -224,11 +224,11 @@ This HomeLab environment is ideal for:
 
 ## Cost Management
 
-- **VPN Gateway**: ~$30/month (Basic SKU)
-- **NAT Gateway**: ~$35/month + data processing charges when enabled
+- **VPN Gateway**: ~$26.28/month (Basic SKU)
+- **NAT Gateway**: ~$32.40/month + $0.045/GB data processing (+ ~$2.60/month per associated public IP)
 - **Public IP addresses**: ~$4-6/month each
 - **App Service Plan**: ~$15/month (B1 tier) and up
-- **Static Web Apps**: Free tier available, ~$9/month (Standard)
+- **Static Web Apps**: Free tier available, $9/month (Standard)
 - **DNS Zones**: ~$0.50/month per zone + query charges
 - **Container Apps**: ~$0.000024/vCPU-second + ~$0.000004/GiB-second
 

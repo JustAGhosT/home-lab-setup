@@ -12,7 +12,12 @@
 function Import-RequiredModules {
     [CmdletBinding()]
     param()
-    
+
+    if (-not $script:RequiredModules) {
+        Write-Log -Message "Required modules collection is not defined" -Level "Error"
+        return $false
+    }
+
     # First import HomeLab.Logging as it's needed by other modules
     $loggingModule = $script:RequiredModules | Where-Object { $_.Name -eq "HomeLab.Logging" }
     if ($loggingModule) {

@@ -144,8 +144,19 @@ Deploy-GitHubRepository -Repository "user/my-project" -DeploymentType auto
 az ad sp create-for-rbac \
   --name "github-actions-deployment" \
   --role contributor \
-  --scopes /subscriptions/{subscription-id}/resourceGroups/{rg-name}
+  --scopes /subscriptions/{subscription-id}/resourceGroups/{rg-name} \
+  --sdk-auth
 ```
+
+> **Note**: The `--sdk-auth` flag outputs credentials in the JSON format expected by GitHub Actions. The output will look like:
+> ```json
+> {
+>   "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+>   "clientSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+>   "subscriptionId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+>   "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+> }
+> ```
 
 #### 2. Configure Federated Credentials
 ```bash
@@ -180,7 +191,7 @@ AZURE_CREDENTIALS        # Complete credentials JSON
 #### Development
 ```yaml
 environment: dev
-azure_location: eastus
+azure_location: westeurope
 subdomain_suffix: "-dev"
 sku: Free
 ```
@@ -188,7 +199,7 @@ sku: Free
 #### Staging
 ```yaml
 environment: staging
-azure_location: eastus
+azure_location: westeurope
 subdomain_suffix: "-staging"
 sku: Basic
 ```
@@ -252,8 +263,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.2  # Pin to specific version
-      - uses: azure/login@v1.4.6       # Pin to specific version
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.2
+      - uses: azure/login@92a5484dfaf04ca78a94597f4f19fea633851fa2       # v1.4.6
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}

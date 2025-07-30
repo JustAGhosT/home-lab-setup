@@ -34,7 +34,9 @@ class MarkdownLinter:
     HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>.{0,1000})$")
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
-    HTML_COMMENT_PATTERN = re.compile(r"^<!--.*?-->\s*$")
+    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--.*?-->\s*$")
+    HTML_COMMENT_START_PATTERN = re.compile(r"^<!--")
+    HTML_COMMENT_END_PATTERN = re.compile(r"-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
     ORDERED_LIST_PATTERN = re.compile(
         r"^\s*(?P<number>\d+)\.(?P<content>\s+.{0,1000})$"
@@ -66,7 +68,7 @@ class MarkdownLinter:
         self.reports[file_path] = report
 
         try:
-            content = file_path.read_text(encoding="utf-8")
+            content = file_path.read_text(encoding="utf-8", errors="replace")
             lines = content.splitlines(keepends=False)
 
             # Initialize parsing state
@@ -125,7 +127,7 @@ class MarkdownLinter:
             return self._update_state_for_skipped_line(state, line)
 
         # Handle HTML comments
-        if self._handle_html_comment(report, line_num, line, state):
+        if self._handle_html_comment(line, state):
             return state
 
         # Perform line-level checks
@@ -177,7 +179,7 @@ class MarkdownLinter:
             # Starting a code block
             if self.config["check_fenced_code_blocks"]:
                 self._check_fenced_code_block_start(
-                    report, line_num, lines, state["prev_line_blank"], code_block_match
+                    report, line_num, state["prev_line_blank"], code_block_match
                 )
         else:
             # Ending a code block
@@ -195,15 +197,30 @@ class MarkdownLinter:
         state["prev_line_blank"] = False
         return state
 
-    def _handle_html_comment(
-        self, report: FileReport, line_num: int, line: str, state: dict
-    ) -> bool:
+    def _handle_html_comment(self, line: str, state: dict) -> bool:
         """Handle HTML comment processing. Returns True if line was handled."""
-        if self.HTML_COMMENT_PATTERN.match(line):
-            state["in_html_comment"] = False  # Single line comment
+        # Check for single-line HTML comment (complete comment on one line)
+        if self.HTML_COMMENT_SINGLE_LINE_PATTERN.match(line):
             state["prev_line"] = line
             state["prev_line_blank"] = False
             return True
+
+        # Check for start of multi-line HTML comment
+        if self.HTML_COMMENT_START_PATTERN.search(
+            line
+        ) and not self.HTML_COMMENT_END_PATTERN.search(line):
+            state["in_html_comment"] = True
+            state["prev_line"] = line
+            state["prev_line_blank"] = False
+            return True
+
+        # Check for end of multi-line HTML comment
+        if state["in_html_comment"] and self.HTML_COMMENT_END_PATTERN.search(line):
+            state["in_html_comment"] = False
+            state["prev_line"] = line
+            state["prev_line_blank"] = False
+            return True
+
         return False
 
     def _perform_line_checks(
@@ -275,7 +292,7 @@ class MarkdownLinter:
         unordered_match = self.UNORDERED_LIST_PATTERN.match(line)
 
         if list_match:
-            self._check_list_item(report, line_num, line, list_match)
+            self._check_list_item(report, line_num, line)
 
             # MD032: Check blank lines around lists
             if self.config["check_blank_lines_around_lists"]:
@@ -440,7 +457,7 @@ class MarkdownLinter:
             self._add_issue(
                 report,
                 line_num,
-                f"Missing space after heading marker",
+                "Missing space after heading marker",
                 "MD018",
                 fix=lambda line: f"{'#' * level} {line.lstrip('#').lstrip()}",
             )
@@ -514,21 +531,20 @@ class MarkdownLinter:
     ) -> None:
         """Check MD032: Lists should be surrounded by blank lines (end)."""
         # Check if there's a line after the list and it's not blank
-        if last_list_line < len(lines):
-            next_line_idx = last_list_line  # 0-based index
-            if next_line_idx < len(lines):
-                next_line = lines[next_line_idx]
-                if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
-                    # Make sure the next line is not another list item
-                    if not self.LIST_ITEM_PATTERN.match(next_line):
-                        self._add_issue(
-                            report,
-                            last_list_line + 1,
-                            "Lists should be surrounded by blank lines (end)",
-                            "MD032",
-                            severity=IssueSeverity.WARNING,
-                            fix=lambda content: content,  # Handled by _apply_spacing_fixes
-                        )
+        next_line_idx = last_list_line  # 0-based index
+        if next_line_idx < len(lines):
+            next_line = lines[next_line_idx]
+            if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
+                # Make sure the next line is not another list item
+                if not self.LIST_ITEM_PATTERN.match(next_line):
+                    self._add_issue(
+                        report,
+                        last_list_line + 1,
+                        "Lists should be surrounded by blank lines (end)",
+                        "MD032",
+                        severity=IssueSeverity.WARNING,
+                        fix=lambda content: content,  # Handled by _apply_spacing_fixes
+                    )
 
     def _check_ordered_list_numbering(
         self,
@@ -565,7 +581,6 @@ class MarkdownLinter:
         self,
         report: FileReport,
         line_num: int,
-        lines: List[str],
         prev_line_blank: bool,
         match: re.Match,
     ) -> None:
@@ -602,19 +617,18 @@ class MarkdownLinter:
     ) -> None:
         """Check MD031 for fenced code block end."""
         # MD031: Check blank line after code block
-        if line_num < len(lines):
-            next_line_idx = line_num  # 0-based index for next line
-            if next_line_idx < len(lines):
-                next_line = lines[next_line_idx]
-                if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
-                    self._add_issue(
-                        report,
-                        line_num + 1,
-                        self.MSG_FENCED_CODE_BLOCKS_SPACING,
-                        "MD031",
-                        severity=IssueSeverity.WARNING,
-                        fix=lambda content: content,  # Handled by _apply_spacing_fixes
-                    )
+        next_line_idx = line_num  # 0-based index for next line
+        if next_line_idx < len(lines):
+            next_line = lines[next_line_idx]
+            if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
+                self._add_issue(
+                    report,
+                    line_num + 1,
+                    self.MSG_FENCED_CODE_BLOCKS_SPACING,
+                    "MD031",
+                    severity=IssueSeverity.WARNING,
+                    fix=lambda content: content,  # Handled by _apply_spacing_fixes
+                )
 
     def _check_duplicate_headings(
         self,
@@ -669,19 +683,22 @@ class MarkdownLinter:
             response = requests.get(
                 url,
                 timeout=5,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                },
+                headers={"User-Agent": "HomeLab-MarkdownLinter/1.0"},
                 stream=True,
+                allow_redirects=True,
             )
             response.raise_for_status()
 
             # Read only up to 1MB to prevent memory exhaustion
             content = ""
             max_size = 1024 * 1024  # 1MB limit
+            bytes_read = 0
             for chunk in response.iter_content(chunk_size=8192, decode_unicode=True):
+                if chunk is None:
+                    continue
                 content += chunk
-                if len(content) > max_size:
+                bytes_read += len(chunk)
+                if bytes_read > max_size:
                     break
             response.close()
 
@@ -722,9 +739,7 @@ class MarkdownLinter:
             # Final fallback
             return "Link"
 
-    def _check_list_item(
-        self, report: FileReport, line_num: int, line: str, match: re.Match
-    ) -> None:
+    def _check_list_item(self, report: FileReport, line_num: int, line: str) -> None:
         """Check list item formatting and indentation."""
         # Check for proper indentation (2 or 4 spaces)
         indent = len(line) - len(line.lstrip())
@@ -941,12 +956,9 @@ class MarkdownLinter:
         """Get spacing insertions needed for lists."""
         insertions = []
 
-        if "(start)" in message:
-            # Add blank line before the list
+        if "(start)" in message or "(end)" in message:
+            # Add blank line before the list (start) or before the next content (end)
             insertions.append((line_idx, "before"))
-        elif "(end)" in message:
-            # Add blank line after the list (before the next content)
-            insertions.append((line_idx, "before"))  # Insert before the non-list line
 
         return insertions
 

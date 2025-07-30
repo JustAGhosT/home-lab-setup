@@ -58,7 +58,7 @@ function Initialize-Environment {
     try {
         # Set environment variables to prevent Azure module registration issues
         $env:AZURE_PS_SKIP_MODULE_REGISTRATION = 'true'
-        $env:AZURE_PS_SKIP_CREDENTIALS_VALIDATION = 'true'
+        $env:AZURE_PS_SKIP_CREDENTIAL_VALIDATION = 'true'
         
         # Initialize script-level variables if not already set
         if (-not $script:RequiredModules) {
@@ -81,15 +81,15 @@ function Initialize-Environment {
                     Path = "$PSScriptRoot\..\modules\HomeLab.Azure\HomeLab.Azure.psm1"
                 },
                 @{
-                    Name = "Az.Accounts"
+                    Name       = "Az.Accounts"
                     MinVersion = "2.10.0"
                 },
                 @{
-                    Name = "Az.Resources"
+                    Name       = "Az.Resources"
                     MinVersion = "6.0.0"
                 },
                 @{
-                    Name = "Az.Network"
+                    Name       = "Az.Network"
                     MinVersion = "5.0.0"
                 }
             )
@@ -98,15 +98,15 @@ function Initialize-Environment {
         # Initialize state object
         if (-not $script:State) {
             $script:State = @{
-                StartTime = Get-Date
-                User = $env:USERNAME
+                StartTime        = Get-Date
+                User             = $env:USERNAME
                 ConnectionStatus = "Disconnected"
-                ConfigPath = $ConfigPath
-                LogLevel = $LogLevel
-                Config = $null
-                AzContext = $null
-                ModulesLoaded = $false
-                ConfigLoaded = $false
+                ConfigPath       = $ConfigPath
+                LogLevel         = $LogLevel
+                Config           = $null
+                AzContext        = $null
+                ModulesLoaded    = $false
+                ConfigLoaded     = $false
             }
         }
         
@@ -176,10 +176,10 @@ function Initialize-Environment {
                 
                 if (Get-Command -Name Set-LoggingConfiguration -ErrorAction SilentlyContinue) {
                     Set-LoggingConfiguration -MaxLogAgeDays $logConfig.MaxLogAgeDays `
-                                           -EnableConsoleLogging $logConfig.EnableConsoleLogging `
-                                           -EnableFileLogging $logConfig.EnableFileLogging `
-                                           -ConsoleLogLevel $logConfig.ConsoleLogLevel `
-                                           -FileLogLevel $logConfig.FileLogLevel
+                        -EnableConsoleLogging $logConfig.EnableConsoleLogging `
+                        -EnableFileLogging $logConfig.EnableFileLogging `
+                        -ConsoleLogLevel $logConfig.ConsoleLogLevel `
+                        -FileLogLevel $logConfig.FileLogLevel
                 }
             }
         }

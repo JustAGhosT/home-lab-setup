@@ -14,10 +14,15 @@ function Test-ModuleAvailability {
     param(
         [switch]$SkipModuleCheck
     )
-    
+
+    if (-not $script:RequiredModules) {
+        Write-Log -Message "Required modules collection is not defined" -Level "Error"
+        return $false
+    }
+
     $allModulesAvailable = $true
     $modulesToInstall = @()
-    
+
     foreach ($module in $script:RequiredModules) {
         $moduleName = $module.Name
         

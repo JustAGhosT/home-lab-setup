@@ -29,7 +29,7 @@ Key paths:
 
 Key paths:
 - HomeLab/modules/HomeLab.Security/Public/
-- docs/client-certificate-management.md
+- docs/security/client-certificate-management.md
 - docs/networking/vpn-gateway.md
 
 ### Website and DNS Management (Importance: 85)

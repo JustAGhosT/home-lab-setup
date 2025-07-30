@@ -82,7 +82,7 @@ This repository includes comprehensive documentation to help you deploy, manage,
 - [Prerequisites Guide](docs/PREREQUISITES.MD) - Requirements before starting
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
 - [VPN Gateway Guide](docs/networking/vpn-gateway.md) - Advanced VPN configuration options
-- [Certificate Management Guide](docs/client-certificate-management.md) - Managing certificates for VPN authentication
+- [Certificate Management Guide](docs/security/client-certificate-management.md) - Managing certificates for VPN authentication
 
 ### Network Diagrams
 

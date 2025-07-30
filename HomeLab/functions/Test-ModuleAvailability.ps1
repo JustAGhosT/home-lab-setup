@@ -12,10 +12,15 @@
 function Test-ModuleAvailability {
     [CmdletBinding()]
     param()
-    
+
+    if (-not $script:RequiredModules) {
+        Write-Log -Message "Required modules collection is not defined" -Level "Error"
+        return $false
+    }
+
     $allModulesAvailable = $true
     $modulesToInstall = @()
-    
+
     foreach ($module in $script:RequiredModules) {
         $moduleName = $module.Name
         

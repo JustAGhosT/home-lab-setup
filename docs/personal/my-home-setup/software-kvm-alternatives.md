@@ -67,9 +67,9 @@ Barrier is a free, open-source software fork of Synergy 1.9 that continues devel
 Synergy is the commercial version with additional features and official support.
 
 - **Cost**:
-  - Basic: $39 (one-time purchase)
-  - Pro: $59 (one-time purchase)
-  - Business: $99 (per user)
+  - Synergy 3: $29 (one-time license, up to 3 computers)
+  - Synergy 3 Ultimate: $49 (one-time license, up to 15 computers)
+  - Business: subscription-based (contact Symless for pricing)
 - **Platforms**: Windows, macOS, Linux
 - **Features**:
   - All Barrier features

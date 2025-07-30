@@ -264,11 +264,11 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
 
 #### Available Protocols Comparison
 
-| Protocol | Platforms | Firewall Traversal | Security | Performance |
-|----------|-----------|-------------------|----------|-------------|
-| **SSTP** | Windows only | Excellent (uses TCP 443) | Good | Moderate |
-| **IkeV2** | Windows, Mac, Linux, iOS, Android | Good | Excellent | Good |
-| **OpenVPN** | Windows, Mac, Linux, iOS, Android | Very Good (TCP/UDP 443) | Excellent | Good |
+| Protocol    | Platforms                         | Firewall Traversal       | Security  | Performance |
+| ----------- | --------------------------------- | ------------------------ | --------- | ----------- |
+| **SSTP**    | Windows only                      | Excellent (uses TCP 443) | Good      | Moderate    |
+| **IkeV2**   | Windows, Mac, Linux, iOS, Android | Good                     | Excellent | Good        |
+| **OpenVPN** | Windows, Mac, Linux, iOS, Android | Very Good (TCP/UDP 443)  | Excellent | Good        |
 
 ### Custom Routes
 
@@ -302,14 +302,13 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
 
 ## Deployment Examples
 
-### Certificate Authentication with Split Tunneling
+### Certificate Authentication with Custom DNS
 
 ```bicep
 // Parameters
 param rootCertData string
 param rootCertName string = 'P2SRootCert'
 param vpnClientAddressPoolPrefix string = '172.16.0.0/24'
-param enableSplitTunneling bool = true
 param dnsServers array = ['10.0.0.4']
 
 // VPN Gateway resource
@@ -332,7 +331,6 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
           }
         }
       ]
-      splitTunnel: enableSplitTunneling
       dnsServers: dnsServers
     }
   }
@@ -403,8 +401,9 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2021-05-01' = {
    - Test name resolution using nslookup or dig from connected clients
 
 4. **Split Tunneling Not Working as Expected**
-   - Verify split tunneling setting in the VPN gateway configuration
+   - Note: Split tunneling is configured client-side, not at the gateway level
    - Check client-side routing table when connected
+   - Verify VPN client configuration allows split tunneling
    - Ensure custom routes are correctly configured if needed
 
 ### Diagnostic Commands

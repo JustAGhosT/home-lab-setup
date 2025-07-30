@@ -20,43 +20,40 @@ $originalColor = [Console]::ForegroundColor
 [Console]::WriteLine("Diagnostic log will be written to: $diagLogPath")
 [Console]::ForegroundColor = $originalColor
 
+<#
+.SYNOPSIS
+    Writes diagnostic log messages to console and file.
+.DESCRIPTION
+    Logs diagnostic messages with timestamps to both console and file output.
+.PARAMETER Message
+    The message to log.
+.PARAMETER Level
+    The log level (INFO, WARNING, ERROR, etc.).
+#>
 function Write-DiagLog {
     param (
         [string]$Message,
         [string]$Level = "INFO"
     )
-    
+
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
-    
-    # Write to console with color using .NET methods
-    switch ($Level) {
-        "ERROR" { 
-            $originalColor = [Console]::ForegroundColor
-            [Console]::ForegroundColor = [ConsoleColor]::Red
-            [Console]::WriteLine($logMessage)
-            [Console]::ForegroundColor = $originalColor
+
+    $originalColor = [Console]::ForegroundColor
+    try {
+        # Write to console with color using .NET methods
+        switch ($Level) {
+            "ERROR" { [Console]::ForegroundColor = [ConsoleColor]::Red }
+            "Warning" { [Console]::ForegroundColor = [ConsoleColor]::Yellow }
+            "DEBUG" { [Console]::ForegroundColor = [ConsoleColor]::Gray }
+            default { [Console]::ForegroundColor = [ConsoleColor]::White }
         }
-        "Warning" { 
-            $originalColor = [Console]::ForegroundColor
-            [Console]::ForegroundColor = [ConsoleColor]::Yellow
-            [Console]::WriteLine($logMessage)
-            [Console]::ForegroundColor = $originalColor
-        }
-        "DEBUG" { 
-            $originalColor = [Console]::ForegroundColor
-            [Console]::ForegroundColor = [ConsoleColor]::Gray
-            [Console]::WriteLine($logMessage)
-            [Console]::ForegroundColor = $originalColor
-        }
-        default { 
-            $originalColor = [Console]::ForegroundColor
-            [Console]::ForegroundColor = [ConsoleColor]::White
-            [Console]::WriteLine($logMessage)
-            [Console]::ForegroundColor = $originalColor
-        }
+        [Console]::WriteLine($logMessage)
     }
-    
+    finally {
+        [Console]::ForegroundColor = $originalColor
+    }
+
     # Write to log file using .NET methods
     [System.IO.File]::AppendAllText($diagLogPath, "$logMessage`r`n")
 }
@@ -68,19 +65,69 @@ $script:LastStackTraces = @{}
 $script:RecursionDetected = $false
 
 # Function to get a simplified stack trace
+<#
+.SYNOPSIS
+    Gets a simplified PowerShell call stack trace.
+.DESCRIPTION
+    Returns a formatted string representation of the current PowerShell call stack.
+#>
 function Get-SimpleStackTrace {
     $callStack = Get-PSCallStack | Select-Object -Skip 1
     $stackTrace = @()
-    
+
     foreach ($frame in $callStack) {
         $stackTrace += "$($frame.Command) at $($frame.Location)"
     }
-    
+
     return $stackTrace -join " -> "
 }
 
+# Store original commands for cleanup
+$script:OriginalCommands = @{
+    'Import-Module' = Get-Command Import-Module
+    'Get-Command'   = Get-Command Get-Command
+    'Get-ChildItem' = Get-Command Get-ChildItem
+}
+
+# Cleanup function
+<#
+.SYNOPSIS
+    Restores original PowerShell commands that were overridden for diagnostics.
+.DESCRIPTION
+    Removes the global function overrides and restores the original PowerShell commands.
+#>
+function Restore-OriginalCommand {
+    if ($script:OriginalCommands) {
+        foreach ($cmdName in $script:OriginalCommands.Keys) {
+            Remove-Item "function:global:$cmdName" -ErrorAction SilentlyContinue
+        }
+        Write-DiagLog -Message "Restored original PowerShell commands" -Level INFO
+        $script:OriginalCommands = $null
+    }
+}
+
+# Export cleanup function for manual use
+<#
+.SYNOPSIS
+    Manually restores diagnostic command overrides.
+.DESCRIPTION
+    Provides a global function to manually restore original PowerShell commands.
+#>
+function global:Restore-DiagnosticCommand {
+    Restore-OriginalCommand
+}
+
+# Register cleanup on exit
+Register-EngineEvent PowerShell.Exiting -Action { Restore-OriginalCommand } | Out-Null
+
+# Trap for unexpected errors to ensure cleanup
+trap {
+    Write-DiagLog -Message "Unexpected error occurred: $_" -Level ERROR
+    Restore-OriginalCommand
+    throw
+}
+
 # Create a wrapper for Import-Module to track module loading
-$originalImportModule = (Get-Command Import-Module).ScriptBlock
 function global:Import-Module {
     [CmdletBinding()]
     param(
@@ -132,7 +179,6 @@ function global:Import-Module {
 }
 
 # Create a wrapper for Get-Command to track command discovery
-$originalGetCommand = (Get-Command Get-Command).ScriptBlock
 function global:Get-Command {
     [CmdletBinding()]
     param(
@@ -181,7 +227,6 @@ function global:Get-Command {
 }
 
 # Create a wrapper for Get-ChildItem to track file system operations
-$originalGetChildItem = (Get-Command Get-ChildItem).ScriptBlock
 function global:Get-ChildItem {
     [CmdletBinding()]
     param(
@@ -308,11 +353,22 @@ function Start-DiagnosticTest {
     Write-DiagLog -Message "Starting HomeLab diagnostic test" -Level INFO
     
     # Get the script directory
-    if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
-        $scriptDirectory = (Get-Location).Path
+    $scriptDirectory = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        # Try to determine script location from MyInvocation
+        if ($MyInvocation.MyCommand.Path) {
+            $resolvedPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+            Write-DiagLog -Message "Script directory resolved from MyInvocation: $resolvedPath" -Level DEBUG
+            $resolvedPath
+        }
+        else {
+            $fallbackPath = (Get-Location).Path
+            Write-DiagLog -Message "Script directory fallback to current location: $fallbackPath" -Level Warning
+            $fallbackPath
+        }
     }
     else {
-        $scriptDirectory = $PSScriptRoot
+        Write-DiagLog -Message "Script directory from PSScriptRoot: $PSScriptRoot" -Level DEBUG
+        $PSScriptRoot
     }
     
     # Define module paths
@@ -352,18 +408,18 @@ function Start-DiagnosticTest {
     Write-DiagLog -Message "Analyzing logs for recursive patterns..." -Level INFO
     
     # Report top function calls
-    $topCalls = $script:FunctionCallCounts.GetEnumerator() | 
-    Sort-Object -Property Value -Descending | 
+    $topCalls = $script:FunctionCallCounts.GetEnumerator() |
+    Sort-Object -Property Value -Descending |
     Select-Object -First 10
-    
+
     Write-DiagLog -Message "Top function calls:" -Level INFO
     foreach ($call in $topCalls) {
         Write-DiagLog -Message "  $($call.Key): $($call.Value) calls" -Level INFO
     }
-    
+
     # Report top module loads
-    $topModules = $script:ModuleLoadCounts.GetEnumerator() | 
-    Sort-Object -Property Value -Descending | 
+    $topModules = $script:ModuleLoadCounts.GetEnumerator() |
+    Sort-Object -Property Value -Descending |
     Select-Object -First 10
     
     Write-DiagLog -Message "Top module loads:" -Level INFO
@@ -375,9 +431,17 @@ function Start-DiagnosticTest {
 }
 
 # Define a custom error handler to avoid Write-Warning in script blocks
-function global:Get-ErrorDetails {
+<#
+.SYNOPSIS
+    Gets error details from an exception object.
+.DESCRIPTION
+    Extracts error message details from exception objects, handling inner exceptions.
+.PARAMETER Exception
+    The exception object to extract details from.
+#>
+function global:Get-ErrorDetail {
     param($Exception)
-    
+
     if ($Exception -and $Exception.InnerException) {
         try {
             return $Exception.InnerException.Message
@@ -392,5 +456,11 @@ function global:Get-ErrorDetails {
 # Use -ErrorAction on specific commands instead of global suppression
 # $ErrorActionPreference = 'SilentlyContinue'  # Removed to avoid hiding important errors
 
-# Run the diagnostic test
-Start-DiagnosticTest
+# Run the diagnostic test with cleanup protection
+try {
+    Start-DiagnosticTest
+}
+finally {
+    # Ensure cleanup happens even if script fails
+    Restore-OriginalCommands
+}
