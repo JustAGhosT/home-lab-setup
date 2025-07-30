@@ -283,7 +283,7 @@ git checkout -b feature/new-deployment-type
 - Integration tests for Azure interactions
 - Workflow tests for end-to-end scenarios
 
-4. **Run Quality Checks**
+1. **Run Quality Checks**
 ```powershell
 # Run tests
 .\tests\Run-HomeLab-Tests.ps1
@@ -295,7 +295,7 @@ Invoke-ScriptAnalyzer -Path .\HomeLab\ -Recurse
 # Use VS Code PowerShell extension formatter
 ```
 
-5. **Submit Pull Request**
+1. **Submit Pull Request**
 - Include clear description
 - Reference related issues
 - Ensure all checks pass
