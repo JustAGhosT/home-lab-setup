@@ -44,6 +44,9 @@ class MarkdownLinter:
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
     CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+[^\s]{1,1000}(?:\s+[^\s]+)*\s+#{1,6}\s*$")
+    
+    # Constants for repeated messages
+    MSG_FENCED_CODE_BLOCKS_SPACING = "Fenced code blocks should be surrounded by blank lines"
 
     def __init__(self, config: Optional[dict] = None):
         """Initialize the linter with the given configuration."""
@@ -434,7 +437,7 @@ class MarkdownLinter:
             self._add_issue(
                 report,
                 line_num,
-                "Fenced code blocks should be surrounded by blank lines",
+                self.MSG_FENCED_CODE_BLOCKS_SPACING,
                 "MD031",
                 severity=IssueSeverity.WARNING,
                 fix=lambda content: content,  # Handled by _apply_spacing_fixes
@@ -469,7 +472,7 @@ class MarkdownLinter:
                     self._add_issue(
                         report,
                         line_num + 1,
-                        "Fenced code blocks should be surrounded by blank lines",
+                        self.MSG_FENCED_CODE_BLOCKS_SPACING,
                         "MD031",
                         severity=IssueSeverity.WARNING,
                         fix=lambda content: content,  # Handled by _apply_spacing_fixes
@@ -747,7 +750,7 @@ class MarkdownLinter:
                     insertions.append((line_idx, "before"))  # Insert before the non-list line
 
             elif issue.code == "MD031":  # Fenced code block spacing
-                if "Fenced code blocks should be surrounded by blank lines" in issue.message:
+                if self.MSG_FENCED_CODE_BLOCKS_SPACING in issue.message:
                     # Check if this is a start or end of code block
                     if line_idx < len(lines) and lines[line_idx].strip().startswith("```"):
                         # Check if previous line needs spacing (start of code block)
