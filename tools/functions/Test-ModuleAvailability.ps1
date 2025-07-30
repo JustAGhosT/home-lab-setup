@@ -11,7 +11,9 @@
 
 function Test-ModuleAvailability {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$SkipModuleCheck
+    )
 
     if (-not $script:RequiredModules) {
         Write-Error "Required modules collection is not defined"
@@ -54,7 +56,7 @@ function Test-ModuleAvailability {
     }
     
     if (-not $allModulesAvailable -and -not $SkipModuleCheck) {
-        Write-Log -Message "Some required modules are missing or outdated" -Level "Warning"
+        Write-Warning "Some required modules are missing or outdated"
         
         # Only try to install external modules (like Az)
         if ($modulesToInstall.Count -gt 0) {

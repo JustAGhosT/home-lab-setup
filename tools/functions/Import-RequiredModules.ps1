@@ -11,7 +11,9 @@
 
 function Import-RequiredModules {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$ForceReload
+    )
 
     if (-not $script:RequiredModules) {
         Write-Error "Required modules collection is not defined"

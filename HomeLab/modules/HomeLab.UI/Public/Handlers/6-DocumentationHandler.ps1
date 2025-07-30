@@ -321,7 +321,7 @@ function Invoke-DocumentationMenu {
                 if ($canLog) { Write-Log -Message "User selected: View VPN Gateway Documentation" -Level INFO }
                 
                 $vpnReadmePaths = @(
-                    (Join-Path -Path $docsPath -ChildPath "VPN-GATEWAY.README.md"),
+                    (Join-Path -Path $docsPath -ChildPath "networking\vpn-gateway.md"),
                     (Join-Path -Path $docsPath -ChildPath "vpn-gateway.md"),
                     (Join-Path -Path $docsPath -ChildPath "vpn-gateway-guide.md"),
                     (Join-Path -Path $docsPath -ChildPath "vpn-documentation.md")

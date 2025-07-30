@@ -1,40 +1,36 @@
-# Azure HomeLab Setup
+---
+layout: default
+title: Home Lab Setup
+---
 
-This repository contains scripts and documentation for setting up and managing a comprehensive Azure home lab environment with networking, web hosting, and DNS management capabilities.
+This repository contains scripts and documentation for setting up and managing an Azure virtual network with VPN connectivity for a home lab environment.
 
 ## Overview
 
-This HomeLab environment is designed to provide a comprehensive learning and testing platform for Azure services, with capabilities for networking, web hosting, and DNS management. The setup includes:
+This HomeLab environment is designed to provide a comprehensive learning and testing platform for Azure services, with a focus on networking and secure remote connectivity. The setup includes:
 
 - Azure Virtual Network with multiple subnets
 - Azure VPN Gateway for secure remote access
 - Azure NAT Gateway for outbound internet connectivity
-- Website deployment and hosting capabilities
-- DNS zone management for custom domains
-- GitHub repository deployment to Azure
 - PowerShell module for managing the entire environment
 - Certificate management for secure authentication
-- Automated testing and CI/CD integration
 - Modular deployment scripts for easy customization
 
 ## Architecture
 
 The HomeLab system uses a modular architecture with the following components:
 
-- **HomeLab.Core**: Foundation module with configuration, logging, and setup utilities
-- **HomeLab.Azure**: Azure-specific functionality for resource deployment and management
-- **HomeLab.Security**: Security-related functionality including VPN and certificates
-- **HomeLab.UI**: User interface components including menus and handlers
-- **HomeLab.Monitoring**: Monitoring and alerting capabilities
-- **HomeLab.Web**: Website deployment and hosting functionality
-- **HomeLab.DNS**: DNS zone management and configuration
-- **HomeLab.GitHub**: GitHub repository deployment and integration
+- **[HomeLab.Core](./modules/HomeLab.Core/README.md)**: Foundation module with configuration, logging, and setup utilities
+- **[HomeLab.Azure](./modules/HomeLab.Azure/README.md)**: Azure-specific functionality for resource deployment and management
+- **[HomeLab.Security](./modules/HomeLab.Security/README.md)**: Security-related functionality including VPN and certificates
+- **[HomeLab.UI](./modules/HomeLab.UI/README.md)**: User interface components including menus and handlers
+- **[HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md)**: Monitoring and alerting capabilities
 
 For a visual overview of the system architecture, see the [High-Level Architecture Diagram](docs/diagrams/architecture.md).
 
 ## Prerequisites
 
-Before deploying the HomeLab environment, ensure you have all the necessary tools and permissions. See the [Prerequisites Guide](docs/PREREQUISITES.md) for detailed requirements.
+Before deploying the HomeLab environment, ensure you have all the necessary tools and permissions. See the [Prerequisites Guide](docs/PREREQUISITES.MD) for detailed requirements.
 
 Key requirements include:
 - Active Azure subscription with sufficient permissions
@@ -48,8 +44,8 @@ Key requirements include:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/JustAGhosT/home-lab-setup.git
-cd home-lab-setup
+git clone https://github.com/JustAGhosT/azure-homelab-vpn.git
+cd azure-homelab-vpn
 ```
 
 ### 2. Run the HomeLab Setup Script
@@ -67,8 +63,6 @@ This will launch the interactive menu system where you can:
 - Manage VPN certificates
 - Configure VPN gateways and clients
 - Enable/disable NAT Gateway
-- Deploy and manage websites
-- Configure DNS zones and records
 - Access documentation
 
 ### Deployment Process
@@ -80,19 +74,13 @@ The deployment process includes:
 2. Creating and configuring the VPN gateway
 3. Managing certificates for secure authentication
 4. Configuring client VPN access
-5. Deploying web hosting resources
-6. Setting up DNS zones and records
 
 ## Documentation
 
 This repository includes comprehensive documentation to help you deploy, manage, and understand your HomeLab environment:
 
-- [Prerequisites Guide](docs/PREREQUISITES.md) - Requirements before starting
+- [Prerequisites Guide](docs/PREREQUISITES.MD) - Requirements before starting
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
-- [Testing Guide](docs/TESTING.md) - Running tests and test development
-- [Development Guide](docs/DEVELOPMENT.md) - Developer setup and contribution guidelines
-- [GitHub Integration Guide](docs/GITHUB-INTEGRATION.md) - GitHub Actions and repository deployment
-- [Website Deployment Guide](docs/WEBSITE-DEPLOYMENT.md) - Instructions for deploying websites
 - [VPN Gateway Guide](docs/networking/vpn-gateway.md) - Advanced VPN configuration options
 - [Certificate Management Guide](docs/security/client-certificate-management.md) - Managing certificates for VPN authentication
 
@@ -166,33 +154,6 @@ Control the NAT Gateway to manage costs:
 
 See the [NAT Gateway Configuration](docs/diagrams/nat-gateway-configuration.md) diagram for details.
 
-### Website Deployment
-
-Deploy and manage websites in your HomeLab:
-- Create App Service Plans and Web Apps
-- Deploy static or dynamic websites
-- Configure custom domains
-- Manage SSL certificates
-- Set up continuous deployment
-
-### GitHub Repository Deployment
-
-Deploy GitHub repositories directly to Azure:
-- Auto-detect deployment type (Static Web App, App Service, Container App)
-- Support for React, Vue, Angular, Node.js, Python, and .NET applications
-- Custom domain configuration with SSL certificates
-- Multi-environment deployments (dev, staging, prod)
-- GitHub Actions integration for CI/CD
-
-### DNS Management
-
-Manage DNS zones and records:
-- Create and configure Azure DNS zones
-- Add and manage DNS records
-- Configure domain delegation
-- Set up custom domain verification
-- Manage DNS TTL settings
-
 ### Monitoring & Alerting
 
 Keep track of your environment:
@@ -201,15 +162,6 @@ Keep track of your environment:
 - Perform health checks on your HomeLab environment
 - Set up alerts for important events or thresholds
 
-### Testing & Quality Assurance
-
-Ensure code quality and reliability:
-- Comprehensive test suite with unit, integration, and workflow tests
-- Automated testing with GitHub Actions
-- Code quality checks (PowerShell analysis, markdown linting, YAML validation)
-- Security scanning and dependency auditing
-- HTML test reports with coverage analysis
-
 ## Usage Scenarios
 
 This HomeLab environment is ideal for:
@@ -217,20 +169,14 @@ This HomeLab environment is ideal for:
 - Learning Azure networking concepts
 - Testing secure remote access solutions
 - Developing and testing cloud applications
-- Hosting personal or test websites
-- Managing custom domains and DNS
 - Simulating hybrid cloud scenarios
 - Practicing Azure administration tasks
 
 ## Cost Management
 
-- **VPN Gateway**: ~$26.28/month (Basic SKU)
-- **NAT Gateway**: ~$32.40/month + $0.045/GB data processing (+ ~$2.60/month per associated public IP)
-- **Public IP addresses**: ~$4-6/month each
-- **App Service Plan**: ~$15/month (B1 tier) and up
-- **Static Web Apps**: Free tier available, $9/month (Standard)
-- **DNS Zones**: ~$0.50/month per zone + query charges
-- **Container Apps**: ~$0.000024/vCPU-second + ~$0.000004/GiB-second
+- **VPN Gateway**: ~$27/month (Basic SKU)
+- **NAT Gateway**: ~$32/month + data processing charges when enabled
+- **Public IP addresses**: ~$3-5/month each
 
 By keeping the NAT Gateway disabled when not in use, you can significantly reduce costs.
 
@@ -249,42 +195,34 @@ The default configuration file is stored at `$env:USERPROFILE\HomeLab\config.jso
 
 ## Project Structure
 
-The HomeLab project is organized into the following directory structure:
+The HomeLab module is organized into the following directory structure:
 
 ```
-home-lab-setup/
-├── HomeLab/                           # Main PowerShell module
-│   ├── modules/                      # Sub-modules
-│   │   ├── HomeLab.Core/            # Core functionality
-│   │   ├── HomeLab.Azure/           # Azure integration
-│   │   ├── HomeLab.Security/        # Security features
-│   │   ├── HomeLab.Web/             # Web deployment
-│   │   ├── HomeLab.DNS/             # DNS management
-│   │   ├── HomeLab.UI/              # User interface
-│   │   ├── HomeLab.Monitoring/      # Monitoring
-│   │   └── HomeLab.GitHub/          # GitHub integration
-│   ├── HomeLab.psd1                 # Module manifest (entry point)
-│   └── HomeLab.psm1                 # Module implementation
-├── tests/                            # Test suite
-│   ├── unit/                        # Unit tests
-│   ├── integration/                 # Integration tests
-│   ├── workflow/                    # Workflow tests
-│   └── Run-HomeLab-Tests.ps1        # Test runner
-├── docs/                            # Documentation
-│   ├── diagrams/                    # Architecture diagrams
-│   ├── TESTING.md                   # Testing guide
-│   ├── GITHUB-INTEGRATION.md        # GitHub integration
-│   ├── DEVELOPMENT.md               # Development guide
-│   ├── WEBSITE-DEPLOYMENT.md        # Website deployment
-│   ├── PREREQUISITES.md             # Prerequisites
-│   ├── SETUP.md                     # Setup guide
-│   └── ...                          # Additional documentation
-├── .github/                         # GitHub Actions workflows
-│   ├── workflows/                   # CI/CD workflows
-│   └── actions/                     # Custom actions
-└── tools/                           # Utility scripts
-    ├── markdown_lint/               # Markdown linting tools
-    └── yaml_lint/                   # YAML linting tools
+HomeLab/
+├── modules/
+│   ├── HomeLab.Core/
+│   ├── HomeLab.Azure/
+│   ├── HomeLab.Security/
+│   ├── HomeLab.UI/
+│   └── HomeLab.Monitoring/
+├── docs/
+│   ├── diagrams/
+│   │   ├── certificate-management-flow.md
+│   │   ├── cost-optimization-strategy.md
+│   │   ├── high-level-architecture.md
+│   │   ├── nat-gateway-configuration.md
+│   │   ├── network-security.md
+│   │   ├── point-to-site-vpn-connection-flow.md
+│   │   ├── subnet-layout.md
+│   │   └── traffic-flow-and-routing.md
+│   ├── PREREQUISITES.MD
+│   ├── SETUP.md
+│   ├── networking/
+│   │   └── vpn-gateway.md
+│   └── client-certificate-management.md
+├── HomeLab.psd1
+├── HomeLab.psm1
+└── README.md
 ```
 
 ## Troubleshooting
@@ -318,37 +256,15 @@ For a detailed view of the network traffic flow, see the [Traffic Flow and Routi
    - Try to access internet resources
    - Check outbound IP using a service like ipinfo.io
 
-### Website Deployment Issues
-
-1. Check App Service status:
-   - Verify the App Service Plan is running
-   - Check Web App deployment status
-   - Review deployment logs for errors
-
-2. Troubleshoot custom domains:
-   - Verify DNS records are correctly configured
-   - Check domain verification status
-   - Ensure SSL certificates are valid and properly bound
-
-### DNS Management Issues
-
-1. Verify DNS zone configuration:
-   - Check name servers are correctly set at the registrar
-   - Verify DNS propagation using tools like `nslookup` or online DNS checkers
-   - Check for conflicting DNS records
-
 ## Module Documentation
 
-Each module in the HomeLab system provides specific functionality:
+Each module in the HomeLab system has its own README with detailed information:
 
-- **HomeLab.Core** - Foundation module with configuration, logging, and setup utilities
-- **HomeLab.Azure** - Azure-specific functionality for resource deployment and management
-- **HomeLab.Security** - Security-related functionality including VPN and certificates
-- **HomeLab.UI** - User interface components including menus and handlers
-- **HomeLab.Monitoring** - Monitoring and alerting capabilities
-- **HomeLab.Web** - Website deployment and hosting functionality
-- **HomeLab.DNS** - DNS zone management and configuration
-- **HomeLab.GitHub** - GitHub repository deployment and integration features
+- [HomeLab.Core](./modules/HomeLab.Core/README.md) - Foundation module with configuration, logging, and setup utilities
+- [HomeLab.Azure](./modules/HomeLab.Azure/README.md) - Azure-specific functionality for resource deployment and management
+- [HomeLab.Security](./modules/HomeLab.Security/README.md) - Security-related functionality including VPN and certificates
+- [HomeLab.UI](./modules/HomeLab.UI/README.md) - User interface components including menus and handlers
+- [HomeLab.Monitoring](./modules/HomeLab.Monitoring/README.md) - Monitoring and alerting capabilities
 
 ## PowerShell Module
 
@@ -357,8 +273,6 @@ This repository includes a PowerShell module with functions for:
 - Deploying and managing Azure resources
 - Creating and managing certificates
 - Configuring VPN clients
-- Deploying and managing websites
-- Configuring DNS zones and records
 - Monitoring and troubleshooting
 
 ## Contributing

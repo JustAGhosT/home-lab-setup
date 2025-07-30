@@ -24,24 +24,24 @@ $script:ModulesLoaded = $false
 $script:ConfigLoaded = $false
 # Updated to reflect local module paths
 $script:RequiredModules = @(
-    @{Name = "HomeLab.Logging"; Path = "$PSScriptRoot\modules\HomeLab.Logging\HomeLab.Logging.psm1"},
-    @{Name = "HomeLab.Utils"; Path = "$PSScriptRoot\modules\HomeLab.Utils\HomeLab.Utils.psm1"},
-    @{Name = "HomeLab.Core"; Path = "$PSScriptRoot\modules\HomeLab.Core\HomeLab.Core.psm1"},
-    @{Name = "HomeLab.UI"; Path = "$PSScriptRoot\modules\HomeLab.UI\HomeLab.UI.psm1"},
-    @{Name = "HomeLab.Azure"; Path = "$PSScriptRoot\modules\HomeLab.Azure\HomeLab.Azure.psm1"},
-    @{Name = "HomeLab.Security"; Path = "$PSScriptRoot\modules\HomeLab.Security\HomeLab.Security.psm1"},
-    @{Name = "HomeLab.Monitoring"; Path = "$PSScriptRoot\modules\HomeLab.Monitoring\HomeLab.Monitoring.psm1"}
+    @{Name = "HomeLab.Logging"; Path = "$PSScriptRoot\modules\HomeLab.Logging\HomeLab.Logging.psm1" },
+    @{Name = "HomeLab.Utils"; Path = "$PSScriptRoot\modules\HomeLab.Utils\HomeLab.Utils.psm1" },
+    @{Name = "HomeLab.Core"; Path = "$PSScriptRoot\modules\HomeLab.Core\HomeLab.Core.psm1" },
+    @{Name = "HomeLab.UI"; Path = "$PSScriptRoot\modules\HomeLab.UI\HomeLab.UI.psm1" },
+    @{Name = "HomeLab.Azure"; Path = "$PSScriptRoot\modules\HomeLab.Azure\HomeLab.Azure.psm1" },
+    @{Name = "HomeLab.Security"; Path = "$PSScriptRoot\modules\HomeLab.Security\HomeLab.Security.psm1" },
+    @{Name = "HomeLab.Monitoring"; Path = "$PSScriptRoot\modules\HomeLab.Monitoring\HomeLab.Monitoring.psm1" }
     # @{Name = "Az"; MinVersion = "9.0.0"} # Az is the only external module
 )
 $script:State = @{
-    ConfigPath = "$env:USERPROFILE\.homelab\config.json"  # Set a default value
-    LogLevel = "Info"  # Set a default value
-    Config = $null
-    User = $env:USERNAME
-    AzContext = $null
+    ConfigPath       = "$env:USERPROFILE\.homelab\config.json"  # Set a default value
+    LogLevel         = "Info"  # Set a default value
+    Config           = $null
+    User             = $env:USERNAME
+    AzContext        = $null
     ConnectionStatus = "Disconnected"
-    LastDeployment = $null
-    MenuHistory = @()
+    LastDeployment   = $null
+    MenuHistory      = @()
 }
 $script:LogFile = "$env:USERPROFILE\.homelab\logs\homelab_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 #endregion
@@ -54,12 +54,18 @@ if ($global:PSDefaultParameterValues) {
     $global:PSDefaultParameterValues = @{}
 }
 
-# Use $PSScriptRoot if available; otherwise, fall back to the current directory.
-if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
-    [string]$scriptDirectory = (Get-Location).Path
+# Use $PSScriptRoot if available; otherwise, try to determine from MyInvocation
+[string]$scriptDirectory = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    # Try to determine script location from MyInvocation
+    if ($MyInvocation.MyCommand.Path) {
+        Split-Path -Parent $MyInvocation.MyCommand.Path
+    }
+    else {
+        (Get-Location).Path
+    }
 }
 else {
-    [string]$scriptDirectory = $PSScriptRoot
+    $PSScriptRoot
 }
 Write-Verbose "Using script directory: $scriptDirectory"
 
@@ -110,10 +116,12 @@ foreach ($modulePath in $moduleOrder) {
             
             if ($loadedModules[$modulePath]) {
                 Write-Verbose "Successfully loaded module: $moduleName"
-            } else {
+            }
+            else {
                 Write-Warning "Module loaded but not found in Get-Module: $moduleName"
             }
-        } catch {
+        }
+        catch {
             Write-Warning "Failed to load module from path: $modulePath. Error: $_"
             $loadedModules[$modulePath] = $false
         }
@@ -167,10 +175,12 @@ if (Get-Module -Name "HomeLab.UI" -ErrorAction SilentlyContinue) {
         if ($hasShowMenu) {
             Write-Verbose "Re-exporting Show-Menu function from HomeLab.UI"
             Export-ModuleMember -Function Show-Menu
-        } else {
+        }
+        else {
             Write-Warning "Show-Menu function not found in HomeLab.UI module"
         }
-    } catch {
+    }
+    catch {
         Write-Warning "Error checking for Show-Menu function: $_"
     }
 }

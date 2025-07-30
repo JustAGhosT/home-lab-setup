@@ -15,7 +15,7 @@ param(
 if (-not (Get-Module -Name Pester -ListAvailable)) {
     Write-Host "Installing Pester module..."
     try {
-        Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck
+        Install-Module -Name Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
         Write-Host "Pester module installed successfully" -ForegroundColor Green
     }
     catch {
@@ -26,30 +26,58 @@ if (-not (Get-Module -Name Pester -ListAvailable)) {
 
 Import-Module -Name Pester -MinimumVersion 5.0
 
+# Define test paths
+$testsRoot = $PSScriptRoot
+$unitTestPath = Join-Path $testsRoot "unit"
+$integrationTestPath = Join-Path $testsRoot "integration"
+$workflowTestPath = Join-Path $testsRoot "workflow"
+
+# Validate test directory structure
+if (-not (Test-Path $testsRoot)) {
+    Write-Error "Tests directory not found at: $testsRoot"
+    Write-Error "Please ensure the script is run from the correct location or that tests directory exists."
+    exit 1
+}
+
 # Configure test run
 $config = New-PesterConfiguration
-$config.Run.Path = $PSScriptRoot
+$config.Run.Path = $testsRoot
 $config.Run.PassThru = $true  # Enable result object return
 $config.TestResult.Enabled = $true
-$config.TestResult.OutputPath = Join-Path $PSScriptRoot "TestResults.xml"
+$config.TestResult.OutputPath = Join-Path $testsRoot "TestResults.xml"
 $config.Output.Verbosity = "Detailed"
 
 # Set test path based on type
 switch ($TestType) {
-    'Unit' { 
-        $config.Run.Path = Join-Path $PSScriptRoot "unit"
+    'Unit' {
+        if (-not (Test-Path $unitTestPath)) {
+            Write-Error "Unit tests directory not found at: $unitTestPath"
+            Write-Error "Please ensure the unit tests directory exists."
+            exit 1
+        }
+        $config.Run.Path = $unitTestPath
         Write-Host "Running Unit Tests..." -ForegroundColor Cyan
     }
-    'Integration' { 
-        $config.Run.Path = Join-Path $PSScriptRoot "integration"
+    'Integration' {
+        if (-not (Test-Path $integrationTestPath)) {
+            Write-Error "Integration tests directory not found at: $integrationTestPath"
+            Write-Error "Please ensure the integration tests directory exists."
+            exit 1
+        }
+        $config.Run.Path = $integrationTestPath
         Write-Host "Running Integration Tests..." -ForegroundColor Cyan
     }
-    'Workflow' { 
-        $config.Run.Path = Join-Path $PSScriptRoot "workflow"
+    'Workflow' {
+        if (-not (Test-Path $workflowTestPath)) {
+            Write-Error "Workflow tests directory not found at: $workflowTestPath"
+            Write-Error "Please ensure the workflow tests directory exists."
+            exit 1
+        }
+        $config.Run.Path = $workflowTestPath
         Write-Host "Running Workflow Tests..." -ForegroundColor Cyan
     }
-    'All' { 
-        $config.Run.Path = $PSScriptRoot
+    'All' {
+        $config.Run.Path = $testsRoot
         Write-Host "Running All Tests..." -ForegroundColor Cyan
     }
 }
@@ -69,7 +97,25 @@ if ($Coverage) {
 }
 
 # Run tests
+Write-Host "Executing tests..." -ForegroundColor Cyan
 $testResults = Invoke-Pester -Configuration $config
+
+# Validate test execution results
+if (-not $testResults) {
+    Write-Error "No results returned from Pester test execution."
+    Write-Error "This may indicate a serious issue with test execution or configuration."
+    Write-Error "Please check:"
+    Write-Error "  - Test files exist and are properly formatted"
+    Write-Error "  - Pester configuration is valid"
+    Write-Error "  - No syntax errors in test files"
+    exit 1
+}
+
+if ($testResults.TotalCount -eq 0) {
+    Write-Warning "No tests were discovered or executed."
+    Write-Warning "Please verify that test files exist in the specified path: $($config.Run.Path)"
+    Write-Warning "Test files should have names ending with '.tests.ps1'"
+}
 
 # Generate HTML report if requested
 if ($GenerateReport) {
@@ -79,7 +125,7 @@ if ($GenerateReport) {
         # Try PScribo first
         if (-not (Get-Module -Name PScribo -ListAvailable)) {
             Write-Host "Installing PScribo module for report generation..."
-            Install-Module -Name PScribo -Force -SkipPublisherCheck -ErrorAction Stop
+            Install-Module -Name PScribo -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction Stop
         }
         
         Import-Module -Name PScribo
@@ -105,7 +151,8 @@ if ($GenerateReport) {
                     $commandsCovered = if ($testResults.CodeCoverage) { $testResults.CodeCoverage.NumberOfCommandsExecuted } else { 0 }
                     $coveragePercent = if ($testResults.CodeCoverage -and $testResults.CodeCoverage.NumberOfCommandsAnalyzed -gt 0) { 
                         [math]::Round(($testResults.CodeCoverage.NumberOfCommandsExecuted / $testResults.CodeCoverage.NumberOfCommandsAnalyzed) * 100, 2) 
-                    } else { 0 }
+                    }
+                    else { 0 }
                     Paragraph "Files Analyzed: $filesAnalyzed"
                     Paragraph "Commands Covered: $commandsCovered"
                     Paragraph "Coverage Percentage: $coveragePercent%"
@@ -167,7 +214,7 @@ if ($GenerateReport) {
         $htmlContent | Out-File -FilePath $reportPath -Encoding UTF8
         Write-Host "Fallback report generated at: $reportPath" -ForegroundColor Green
     }
-}
+}        
 
 # Return results summary
 Write-Host "Test Results Summary:" -ForegroundColor Cyan

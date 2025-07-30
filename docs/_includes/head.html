@@ -1,0 +1,39 @@
+<!-- Add Mermaid -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" integrity="sha384-NzKLfTlrPllD7F2dVrClXrOIXqiNfAEy/uI9MPkL9RJZPSvWwTKqMJdgwJRgKfNn" crossorigin="anonymous"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      fontFamily: 'sans-serif',
+      flowchart: {
+        curve: 'basis',
+        htmlLabels: true
+      },
+      securityLevel: 'strict',  // Use strict for better XSS protection
+    });
+    
+    // Force mermaid to render all code blocks with class 'language-mermaid'
+    document.querySelectorAll('pre code.language-mermaid').forEach(function(el) {
+      try {
+        // Create a div with class mermaid
+        var div = document.createElement('div');
+        div.className = 'mermaid';
+        div.innerHTML = el.textContent;
+
+        // Replace the code element with the mermaid div
+        if (el.parentNode && el.parentNode.parentNode) {
+          el.parentNode.parentNode.replaceChild(div, el.parentNode);
+
+          // Re-run mermaid
+          mermaid.init(undefined, div);
+        } else {
+          console.warn('Unable to replace Mermaid diagram: invalid DOM structure');
+        }
+      } catch (error) {
+        console.warn('Failed to render Mermaid diagram:', error);
+        // Optionally, you could add a fallback display here
+      }
+    });
+  });
+</script>

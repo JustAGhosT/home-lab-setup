@@ -154,7 +154,7 @@ route print
 
 If you encounter issues during deployment or connection:
 
-1. Check the [VPN Gateway Documentation](VPN-GATEWAY.README.md) for common issues and solutions
+1. Check the [VPN Gateway Documentation](networking/vpn-gateway.md) for common issues and solutions
 2. Review the [Troubleshooting](#troubleshooting) section of the VPN Gateway guide
 3. Verify certificates are correctly installed and not expired
 4. Check Azure resource health in the Azure Portal
@@ -171,4 +171,4 @@ After successful deployment, consider:
 3. Implementing additional security measures
 4. Exploring advanced VPN configurations
 
-Refer to the [VPN Gateway Advanced Configuration Guide](VPN-GATEWAY.README.md) for more options.
+Refer to the [VPN Gateway Advanced Configuration Guide](networking/vpn-gateway.md) for more options.
