@@ -75,7 +75,8 @@ class MarkdownLinter:
             expected_ordered_number = 1
             list_start_line = 0
             seen_headings = set()  # Track headings for MD024
-            code_block_start_line = 0  # Track code block start for MD031
+            in_code_block = False
+            # proceed with line-by-line processing without tracking code_block_start_line
 
             # Process each line
             for i, line in enumerate(lines, 1):
