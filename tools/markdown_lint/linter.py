@@ -84,7 +84,7 @@ class MarkdownLinter:
                     prev_line_blank = True
                     # Check if we're ending a list
                     if in_list and current_list_type:
-                        self._check_list_end_spacing(report, i - 1, lines, list_start_line)
+                        self._check_list_end_spacing(report, i - 1, lines)
                         in_list = False
                         current_list_type = None
                         expected_ordered_number = 1
@@ -104,7 +104,7 @@ class MarkdownLinter:
                         # Ending a code block
                         if self.config["check_fenced_code_blocks"]:
                             self._check_fenced_code_block_end(
-                                report, i, lines, code_block_start_line
+                                report, i, lines
                             )
 
                     in_code_block = not in_code_block
@@ -153,7 +153,7 @@ class MarkdownLinter:
                         self._check_heading_spacing(report, i, lines, prev_line_blank)
                     # MD024: Check for duplicate headings
                     if self.config["check_duplicate_headings"]:
-                        self._check_duplicate_headings(report, i, heading_match, seen_headings)
+                        self._check_duplicate_headings(report, i, heading_match.group("content"), seen_headings)
 
                 # Check list items
                 list_match = self.LIST_ITEM_PATTERN.match(line)
@@ -177,7 +177,7 @@ class MarkdownLinter:
                             current_list_type = "ordered"
                             expected_ordered_number = 1
                         self._check_ordered_list_numbering(
-                            report, i, line, number, expected_ordered_number
+                            report, i, number, expected_ordered_number
                         )
                         expected_ordered_number += (
                             1  # Always increment by 1 regardless of actual number
@@ -188,14 +188,14 @@ class MarkdownLinter:
                             expected_ordered_number = 1
                 elif in_list and current_list_type:
                     # We're no longer in a list
-                    self._check_list_end_spacing(report, i - 1, lines, list_start_line)
+                    self._check_list_end_spacing(report, i - 1, lines)
                     in_list = False
                     current_list_type = None
                     expected_ordered_number = 1
 
                 # Check for common markdown mistakes
                 if self.config["check_common_mistakes"]:
-                    self._check_common_mistakes(report, i, line, prev_line)
+                    self._check_common_mistakes(report, i, line)
 
                 prev_line = line
                 prev_line_blank = False
@@ -347,7 +347,7 @@ class MarkdownLinter:
 
         # Check if next line is blank (unless it's the last line)
         if line_num < len(lines):
-            next_line = lines[line_num] if line_num < len(lines) else ""
+            next_line = lines[line_num]
             if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
                 self._add_issue(
                     report,
@@ -373,7 +373,7 @@ class MarkdownLinter:
             )
 
     def _check_list_end_spacing(
-        self, report: FileReport, last_list_line: int, lines: List[str], list_start_line: int
+        self, report: FileReport, last_list_line: int, lines: List[str]
     ) -> None:
         """Check MD032: Lists should be surrounded by blank lines (end)."""
         # Check if there's a line after the list and it's not blank
@@ -394,7 +394,7 @@ class MarkdownLinter:
                         )
 
     def _check_ordered_list_numbering(
-        self, report: FileReport, line_num: int, line: str, actual_number: int, expected_number: int
+        self, report: FileReport, line_num: int, actual_number: int, expected_number: int
     ) -> None:
         """Check MD029: Ordered list item prefix should be sequential."""
         if actual_number != expected_number:
@@ -457,7 +457,7 @@ class MarkdownLinter:
             )
 
     def _check_fenced_code_block_end(
-        self, report: FileReport, line_num: int, lines: List[str], code_block_start_line: int
+        self, report: FileReport, line_num: int, lines: List[str]
     ) -> None:
         """Check MD031 for fenced code block end."""
         # MD031: Check blank line after code block
@@ -476,11 +476,11 @@ class MarkdownLinter:
                     )
 
     def _check_duplicate_headings(
-        self, report: FileReport, line_num: int, match: re.Match, seen_headings: set
+        self, report: FileReport, line_num: int, heading_content: str, seen_headings: set
     ) -> None:
         """Check MD024: Multiple headings with the same content."""
-        heading_text = match.group("content").strip().lower()
-        original_heading = match.group("content").strip()
+        heading_text = heading_content.strip().lower()
+        original_heading = heading_content.strip()
 
         if heading_text in seen_headings:
             # Find the next available number for this heading
@@ -492,7 +492,9 @@ class MarkdownLinter:
             new_heading_display = f"{original_heading} {counter}"
 
             def fix_duplicate_heading(line_content):
-                level = match.group("level")
+                # Extract level from line content
+                level_match = re.match(r'^(#+)', line_content)
+                level = level_match.group(1) if level_match else '#'
                 return line_content.replace(
                     f"{level} {original_heading}", f"{level} {new_heading_display}"
                 )
@@ -591,7 +593,7 @@ class MarkdownLinter:
             )
 
     def _check_common_mistakes(
-        self, report: FileReport, line_num: int, line: str, prev_line: str
+        self, report: FileReport, line_num: int, line: str
     ) -> None:
         """Check for common markdown mistakes."""
         if self.config["check_bare_urls"]:
