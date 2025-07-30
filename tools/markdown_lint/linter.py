@@ -36,17 +36,23 @@ class MarkdownLinter:
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
     HTML_COMMENT_PATTERN = re.compile(r"^<!--.*?-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
-    ORDERED_LIST_PATTERN = re.compile(r"^\s*(?P<number>\d+)\.(?P<content>\s+.{0,1000})$")
+    ORDERED_LIST_PATTERN = re.compile(
+        r"^\s*(?P<number>\d+)\.(?P<content>\s+.{0,1000})$"
+    )
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
     BARE_URL_PATTERN = re.compile(r"(?<![<\[\(])(https?://[^\s<>\[\]()]+)(?![>\]\)])")
     EMAIL_PATTERN = re.compile(
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
-    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+[^\s]{1,1000}(?:\s+[^\s]+)*\s+#{1,6}\s*$")
-    
+    CLOSED_ATX_HEADING_PATTERN = re.compile(
+        r"^#{1,6}\s+[^\s]{1,1000}(?:\s+[^\s]+)*\s+#{1,6}\s*$"
+    )
+
     # Constants for repeated messages
-    MSG_FENCED_CODE_BLOCKS_SPACING = "Fenced code blocks should be surrounded by blank lines"
+    MSG_FENCED_CODE_BLOCKS_SPACING = (
+        "Fenced code blocks should be surrounded by blank lines"
+    )
 
     def __init__(self, config: Optional[dict] = None):
         """Initialize the linter with the given configuration."""
@@ -60,169 +66,288 @@ class MarkdownLinter:
         self.reports[file_path] = report
 
         try:
-            # Read file content
             content = file_path.read_text(encoding="utf-8")
             lines = content.splitlines(keepends=False)
 
-            # Initialize state
-            in_code_block = False
-            in_html_comment = False
-            in_list = False
-
-            prev_line = ""
-            prev_line_blank = True  # Start as if previous line was blank
-            current_list_type = None  # 'ordered' or 'unordered'
-            expected_ordered_number = 1
-            list_start_line = 0
-            seen_headings = set()  # Track headings for MD024
-            in_code_block = False
-            # proceed with line-by-line processing without tracking code_block_start_line
+            # Initialize parsing state
+            state = self._initialize_parsing_state()
 
             # Process each line
             for i, line in enumerate(lines, 1):
-                is_blank = self.BLANK_LINE_PATTERN.match(line)
+                state = self._process_line(report, i, line, lines, state)
 
-                # Skip empty lines for most checks, but track them
-                if is_blank:
-                    prev_line = line
-                    prev_line_blank = True
-                    # Check if we're ending a list
-                    if in_list and current_list_type:
-                        self._check_list_end_spacing(report, i - 1, lines)
-                        in_list = False
-                        current_list_type = None
-                        expected_ordered_number = 1
-                    continue
-
-                # Check for code blocks
-                code_block_match = self.CODE_BLOCK_START_PATTERN.match(line)
-                if code_block_match:
-                    if not in_code_block:
-                        # Starting a code block
-                        code_block_start_line = i
-                        if self.config["check_fenced_code_blocks"]:
-                            self._check_fenced_code_block_start(
-                                report, i, lines, prev_line_blank, code_block_match
-                            )
-                    else:
-                        # Ending a code block
-                        if self.config["check_fenced_code_blocks"]:
-                            self._check_fenced_code_block_end(
-                                report, i, lines
-                            )
-
-                    in_code_block = not in_code_block
-                    prev_line = line
-                    prev_line_blank = False
-                    continue
-
-                # Skip code blocks and HTML comments
-                if in_code_block or in_html_comment:
-                    prev_line = line
-                    prev_line_blank = False
-                    continue
-
-                # Check for HTML comments
-                if self.HTML_COMMENT_PATTERN.match(line):
-                    in_html_comment = False  # Single line comment
-                    prev_line = line
-                    prev_line_blank = False
-                    continue
-
-                # Check line length
-                self._check_line_length(report, i, line)
-
-                # Check for trailing whitespace
-                if self.config["trim_trailing_whitespace"] and line.rstrip() != line:
-                    self._add_issue(
-                        report, i, "Trim trailing whitespace", "MD009", fix=lambda line: line.rstrip()
-                    )
-
-                # Check for consistent line endings
-                if "\r\n" in line:
-                    self._add_issue(
-                        report,
-                        i,
-                        "Inconsistent line endings (CRLF)",
-                        "MD001",
-                        fix=lambda line: line.replace("\r\n", "\n"),
-                    )
-
-                # Check headings
-                heading_match = self.HEADING_PATTERN.match(line)
-                if heading_match:
-                    self._check_heading(report, i, line, heading_match)
-                    # MD022: Check blank lines around headings
-                    if self.config["check_blank_lines_around_headings"]:
-                        self._check_heading_spacing(report, i, lines, prev_line_blank)
-                    # MD024: Check for duplicate headings
-                    if self.config["check_duplicate_headings"]:
-                        self._check_duplicate_headings(report, i, heading_match.group("content"), seen_headings)
-
-                # Check list items
-                list_match = self.LIST_ITEM_PATTERN.match(line)
-                ordered_match = self.ORDERED_LIST_PATTERN.match(line)
-                unordered_match = self.UNORDERED_LIST_PATTERN.match(line)
-
-                if list_match:
-                    self._check_list_item(report, i, line, list_match)
-
-                    # MD032: Check blank lines around lists
-                    if self.config["check_blank_lines_around_lists"]:
-                        if not in_list:
-                            self._check_list_start_spacing(report, i, prev_line_blank)
-                        in_list = True
-
-                    # MD029: Check ordered list numbering
-                    if ordered_match and self.config["check_ordered_list_numbering"]:
-                        number = int(ordered_match.group("number"))
-                        if current_list_type != "ordered":
-                            current_list_type = "ordered"
-                            expected_ordered_number = 1
-                        self._check_ordered_list_numbering(
-                            report, i, number, expected_ordered_number
-                        )
-                        expected_ordered_number += (
-                            1  # Always increment by 1 regardless of actual number
-                        )
-                    elif unordered_match:
-                        if current_list_type != "unordered":
-                            current_list_type = "unordered"
-                            expected_ordered_number = 1
-                elif in_list and current_list_type:
-                    # We're no longer in a list
-                    self._check_list_end_spacing(report, i - 1, lines)
-                    in_list = False
-                    current_list_type = None
-                    expected_ordered_number = 1
-
-                # Check for common markdown mistakes
-                if self.config["check_common_mistakes"]:
-                    self._check_common_mistakes(report, i, line)
-
-                prev_line_blank = False
-
-            # Check for final newline
-            if self.config["insert_final_newline"] and content and not content.endswith("\n"):
-                self._add_issue(
-                    report,
-                    len(lines),
-                    "Missing final newline",
-                    "MD047",
-                    fix=lambda c: c + "\n",
-                    file_level=True,
-                )
-
-            # Store the fixed content if there are fixes
-            if any(issue.fixable for issue in report.issues):
-                report.fixed_content = self._apply_fixes(content, report.issues)
+            # Final checks
+            self._perform_final_checks(report, content, lines)
 
         except Exception as e:
             self._add_issue(
-                report, 0, f"Error processing file: {str(e)}", "ERROR", severity=IssueSeverity.ERROR
+                report,
+                0,
+                f"Error processing file: {str(e)}",
+                "ERROR",
+                severity=IssueSeverity.ERROR,
             )
 
         return report
+
+    def _initialize_parsing_state(self) -> dict:
+        """Initialize the parsing state for processing a markdown file."""
+        return {
+            "in_code_block": False,
+            "in_html_comment": False,
+            "in_list": False,
+            "prev_line": "",
+            "prev_line_blank": True,
+            "current_list_type": None,
+            "expected_ordered_number": 1,
+            "list_start_line": 0,
+            "seen_headings": set(),
+        }
+
+    def _process_line(
+        self, report: FileReport, line_num: int, line: str, lines: list, state: dict
+    ) -> dict:
+        """Process a single line and update the parsing state."""
+        is_blank = self.BLANK_LINE_PATTERN.match(line)
+
+        if is_blank:
+            return self._handle_blank_line(report, line_num, line, lines, state)
+
+        # Handle code blocks
+        code_block_match = self.CODE_BLOCK_START_PATTERN.match(line)
+        if code_block_match:
+            return self._handle_code_block(
+                report, line_num, line, lines, state, code_block_match
+            )
+
+        # Skip processing if inside code blocks or HTML comments
+        if state["in_code_block"] or state["in_html_comment"]:
+            return self._update_state_for_skipped_line(state, line)
+
+        # Handle HTML comments
+        if self._handle_html_comment(report, line_num, line, state):
+            return state
+
+        # Perform line-level checks
+        self._perform_line_checks(report, line_num, line)
+
+        # Handle headings
+        heading_match = self.HEADING_PATTERN.match(line)
+        if heading_match:
+            self._handle_heading(report, line_num, line, lines, state, heading_match)
+
+        # Handle list items
+        state = self._handle_list_items(report, line_num, line, state)
+
+        # Check for common markdown mistakes
+        if self.config["check_common_mistakes"]:
+            self._check_common_mistakes(report, line_num, line)
+
+        state["prev_line"] = line
+        state["prev_line_blank"] = False
+        return state
+
+    def _handle_blank_line(
+        self, report: FileReport, line_num: int, line: str, lines: list, state: dict
+    ) -> dict:
+        """Handle processing of blank lines."""
+        state["prev_line"] = line
+        state["prev_line_blank"] = True
+
+        # Check if we're ending a list
+        if state["in_list"] and state["current_list_type"]:
+            self._check_list_end_spacing(report, line_num - 1, lines)
+            state["in_list"] = False
+            state["current_list_type"] = None
+            state["expected_ordered_number"] = 1
+
+        return state
+
+    def _handle_code_block(
+        self,
+        report: FileReport,
+        line_num: int,
+        line: str,
+        lines: list,
+        state: dict,
+        code_block_match,
+    ) -> dict:
+        """Handle code block start/end processing."""
+        if not state["in_code_block"]:
+            # Starting a code block
+            if self.config["check_fenced_code_blocks"]:
+                self._check_fenced_code_block_start(
+                    report, line_num, lines, state["prev_line_blank"], code_block_match
+                )
+        else:
+            # Ending a code block
+            if self.config["check_fenced_code_blocks"]:
+                self._check_fenced_code_block_end(report, line_num, lines)
+
+        state["in_code_block"] = not state["in_code_block"]
+        state["prev_line"] = line
+        state["prev_line_blank"] = False
+        return state
+
+    def _update_state_for_skipped_line(self, state: dict, line: str) -> dict:
+        """Update state for lines that are skipped during processing."""
+        state["prev_line"] = line
+        state["prev_line_blank"] = False
+        return state
+
+    def _handle_html_comment(
+        self, report: FileReport, line_num: int, line: str, state: dict
+    ) -> bool:
+        """Handle HTML comment processing. Returns True if line was handled."""
+        if self.HTML_COMMENT_PATTERN.match(line):
+            state["in_html_comment"] = False  # Single line comment
+            state["prev_line"] = line
+            state["prev_line_blank"] = False
+            return True
+        return False
+
+    def _perform_line_checks(
+        self, report: FileReport, line_num: int, line: str
+    ) -> None:
+        """Perform basic line-level checks."""
+        # Check line length
+        self._check_line_length(report, line_num, line)
+
+        # Check for trailing whitespace
+        if self.config["trim_trailing_whitespace"] and line.rstrip() != line:
+            self._add_issue(
+                report,
+                line_num,
+                "Trim trailing whitespace",
+                "MD009",
+                fix=lambda line: line.rstrip(),
+            )
+
+        # Check for consistent line endings
+        expected_eol = self.config["end_of_line"]
+        if expected_eol == "lf" and "\r\n" in line:
+            self._add_issue(
+                report,
+                line_num,
+                "Inconsistent line endings (CRLF)",
+                "MD001",
+                fix=lambda line: line.replace("\r\n", "\n"),
+            )
+        elif expected_eol == "crlf" and "\r\n" not in line and line.endswith("\n"):
+            self._add_issue(
+                report,
+                line_num,
+                "Inconsistent line endings (LF)",
+                "MD001",
+                fix=lambda line: line.rstrip("\n") + "\r\n",
+            )
+
+    def _handle_heading(
+        self,
+        report: FileReport,
+        line_num: int,
+        line: str,
+        lines: list,
+        state: dict,
+        heading_match,
+    ) -> None:
+        """Handle heading processing."""
+        self._check_heading(report, line_num, line, heading_match)
+
+        # MD022: Check blank lines around headings
+        if self.config["check_blank_lines_around_headings"]:
+            self._check_heading_spacing(
+                report, line_num, lines, state["prev_line_blank"]
+            )
+
+        # MD024: Check for duplicate headings
+        if self.config["check_duplicate_headings"]:
+            self._check_duplicate_headings(
+                report, line_num, heading_match.group("content"), state["seen_headings"]
+            )
+
+    def _handle_list_items(
+        self, report: FileReport, line_num: int, line: str, state: dict
+    ) -> dict:
+        """Handle list item processing."""
+        list_match = self.LIST_ITEM_PATTERN.match(line)
+        ordered_match = self.ORDERED_LIST_PATTERN.match(line)
+        unordered_match = self.UNORDERED_LIST_PATTERN.match(line)
+
+        if list_match:
+            self._check_list_item(report, line_num, line, list_match)
+
+            # MD032: Check blank lines around lists
+            if self.config["check_blank_lines_around_lists"]:
+                if not state["in_list"]:
+                    self._check_list_start_spacing(
+                        report, line_num, state["prev_line_blank"]
+                    )
+                state["in_list"] = True
+
+            # Handle ordered list numbering
+            if ordered_match and self.config["check_ordered_list_numbering"]:
+                state = self._handle_ordered_list(
+                    report, line_num, ordered_match, state
+                )
+            elif unordered_match:
+                state = self._handle_unordered_list(state)
+
+        elif state["in_list"] and state["current_list_type"]:
+            # We're no longer in a list
+            self._check_list_end_spacing(
+                report, line_num - 1, []
+            )  # lines not needed for this check
+            state["in_list"] = False
+            state["current_list_type"] = None
+            state["expected_ordered_number"] = 1
+
+        return state
+
+    def _handle_ordered_list(
+        self, report: FileReport, line_num: int, ordered_match, state: dict
+    ) -> dict:
+        """Handle ordered list processing."""
+        number = int(ordered_match.group("number"))
+        if state["current_list_type"] != "ordered":
+            state["current_list_type"] = "ordered"
+            state["expected_ordered_number"] = 1
+
+        self._check_ordered_list_numbering(
+            report, line_num, number, state["expected_ordered_number"]
+        )
+        state["expected_ordered_number"] += 1
+        return state
+
+    def _handle_unordered_list(self, state: dict) -> dict:
+        """Handle unordered list processing."""
+        if state["current_list_type"] != "unordered":
+            state["current_list_type"] = "unordered"
+            state["expected_ordered_number"] = 1
+        return state
+
+    def _perform_final_checks(
+        self, report: FileReport, content: str, lines: list
+    ) -> None:
+        """Perform final checks after processing all lines."""
+        # Check for final newline
+        if (
+            self.config["insert_final_newline"]
+            and content
+            and not content.endswith("\n")
+        ):
+            self._add_issue(
+                report,
+                len(lines),
+                "Missing final newline",
+                "MD047",
+                fix=lambda c: c + "\n",
+                file_level=True,
+            )
+
+        # Store the fixed content if there are fixes
+        if any(issue.fixable for issue in report.issues):
+            report.fixed_content = self._apply_fixes(content, report.issues)
 
     def _check_line_length(self, report: FileReport, line_num: int, line: str) -> None:
         """Check if the line exceeds the maximum allowed length."""
@@ -238,7 +363,9 @@ class MarkdownLinter:
                 fix=fix_func,
             )
 
-    def _get_line_length_fix(self, line: str, max_length: int) -> Optional[Callable[[str], str]]:
+    def _get_line_length_fix(
+        self, line: str, max_length: int
+    ) -> Optional[Callable[[str], str]]:
         """Determine if and how to fix a long line."""
         stripped = line.strip()
 
@@ -291,11 +418,19 @@ class MarkdownLinter:
         # Find word boundary before break point
         space_before = content.rfind(" ", 0, break_point)
         if space_before > break_point // 2:  # Reasonable break point found
-            return indent + content[:space_before] + "\n" + indent + content[space_before:].lstrip()
+            return (
+                indent
+                + content[:space_before]
+                + "\n"
+                + indent
+                + content[space_before:].lstrip()
+            )
 
         return line  # Can't find good break point
 
-    def _check_heading(self, report: FileReport, line_num: int, line: str, match: re.Match) -> None:
+    def _check_heading(
+        self, report: FileReport, line_num: int, line: str, match: re.Match
+    ) -> None:
         """Check heading formatting and spacing."""
         level = len(match.group("level"))
         content = match.group("content")
@@ -396,7 +531,11 @@ class MarkdownLinter:
                         )
 
     def _check_ordered_list_numbering(
-        self, report: FileReport, line_num: int, actual_number: int, expected_number: int
+        self,
+        report: FileReport,
+        line_num: int,
+        actual_number: int,
+        expected_number: int,
     ) -> None:
         """Check MD029: Ordered list item prefix should be sequential."""
         if actual_number != expected_number:
@@ -478,7 +617,11 @@ class MarkdownLinter:
                     )
 
     def _check_duplicate_headings(
-        self, report: FileReport, line_num: int, heading_content: str, seen_headings: set
+        self,
+        report: FileReport,
+        line_num: int,
+        heading_content: str,
+        seen_headings: set,
     ) -> None:
         """Check MD024: Multiple headings with the same content."""
         heading_text = heading_content.strip().lower()
@@ -495,8 +638,8 @@ class MarkdownLinter:
 
             def fix_duplicate_heading(line_content):
                 # Extract level from line content
-                level_match = re.match(r'^(#+)', line_content)
-                level = level_match.group(1) if level_match else '#'
+                level_match = re.match(r"^(#+)", line_content)
+                level = level_match.group(1) if level_match else "#"
                 return line_content.replace(
                     f"{level} {original_heading}", f"{level} {new_heading_display}"
                 )
@@ -532,7 +675,7 @@ class MarkdownLinter:
                 stream=True,
             )
             response.raise_for_status()
-            
+
             # Read only up to 1MB to prevent memory exhaustion
             content = ""
             max_size = 1024 * 1024  # 1MB limit
@@ -599,63 +742,70 @@ class MarkdownLinter:
     ) -> None:
         """Check for common markdown mistakes."""
         if self.config["check_bare_urls"]:
-            # Check for bare URLs
-            if "http://" in line or "https://" in line:
-                matches = re.finditer(self.BARE_URL_PATTERN, line)
-                for match in matches:
-                    url = match.group(1)
-                    # Make sure it's not part of a markdown link [text](url)
-                    start_pos = match.start()
-                    if (
-                        start_pos > 0
-                        and line[start_pos - 1 : start_pos + 2] != "]("
-                        and line[start_pos - 1] != "]"
-                    ):
-                        # Create a fix function that fetches a proper title and creates a markdown link
-                        def create_url_fix(url_to_fix):
-                            def fix_url(line_content):
-                                title = self._get_url_title(url_to_fix)
-                                return line_content.replace(url_to_fix, f"[{title}]({url_to_fix})")
+            self._check_bare_urls(report, line_num, line)
+            self._check_bare_emails(report, line_num, line)
 
-                            return fix_url
+        self._check_list_marker_spacing(report, line_num, line)
 
-                        self._add_issue(
-                            report,
-                            line_num,
-                            "Bare URL used, converting to markdown link with title",
-                            "MD034",
-                            fix=create_url_fix(url),
-                        )
+    def _check_bare_urls(self, report: FileReport, line_num: int, line: str) -> None:
+        """Check for bare URLs and convert them to markdown links."""
+        if not ("http://" in line or "https://" in line):
+            return
 
-            # Check for bare email addresses
-            if "@" in line:
-                matches = re.finditer(self.EMAIL_PATTERN, line)
-                for match in matches:
-                    email = match.group(1)
-                    # Make sure it's not already in a markdown link or angle brackets
-                    start_pos = match.start(1)  # Use group 1 start position
-                    if start_pos == 0 or (
-                        line[start_pos - 1] not in "<[]("
-                        and not (start_pos > 1 and line[start_pos - 2 : start_pos] == "](")
-                    ):
-                        # Create a fix function for email addresses
-                        def create_email_fix(email_to_fix):
-                            def fix_email(line_content):
-                                # Use word boundaries to ensure exact match
-                                pattern = r"\b" + re.escape(email_to_fix) + r"\b"
-                                return re.sub(pattern, f"<{email_to_fix}>", line_content)
+        matches = re.finditer(self.BARE_URL_PATTERN, line)
+        for match in matches:
+            url = match.group(1)
+            if self._is_url_already_linked(line, match.start()):
+                continue
 
-                            return fix_email
+            # Create a fix function that fetches a proper title and creates a markdown link
+            def create_url_fix(url_to_fix):
+                def fix_url(line_content):
+                    title = self._get_url_title(url_to_fix)
+                    return line_content.replace(url_to_fix, f"[{title}]({url_to_fix})")
 
-                        self._add_issue(
-                            report,
-                            line_num,
-                            "Bare email address used, converting to angle bracket format",
-                            "MD034",
-                            fix=create_email_fix(email),
-                        )
+                return fix_url
 
-        # Check for multiple spaces after list markers
+            self._add_issue(
+                report,
+                line_num,
+                "Bare URL used, converting to markdown link with title",
+                "MD034",
+                fix=create_url_fix(url),
+            )
+
+    def _check_bare_emails(self, report: FileReport, line_num: int, line: str) -> None:
+        """Check for bare email addresses and convert them to angle bracket format."""
+        if "@" not in line:
+            return
+
+        matches = re.finditer(self.EMAIL_PATTERN, line)
+        for match in matches:
+            email = match.group(1)
+            if self._is_email_already_formatted(line, match.start(1)):
+                continue
+
+            # Create a fix function for email addresses
+            def create_email_fix(email_to_fix):
+                def fix_email(line_content):
+                    # Use word boundaries to ensure exact match
+                    pattern = r"\b" + re.escape(email_to_fix) + r"\b"
+                    return re.sub(pattern, f"<{email_to_fix}>", line_content)
+
+                return fix_email
+
+            self._add_issue(
+                report,
+                line_num,
+                "Bare email address used, converting to angle bracket format",
+                "MD034",
+                fix=create_email_fix(email),
+            )
+
+    def _check_list_marker_spacing(
+        self, report: FileReport, line_num: int, line: str
+    ) -> None:
+        """Check for multiple spaces after list markers."""
         if re.match(r"^\s*[*+-]\s{2,}\S", line):
             self._add_issue(
                 report,
@@ -664,6 +814,20 @@ class MarkdownLinter:
                 "MD030",
                 fix=lambda line: re.sub(r"^([*+-])\s+", r"\1 ", line),
             )
+
+    def _is_url_already_linked(self, line: str, start_pos: int) -> bool:
+        """Check if URL is already part of a markdown link."""
+        return start_pos > 0 and (
+            line[start_pos - 1 : start_pos + 2] == "](" or line[start_pos - 1] == "]"
+        )
+
+    def _is_email_already_formatted(self, line: str, start_pos: int) -> bool:
+        """Check if email is already in a markdown link or angle brackets."""
+        if start_pos == 0:
+            return False
+        return line[start_pos - 1] in "<[](" or (
+            start_pos > 1 and line[start_pos - 2 : start_pos] == "]("
+        )
 
     def _add_issue(
         self,
@@ -696,7 +860,9 @@ class MarkdownLinter:
             for i in issues
             if i.fixable and i.line > 0 and i.code not in ["MD022", "MD032", "MD031"]
         ]
-        spacing_fixes = [i for i in issues if i.fixable and i.code in ["MD022", "MD032", "MD031"]]
+        spacing_fixes = [
+            i for i in issues if i.fixable and i.code in ["MD022", "MD032", "MD031"]
+        ]
         file_fixes = [i for i in issues if i.fixable and i.line == 0]
 
         # Apply line-level fixes first (sort descending to avoid offset issues)
@@ -719,46 +885,91 @@ class MarkdownLinter:
         # Ensure lines end with newlines (except the last one which will be handled by file write)
         return [line + "\n" if not line.endswith("\n") else line for line in lines]
 
-    def _apply_spacing_fixes(self, lines: List[str], spacing_issues: List[LintIssue]) -> List[str]:
+    def _apply_spacing_fixes(
+        self, lines: List[str], spacing_issues: List[LintIssue]
+    ) -> List[str]:
         """Apply MD022, MD032, and MD031 spacing fixes by inserting blank lines."""
-        # Collect all blank line insertions needed
+        insertions = self._collect_spacing_insertions(lines, spacing_issues)
+        unique_insertions = self._remove_duplicate_insertions(insertions)
+        return self._apply_insertions(lines, unique_insertions)
+
+    def _collect_spacing_insertions(
+        self, lines: List[str], spacing_issues: List[LintIssue]
+    ) -> List[tuple]:
+        """Collect all blank line insertions needed for spacing fixes."""
         insertions = []  # List of (line_index, position) tuples
 
         for issue in spacing_issues:
-            line_num = issue.line
-            line_idx = line_num - 1  # Convert to 0-based index
+            line_idx = issue.line - 1  # Convert to 0-based index
 
             if issue.code == "MD022":  # Heading spacing
-                # For headings, we need to check context to determine if before/after
-                if line_idx > 0 and line_idx - 1 < len(lines):
-                    prev_line = lines[line_idx - 1]
-                    if prev_line.strip():  # Previous line is not blank
-                        insertions.append((line_idx, "before"))
-
-                if line_idx + 1 < len(lines):
-                    next_line = lines[line_idx + 1]
-                    if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
-                        insertions.append((line_idx + 1, "before"))  # Insert before next line
-
+                insertions.extend(self._get_heading_spacing_insertions(lines, line_idx))
             elif issue.code == "MD032":  # List spacing
-                if "(start)" in issue.message:
-                    # Add blank line before the list
-                    insertions.append((line_idx, "before"))
-                elif "(end)" in issue.message:
-                    # Add blank line after the list (before the next content)
-                    insertions.append((line_idx, "before"))  # Insert before the non-list line
-
+                insertions.extend(
+                    self._get_list_spacing_insertions(line_idx, issue.message)
+                )
             elif issue.code == "MD031":  # Fenced code block spacing
-                if self.MSG_FENCED_CODE_BLOCKS_SPACING in issue.message:
-                    # Check if this is a start or end of code block
-                    if line_idx < len(lines) and lines[line_idx].strip().startswith("```"):
-                        # Check if previous line needs spacing (start of code block)
-                        if line_idx > 0 and lines[line_idx - 1].strip():
-                            insertions.append((line_idx, "before"))
-                        # Check if next line needs spacing (end of code block)
-                        if line_idx + 1 < len(lines) and lines[line_idx + 1].strip():
-                            insertions.append((line_idx + 1, "before"))
+                insertions.extend(
+                    self._get_code_block_spacing_insertions(
+                        lines, line_idx, issue.message
+                    )
+                )
 
+        return insertions
+
+    def _get_heading_spacing_insertions(
+        self, lines: List[str], line_idx: int
+    ) -> List[tuple]:
+        """Get spacing insertions needed for headings."""
+        insertions = []
+
+        # Check if blank line needed before heading
+        if line_idx > 0 and line_idx - 1 < len(lines):
+            prev_line = lines[line_idx - 1]
+            if prev_line.strip():  # Previous line is not blank
+                insertions.append((line_idx, "before"))
+
+        # Check if blank line needed after heading
+        if line_idx + 1 < len(lines):
+            next_line = lines[line_idx + 1]
+            if next_line.strip() and not self.BLANK_LINE_PATTERN.match(next_line):
+                insertions.append((line_idx + 1, "before"))  # Insert before next line
+
+        return insertions
+
+    def _get_list_spacing_insertions(self, line_idx: int, message: str) -> List[tuple]:
+        """Get spacing insertions needed for lists."""
+        insertions = []
+
+        if "(start)" in message:
+            # Add blank line before the list
+            insertions.append((line_idx, "before"))
+        elif "(end)" in message:
+            # Add blank line after the list (before the next content)
+            insertions.append((line_idx, "before"))  # Insert before the non-list line
+
+        return insertions
+
+    def _get_code_block_spacing_insertions(
+        self, lines: List[str], line_idx: int, message: str
+    ) -> List[tuple]:
+        """Get spacing insertions needed for fenced code blocks."""
+        insertions = []
+
+        if self.MSG_FENCED_CODE_BLOCKS_SPACING in message:
+            # Check if this is a start or end of code block
+            if line_idx < len(lines) and lines[line_idx].strip().startswith("```"):
+                # Check if previous line needs spacing (start of code block)
+                if line_idx > 0 and lines[line_idx - 1].strip():
+                    insertions.append((line_idx, "before"))
+                # Check if next line needs spacing (end of code block)
+                if line_idx + 1 < len(lines) and lines[line_idx + 1].strip():
+                    insertions.append((line_idx + 1, "before"))
+
+        return insertions
+
+    def _remove_duplicate_insertions(self, insertions: List[tuple]) -> List[tuple]:
+        """Remove duplicate insertions and sort them."""
         # Sort insertions by line index in descending order to avoid offset issues
         insertions.sort(key=lambda x: x[0], reverse=True)
 
@@ -770,9 +981,12 @@ class MarkdownLinter:
                 seen.add(insertion)
                 unique_insertions.append(insertion)
 
-        # Apply insertions
+        return unique_insertions
+
+    def _apply_insertions(self, lines: List[str], insertions: List[tuple]) -> List[str]:
+        """Apply the collected insertions to the lines."""
         new_lines = lines[:]
-        for line_idx, position in unique_insertions:
+        for line_idx, position in insertions:
             if position == "before" and 0 <= line_idx <= len(new_lines):
                 # Insert blank line before the specified line
                 new_lines.insert(line_idx, "")
@@ -791,7 +1005,13 @@ class MarkdownLinter:
         # Find all markdown files
         files = find_markdown_files(
             directory,
-            exclude_dirs={".git", "node_modules", "__pycache__", ".pytest_cache", ".mypy_cache"},
+            exclude_dirs={
+                ".git",
+                "node_modules",
+                "__pycache__",
+                ".pytest_cache",
+                ".mypy_cache",
+            },
             exclude_files=exclude,
         )
 
