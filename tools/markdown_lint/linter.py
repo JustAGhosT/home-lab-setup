@@ -170,7 +170,6 @@ class MarkdownLinter:
                     if self.config["check_blank_lines_around_lists"]:
                         if not in_list:
                             self._check_list_start_spacing(report, i, prev_line_blank)
-                            list_start_line = i
                         in_list = True
 
                     # MD029: Check ordered list numbering
