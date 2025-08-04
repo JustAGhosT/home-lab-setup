@@ -500,7 +500,8 @@ function Show-DeploymentForm {
     $deployButton.Size = New-Object System.Drawing.Size(120, 30)
     $deployButton.Text = "Deploy"
     $deployButton.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0078D4")
-    $deployButton.ForeColor = [System.Drawing.Color]::White$deployButton.Add_Click({ # Validate required fields
+    $deployButton.ForeColor = [System.Drawing.Color]::White
+    $deployButton.Add_Click({ # Validate required fields
             $errors = @()
         
             $rgValue = $rgTextBox.Text
@@ -533,7 +534,9 @@ function Show-DeploymentForm {
                     [System.Windows.Forms.MessageBoxIcon]::Warning
                 )
                 return
-            }# Get actual values (not placeholder text)
+            }
+            
+            # Get actual values (not placeholder text)
             $finalRgValue = if ($rgTextBox.Text -eq "rg-myapp-prod" -and $rgTextBox.ForeColor -eq [System.Drawing.Color]::Gray) { "" } else { $rgTextBox.Text }
             $finalNameValue = if ($nameTextBox.Text -eq "myapp-prod" -and $nameTextBox.ForeColor -eq [System.Drawing.Color]::Gray) { "" } else { $nameTextBox.Text }
         
@@ -661,9 +664,9 @@ if ($missingParams.Count -gt 0) {
                 $ProjectPath = $formValues.ProjectPath
                 $RepoUrl = $formValues.RepoUrl
                 
-                # Convert GitHub token to SecureString if provided
+                # Store GitHub token securely if provided
                 if ($formValues.GitHubToken) {
-                    $GitHubToken = ConvertTo-SecureString -String $formValues.GitHubToken -AsPlainText -Force
+                    $GitHubToken = $formValues.GitHubToken
                 }
             }
             catch {
@@ -752,7 +755,7 @@ if ($missingParams.Count -gt 0) {
                         # Prompt for GitHub token if needed
                         $tokenInput = Read-Host "GitHub Personal Access Token (optional, for private repos)"
                         if (-not [string]::IsNullOrWhiteSpace($tokenInput)) {
-                            $GitHubToken = ConvertTo-SecureString -String $tokenInput -AsPlainText -Force
+                            $GitHubToken = $tokenInput
                         }
                     }
                 }

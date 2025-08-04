@@ -103,7 +103,7 @@ This comprehensive guide explains how to deploy websites to multiple cloud platf
 ## 🔧 Platform-Specific Functions
 
 ### Deploy-Azure
-**Comprehensive Azure deployment with auto-detection**
+#### Comprehensive Azure deployment with auto-detection
 
 ```powershell
 Deploy-Azure -AppName "my-app" -ResourceGroup "my-rg" -SubscriptionId "00000000-0000-0000-0000-000000000000" -DeploymentType "auto" -ProjectPath "C:\Projects\my-app"
@@ -117,7 +117,7 @@ Deploy-Azure -AppName "my-app" -ResourceGroup "my-rg" -SubscriptionId "00000000-
 - GitHub integration
 
 ### Deploy-Vercel
-**Vercel deployment with framework optimization**
+#### Vercel deployment with framework optimization
 
 ```powershell
 Deploy-Vercel -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -VercelToken "your-token"
@@ -130,7 +130,7 @@ Deploy-Vercel -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-app" -Locati
 - Environment variable management
 
 ### Deploy-Netlify
-**Netlify deployment for JAMstack applications**
+#### Netlify deployment for JAMstack applications
 
 ```powershell
 Deploy-Netlify -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -NetlifyToken "your-token"
@@ -143,7 +143,7 @@ Deploy-Netlify -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-app" -Lo
 - Continuous deployment from Git
 
 ### Deploy-AWS
-**AWS deployment with S3 and CloudFront**
+#### AWS deployment with S3 and CloudFront
 
 ```powershell
 Deploy-AWS -AppName "my-static-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -AwsRegion "us-east-1"
@@ -156,7 +156,7 @@ Deploy-AWS -AppName "my-static-site" -ProjectPath "C:\Projects\my-app" -Location
 - AWS CLI integration
 
 ### Deploy-GoogleCloud
-**Google Cloud deployment with Cloud Run and App Engine**
+#### Google Cloud deployment with Cloud Run and App Engine
 
 ```powershell
 Deploy-GoogleCloud -AppName "my-app" -ProjectPath "C:\Projects\my-app" -Location "us-central1" -GcpProject "my-project" -DeploymentType "cloudrun"
@@ -276,22 +276,22 @@ Deploy-Azure -AppName "backend-api" -ResourceGroup "rg-api" -SubscriptionId "abc
 Deploy-Azure -AppName "my-app" -ResourceGroup "rg-app" -SubscriptionId "abc123" -ProjectPath "C:\Projects\my-app"
 ```
 
-### Vercel Deployment
+### Vercel Deployment Examples
 ```powershell
 Deploy-Vercel -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-nextjs-app" -Location "us-east-1" -VercelToken "ver_abc123" -CustomDomain "myapp.com"
 ```
 
-### Netlify Deployment
+### Netlify Deployment Examples
 ```powershell
 Deploy-Netlify -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-jamstack-site" -Location "us-east-1" -NetlifyToken "abc123" -CustomDomain "myapp.com"
 ```
 
-### AWS Deployment
+### AWS Deployment Examples
 ```powershell
 Deploy-AWS -AppName "my-static-site" -ProjectPath "C:\Projects\my-static-site" -Location "us-east-1" -AwsRegion "us-east-1" -CustomDomain "myapp.com"
 ```
 
-### Google Cloud Deployment
+### Google Cloud Deployment Examples
 ```powershell
 Deploy-GoogleCloud -AppName "my-app" -ProjectPath "C:\Projects\my-app" -Location "us-central1" -GcpProject "my-project" -DeploymentType "cloudrun" -CustomDomain "myapp.com"
 ```
@@ -351,7 +351,7 @@ AI-powered repository analysis provides intelligent suggestions based on:
 
 ### DNS Configuration by Platform
 
-#### Azure
+#### Azure DNS Configuration
 ```
 Type: CNAME
 Name: {subdomain}
@@ -359,28 +359,28 @@ Value: {app-name}.azurestaticapps.net (Static Web Apps)
 Value: {app-name}.azurewebsites.net (App Service)
 ```
 
-#### Vercel
+#### Vercel DNS Configuration
 ```
 Type: CNAME
 Name: {subdomain}
 Value: {app-name}.vercel.app
 ```
 
-#### Netlify
+#### Netlify DNS Configuration
 ```
 Type: CNAME
 Name: {subdomain}
 Value: {app-name}.netlify.app
 ```
 
-#### AWS
+#### AWS DNS Configuration
 ```
 Type: CNAME
 Name: {subdomain}
 Value: {app-name}.s3-website-{region}.amazonaws.com
 ```
 
-#### Google Cloud
+#### Google Cloud DNS Configuration
 ```
 Type: CNAME
 Name: {subdomain}
