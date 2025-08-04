@@ -232,27 +232,27 @@ All platforms follow the consistent naming pattern:
 
 ### Platform-Specific Authentication
 
-#### Azure
+#### Azure Authentication
 - **OIDC Federation** (Recommended): Password-less authentication
 - **Service Principal**: Traditional Azure authentication
 - **Managed Identity**: Azure-native identity management
 
-#### Vercel
+#### Vercel Authentication
 - **Personal Access Token**: API-based authentication
 - **OAuth Integration**: GitHub/GitLab integration
 - **Team Tokens**: Organization-level access
 
-#### Netlify
+#### Netlify Authentication
 - **Personal Access Token**: API-based authentication
 - **OAuth Integration**: Git provider integration
 - **Site Tokens**: Site-specific deployment tokens
 
-#### AWS
+#### AWS Authentication
 - **AWS CLI**: Standard AWS authentication
 - **IAM Roles**: Role-based access control
 - **Access Keys**: Programmatic access
 
-#### Google Cloud
+#### Google Cloud Authentication
 - **gcloud CLI**: Standard GCP authentication
 - **Service Accounts**: Application-level authentication
 - **OAuth 2.0**: User-based authentication

@@ -68,7 +68,7 @@ function Deploy-AzureSQLDatabase {
         [string]$AdminUsername = "sqladmin",
         
         [Parameter(Mandatory = $false)]
-        [string]$AdminPassword,
+        [System.Security.SecureString]$AdminPassword,
         
         [Parameter(Mandatory = $false)]
         [ValidateSet("Basic", "Standard", "Premium")]
@@ -93,10 +93,14 @@ function Deploy-AzureSQLDatabase {
     try {
         Write-ColorOutput "Starting Azure SQL Database deployment..." -ForegroundColor Cyan
         
-        # Generate password if not provided
-        if (-not $AdminPassword) {
-            $AdminPassword = [System.Web.Security.Membership]::GeneratePassword(16, 3)
-            Write-ColorOutput "Generated admin password: $AdminPassword" -ForegroundColor Yellow
+        # Convert SecureString to plain text if provided, or generate password
+        if ($AdminPassword) {
+            $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($AdminPassword)
+            $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        }
+        else {
+            $plainPassword = [System.Web.Security.Membership]::GeneratePassword(16, 3)
+            Write-ColorOutput "Generated admin password: $plainPassword" -ForegroundColor Yellow
         }
         
         # Check if resource group exists
@@ -115,7 +119,7 @@ function Deploy-AzureSQLDatabase {
                 --resource-group $ResourceGroup `
                 --location $Location `
                 --admin-user $AdminUsername `
-                --admin-password $AdminPassword
+                --admin-password $plainPassword
         }
         
         # Configure SQL Server firewall to allow Azure services
@@ -159,7 +163,7 @@ function Deploy-AzureSQLDatabase {
         }
         
         # Get connection string
-        $connectionString = "Server=tcp:$ServerName.database.windows.net,1433;Initial Catalog=$DatabaseName;Persist Security Info=False;User ID=$AdminUsername;Password=$AdminPassword;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+        $connectionString = "Server=tcp:$ServerName.database.windows.net,1433;Initial Catalog=$DatabaseName;Persist Security Info=False;User ID=$AdminUsername;Password=$plainPassword;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
         
         # Display deployment summary
         Write-ColorOutput "`nAzure SQL Database deployment completed successfully!" -ForegroundColor Green

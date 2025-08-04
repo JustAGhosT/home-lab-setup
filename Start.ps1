@@ -793,8 +793,8 @@ do {
                                     # Add to scored repositories
                                     $scoredRepos += [PSCustomObject]@{
                                         Repository = $repo
-                                        Score = $score
-                                        Reasons = $reasons
+                                        Score      = $score
+                                        Reasons    = $reasons
                                     }
                                 }
                                 
@@ -895,7 +895,8 @@ do {
                                     if ($repoChoice -like "🎯*" -or ($repoChoice -match '^\d+$' -and [int]$repoChoice -le $suggestedRepos.Count)) {
                                         $suggestionIndex = if ($repoChoice -like "🎯*") {
                                             [int]($repoChoice -replace '🎯', '') - 1
-                                        } else {
+                                        }
+                                        else {
                                             [int]$repoChoice - 1
                                         }
                                         
@@ -1080,8 +1081,7 @@ do {
                                 
                                 # Check if GitHub token is available and if so, add it
                                 if ($env:GITHUB_TOKEN) {
-                                    $secureToken = ConvertTo-SecureString $env:GITHUB_TOKEN -AsPlainText -Force
-                                    $params.GitHubToken = $secureToken
+                                    $params.GitHubToken = $env:GITHUB_TOKEN
                                 }
                             }
                             
@@ -1108,8 +1108,7 @@ do {
                                 
                                 # Ensure GitHub token is properly handled
                                 if ($env:GITHUB_TOKEN -and $repoUrl) {
-                                    $secureToken = ConvertTo-SecureString $env:GITHUB_TOKEN -AsPlainText -Force
-                                    $params.GitHubToken = $secureToken
+                                    $params.GitHubToken = $env:GITHUB_TOKEN
                                 }
                                 
                                 # Now execute direct deployment

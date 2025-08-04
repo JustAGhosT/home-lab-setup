@@ -47,7 +47,7 @@ function Configure-SQLDatabaseConnections {
         [string]$AdminUsername,
         
         [Parameter(Mandatory = $true)]
-        [string]$AdminPassword,
+        [System.Security.SecureString]$AdminPassword,
         
         [Parameter(Mandatory = $false)]
         [string]$ProjectPath
@@ -56,8 +56,12 @@ function Configure-SQLDatabaseConnections {
     try {
         Write-ColorOutput "Configuring SQL Database connections..." -ForegroundColor Cyan
         
+        # Convert SecureString to plain text
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($AdminPassword)
+        $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        
         # Build connection string
-        $connectionString = "Server=tcp:$ServerName.database.windows.net,1433;Initial Catalog=$DatabaseName;Persist Security Info=False;User ID=$AdminUsername;Password=$AdminPassword;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+        $connectionString = "Server=tcp:$ServerName.database.windows.net,1433;Initial Catalog=$DatabaseName;Persist Security Info=False;User ID=$AdminUsername;Password=$plainPassword;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
         
         # Display connection information
         Write-ColorOutput "`nSQL Database Connection Information:" -ForegroundColor Green
@@ -134,7 +138,7 @@ SQL_CONNECTION_STRING=$connectionString
 SQL_SERVER=$ServerName.database.windows.net
 SQL_DATABASE=$DatabaseName
 SQL_USERNAME=$AdminUsername
-SQL_PASSWORD=$AdminPassword
+SQL_PASSWORD=$plainPassword
 "@ | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
         }
