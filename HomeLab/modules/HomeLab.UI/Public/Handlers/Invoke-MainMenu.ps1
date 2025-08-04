@@ -208,24 +208,197 @@ function Invoke-MainMenu {
                             Write-Host "`nSoftware KVM Setup menu not implemented yet.`n" -ForegroundColor Yellow
                             Start-Sleep -Seconds 2
                         }
-                    }
-                    "9" {
-                        if ((Get-Command -Name Invoke-WebsiteHandler -ErrorAction SilentlyContinue) -and
-                            (Get-Command -Name Show-WebsiteMenu -ErrorAction SilentlyContinue)) {
-                            Show-WebsiteMenu
+                    }"9" {
+                        # DIRECT REPLACEMENT - Bypass all complex logic
+                        Clear-Host
+                        
+                        # First load our emergency direct replacement
+                        $fixPath = Join-Path -Path $PSScriptRoot -ChildPath "..\Website-QuickFix.ps1"
+                        if (Test-Path $fixPath) {
+                            try {
+                                # Load the direct menu script
+                                . $fixPath
+                               
+                               # Call the direct menu function
+                               Show-WebsiteMenuDirect
+                            }
+                            catch {
+                                # If that fails, use ultra simple built-in menu
+                                Clear-Host
+                                Write-Host "=== WEBSITE DEPLOYMENT MENU ===" -ForegroundColor Cyan
+                                Write-Host ""
+                                Write-Host "1. Deploy Static Website" -ForegroundColor White
+                                Write-Host "2. Deploy App Service Website" -ForegroundColor White
+                                Write-Host "3. Return to Main Menu" -ForegroundColor Yellow
+                                Write-Host ""
+                                
+                                $choice = Read-Host "Select an option (1-3)"
+                                
+                                switch ($choice) {
+                                    "1" {
+                                        Clear-Host
+                                        Write-Host "Static Website Deployment" -ForegroundColor Cyan
+                                        $rg = Read-Host "Resource Group Name"
+                                        $app = Read-Host "App Name"
+                                        $sub = Read-Host "Subscription ID"
+                                        
+                                        if ($rg -and $app -and $sub) {
+                                            try {
+                                                Deploy-Website -DeploymentType static -ResourceGroup $rg -AppName $app -SubscriptionId $sub
+                                            }
+                                            catch {
+                                                Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                                            }
+                                        }
+                                        else {
+                                            Write-Host "Missing required parameters." -ForegroundColor Red
+                                        }
+                                        
+                                        Read-Host "Press Enter to continue"
+                                    }
+                                    "2" {
+                                        Clear-Host
+                                        Write-Host "App Service Deployment" -ForegroundColor Cyan
+                                        $rg = Read-Host "Resource Group Name"
+                                        $app = Read-Host "App Name"
+                                        $sub = Read-Host "Subscription ID"
+                                        
+                                        if ($rg -and $app -and $sub) {
+                                            try {
+                                                Deploy-Website -DeploymentType appservice -ResourceGroup $rg -AppName $app -SubscriptionId $sub
+                                            }
+                                            catch {
+                                                Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                                            }
+                                        }
+                                        else {
+                                            Write-Host "Missing required parameters." -ForegroundColor Red
+                                        }
+                                        
+                                        Read-Host "Press Enter to continue"
+                                    }
+                                }
+                            }
                         }
                         else {
-                            Write-Host "`nWebsite Deployment menu not implemented yet.`n" -ForegroundColor Yellow
-                            Start-Sleep -Seconds 2
+                            # If no fix file is found, use inline simple menu
+                            Clear-Host
+                            Write-Host "=== WEBSITE DEPLOYMENT MENU ===" -ForegroundColor Cyan
+                            Write-Host ""
+                            Write-Host "1. Deploy Static Website" -ForegroundColor White
+                            Write-Host "2. Deploy App Service Website" -ForegroundColor White
+                            Write-Host "3. Return to Main Menu" -ForegroundColor Yellow
+                            Write-Host ""
+                            
+                            $choice = Read-Host "Select an option (1-3)"
+                            
+                            switch ($choice) {
+                                "1" {
+                                    Clear-Host
+                                    Write-Host "Static Website Deployment" -ForegroundColor Cyan
+                                    $rg = Read-Host "Resource Group Name"
+                                    $app = Read-Host "App Name"
+                                    $sub = Read-Host "Subscription ID"
+                                    
+                                    if ($rg -and $app -and $sub) {
+                                        try {
+                                            Deploy-Website -DeploymentType static -ResourceGroup $rg -AppName $app -SubscriptionId $sub
+                                        }
+                                        catch {
+                                            Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                                        }
+                                    }
+                                    else {
+                                        Write-Host "Missing required parameters." -ForegroundColor Red
+                                    }
+                                    
+                                    Read-Host "Press Enter to continue"
+                                }
+                                "2" {
+                                    Clear-Host
+                                    Write-Host "App Service Deployment" -ForegroundColor Cyan
+                                    $rg = Read-Host "Resource Group Name"
+                                    $app = Read-Host "App Name"
+                                    $sub = Read-Host "Subscription ID"
+                                    
+                                    if ($rg -and $app -and $sub) {
+                                        try {
+                                            Deploy-Website -DeploymentType appservice -ResourceGroup $rg -AppName $app -SubscriptionId $sub
+                                        }
+                                        catch {
+                                            Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                                        }
+                                    }
+                                    else {
+                                        Write-Host "Missing required parameters." -ForegroundColor Red
+                                    }
+                                    
+                                    Read-Host "Press Enter to continue"
+                                }
+                            }
                         }
                     }
                     "10" {
-                        if ((Get-Command -Name Invoke-DNSHandler -ErrorAction SilentlyContinue) -and
-                            (Get-Command -Name Show-DNSMenu -ErrorAction SilentlyContinue)) {
-                            Show-DNSMenu
+                        try {
+                            # For DNS management menu - use our simple workaround if Show-DNSMenu fails
+                            $dnsMenuItems = @{
+                                "1" = "Create DNS Zone"
+                                "2" = "Add DNS Record"
+                                "3" = "List DNS Zones"
+                                "4" = "List DNS Records"
+                            }
+                            
+                            # First check if we have the flexible menu function
+                            if (Get-Command -Name Show-FlexibleMenu -ErrorAction SilentlyContinue) {
+                                do {
+                                    $result = Show-FlexibleMenu -Title "DNS Management Menu" -MenuItems $dnsMenuItems `
+                                                            -ExitOption "0" -ExitText "Return to Main Menu" `
+                                                            -ValidateInput
+                                    
+                                    if ($result.IsExit -eq $true) {
+                                        break
+                                    }
+                                    
+                                    # Handle simple DNS operations directly
+                                    switch ($result.Choice) {
+                                        "1" { 
+                                            # Create DNS Zone
+                                            Write-Host "DNS Zone creation functionality coming soon..." -ForegroundColor Yellow
+                                            Read-Host "Press Enter to continue"
+                                        }
+                                        "2" { 
+                                            # Add DNS Record
+                                            Write-Host "DNS Record addition functionality coming soon..." -ForegroundColor Yellow
+                                            Read-Host "Press Enter to continue"
+                                        }
+                                        "3" { 
+                                            # List DNS Zones
+                                            Write-Host "DNS Zone listing functionality coming soon..." -ForegroundColor Yellow
+                                            Read-Host "Press Enter to continue"
+                                        }
+                                        "4" { 
+                                            # List DNS Records
+                                            Write-Host "DNS Record listing functionality coming soon..." -ForegroundColor Yellow
+                                            Read-Host "Press Enter to continue"
+                                        }
+                                        default {
+                                            Write-Host "Invalid selection: $($result.Choice)" -ForegroundColor Red
+                                            Start-Sleep 2
+                                        }
+                                    }
+                                } while ($true)
+                            } else {
+                                # Try the original method if flexible menu isn't available
+                                if (Get-Command -Name Show-DNSMenu -ErrorAction SilentlyContinue) {
+                                    Show-DNSMenu
+                                } else {
+                                    Write-Host "`nDNS Management menu not implemented yet.`n" -ForegroundColor Yellow
+                                    Start-Sleep -Seconds 2
+                                }
+                            }
                         }
-                        else {
-                            Write-Host "`nDNS Management menu not implemented yet.`n" -ForegroundColor Yellow
+                        catch {
+                            Write-Host "Error processing DNS menu: $($_.Exception.Message)" -ForegroundColor Red
                             Start-Sleep -Seconds 2
                         }
                     }

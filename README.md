@@ -1,21 +1,27 @@
-# Azure HomeLab Setup
+# Multi-Platform HomeLab Setup
 
-This repository contains scripts and documentation for setting up and managing a comprehensive Azure home lab environment with networking, web hosting, and DNS management capabilities.
+This repository contains scripts and documentation for setting up and managing a comprehensive multi-platform home lab environment with networking, web hosting, and DNS management capabilities across Azure, Vercel, Netlify, AWS, and Google Cloud.
+
+> **🚀 New User?** Jump straight to the [Quick Start Guide](QUICK-START.md) for the fastest way to deploy your first website!
 
 ## Overview
 
-This HomeLab environment is designed to provide a comprehensive learning and testing platform for Azure services, with capabilities for networking, web hosting, and DNS management. The setup includes:
+This HomeLab environment is designed to provide a comprehensive learning and testing platform for multi-cloud services, with capabilities for networking, web hosting, and DNS management across 5 major cloud platforms. The setup includes:
 
-- Azure Virtual Network with multiple subnets
-- Azure VPN Gateway for secure remote access
-- Azure NAT Gateway for outbound internet connectivity
-- Website deployment and hosting capabilities
-- DNS zone management for custom domains
-- GitHub repository deployment to Azure
-- PowerShell module for managing the entire environment
-- Certificate management for secure authentication
-- Automated testing and CI/CD integration
-- Modular deployment scripts for easy customization
+- **Multi-Platform Deployment**: Azure, Vercel, Netlify, AWS, Google Cloud
+- **Intelligent Auto-Detection**: Automatic project type detection and platform selection
+- **Progress Tracking**: Step-by-step deployment progress with visual indicators
+- **AI-Powered Suggestions**: Intelligent repository recommendations
+- **Azure Virtual Network** with multiple subnets
+- **Azure VPN Gateway** for secure remote access
+- **Azure NAT Gateway** for outbound internet connectivity
+- **Website deployment and hosting** across all major platforms
+- **DNS zone management** for custom domains
+- **GitHub repository deployment** with AI-powered suggestions
+- **PowerShell module** for managing the entire environment
+- **Certificate management** for secure authentication
+- **Automated testing and CI/CD** integration
+- **Modular deployment scripts** for easy customization
 
 ## Architecture
 
@@ -41,9 +47,7 @@ Key requirements include:
 - PowerShell 7.2 or higher
 - Az PowerShell Module installed (`Install-Module -Name Az -AllowClobber -Force`)
 - Azure CLI installed and configured
-- Administrator access on your local machine
-
-## Getting Started
+- Administrator access on your local machine## Getting Started
 
 ### 1. Clone the Repository
 
@@ -52,24 +56,101 @@ git clone https://github.com/JustAGhosT/home-lab-setup.git
 cd home-lab-setup
 ```
 
-### 2. Run the HomeLab Setup Script
+### 2. Quick Start Options
 
+Choose the entry point that best fits your needs:
+
+#### Option A: Interactive Quick Start Menu (Recommended)
 ```powershell
-# Import the module
-Import-Module .\HomeLab.psd1
+# Start the interactive quick start menu
+.\Start.ps1
+```
 
-# Start the HomeLab setup
+This launches a user-friendly menu with options for:
+- 🌐 Website Deployment
+- 🔐 VPN Management  
+- 🌍 DNS Management
+- 📊 Monitoring & Alerts
+- 🏠 Full HomeLab Menu
+- 📚 Documentation
+
+#### Option B: Multi-Platform Website Deployment
+```powershell
+# Launch the interactive website deployment wizard
+.\Deploy-Website.ps1
+```
+
+Or deploy directly with parameters to any platform:
+
+**Azure Deployment**:
+```powershell
+# Deploy a static website to Azure
+.\Deploy-Website.ps1 -DeploymentType "static" -ResourceGroup "rg-portfolio" -AppName "portfolio-prod" -SubscriptionId "your-sub-id" -CustomDomain "example.com" -Subdomain "portfolio"
+
+# Deploy an app service to Azure
+.\Deploy-Website.ps1 -DeploymentType "appservice" -ResourceGroup "rg-api" -AppName "backend-api" -SubscriptionId "your-sub-id"
+
+# Auto-detect and deploy to Azure
+.\Deploy-Website.ps1 -DeploymentType "auto" -ResourceGroup "rg-myapp" -AppName "myapp" -SubscriptionId "your-sub-id" -ProjectPath "C:\Projects\MyWebApp"
+```
+
+**Vercel Deployment**:
+```powershell
+# Deploy to Vercel (Next.js, React, Vue optimized)
+.\Deploy-Website.ps1 -DeploymentType "vercel" -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -VercelToken "your-token"
+```
+
+**Netlify Deployment**:
+```powershell
+# Deploy to Netlify (JAMstack optimized)
+.\Deploy-Website.ps1 -DeploymentType "netlify" -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -NetlifyToken "your-token"
+```
+
+**AWS Deployment**:
+```powershell
+# Deploy to AWS (S3 + CloudFront)
+.\Deploy-Website.ps1 -DeploymentType "aws" -AppName "my-static-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -AwsRegion "us-east-1"
+```
+
+**Google Cloud Deployment**:
+```powershell
+# Deploy to Google Cloud (Cloud Run)
+.\Deploy-Website.ps1 -DeploymentType "gcp" -AppName "my-app" -ProjectPath "C:\Projects\my-app" -Location "us-central1" -GcpProject "my-project"
+```
+
+#### Option C: Full HomeLab Environment
+```powershell
+# Import the module and start the full environment
+Import-Module .\HomeLab.psd1
 Start-HomeLab
 ```
 
-This will launch the interactive menu system where you can:
-- Deploy all required Azure infrastructure
-- Manage VPN certificates
-- Configure VPN gateways and clients
-- Enable/disable NAT Gateway
-- Deploy and manage websites
-- Configure DNS zones and records
-- Access documentation
+### 3. Quick Access Commands
+
+For power users, you can also access specific functions directly:
+
+```powershell
+# Website deployment with specific options
+.\Start.ps1 -WebsiteDeployment
+
+# VPN management
+.\Start.ps1 -VPNManagement
+
+# DNS management  
+.\Start.ps1 -DNSManagement
+
+# Monitoring and alerts
+.\Start.ps1 -Monitoring
+
+# Show help
+.\Start.ps1 -Help
+```
+
+All entry points will:
+- Automatically check for and install required Azure PowerShell modules
+- Verify Azure authentication and prompt for login if needed
+- Guide you through the setup process with intuitive prompts
+- Provide comprehensive error handling and troubleshooting information
 
 ### Deployment Process
 
@@ -110,6 +191,28 @@ To better understand the network architecture and components, refer to these dia
 - [Cost Optimization Strategy](docs/diagrams/cost-optimization-strategy.md) - Managing Azure costs
 
 ## Features
+
+### 🚀 Multi-Platform Website Deployment
+
+**5 Major Cloud Platforms Supported**:
+- **Azure** (First-Class Citizen): Static Web Apps & App Service
+- **Vercel**: Next.js, React, Vue optimized deployments
+- **Netlify**: JAMstack platform with form handling
+- **AWS**: S3 + CloudFront static hosting
+- **Google Cloud**: Cloud Run & App Engine
+
+**Key Capabilities**:
+- **Intelligent Auto-Detection**: Automatically determines optimal deployment type
+- **Progress Tracking**: Step-by-step deployment progress with visual indicators
+- **AI-Powered Suggestions**: Intelligent repository recommendations
+- **Consistent Architecture**: Unified interface across all platforms
+- **Platform-Specific Optimization**: Tailored deployment strategies for each platform
+
+**Deployment Types**:
+- **Static Sites**: React, Vue, Angular, JAMstack applications
+- **Full-Stack Apps**: Node.js, Python, .NET, PHP applications
+- **Serverless Functions**: Edge functions, Lambda, Cloud Functions
+- **Auto-Detection**: Let the system choose the best approach
 
 ### Infrastructure Deployment
 

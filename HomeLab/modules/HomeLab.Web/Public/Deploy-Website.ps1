@@ -80,7 +80,7 @@ function Deploy-Website {
     [CmdletBinding()]
     param (
         [Parameter()]
-        [ValidateSet("static", "appservice", "auto")]
+        [ValidateSet("static", "appservice", "auto", "vercel", "netlify", "aws", "gcp")]
         [string]$DeploymentType = "static",
         
         [Parameter()]
@@ -111,382 +111,44 @@ function Deploy-Website {
         [string]$Branch = "main",
         
         [Parameter()]
-        [string]$ProjectPath
+        [string]$ProjectPath,
+        
+        [Parameter()]
+        [string]$Platform,
+        
+        [Parameter()]
+        [string]$VercelToken,
+        
+        [Parameter()]
+        [string]$NetlifyToken,
+        
+        [Parameter()]
+        [string]$AwsRegion,
+        
+        [Parameter()]
+        [string]$GcpProject
     )
     
-    # Function to check if Azure PowerShell is installed and logged in
+    # Azure-specific functions are now in Deploy-Azure.ps1
     
-    # Function to check if Azure PowerShell is installed and logged in
-    function Test-AzurePowerShell {
-        if (-not (Get-Module -ListAvailable -Name Az.Accounts)) {
-            Write-Error "Error: Azure PowerShell is not installed"
-            Write-Host "Please install Azure PowerShell: Install-Module -Name Az -AllowClobber -Force"
-            return $false
-        }
 
-        try {
-            $context = Get-AzContext
-            if (-not $context) {
-                Write-Error "Error: Not logged in to Azure"
-                Write-Host "Please run: Connect-AzAccount"
-                return $false
-            }
-        }
-        catch {
-            Write-Error "Error: Not logged in to Azure"
-            Write-Host "Please run: Connect-AzAccount"
-            return $false
-        }
-        
-        return $true
-    }
     
-    # Function to determine deployment type based on project characteristics
-    function Get-DeploymentType {
-        param (
-            [string]$Path
-        )
-        
-        # Check for backend indicators
-        if (Test-Path -Path "$Path\package.json") {
-            try {
-                Write-Verbose "Reading package.json from: $Path\package.json"
-                $packageJsonContent = Get-Content -Path "$Path\package.json" -Raw -ErrorAction Stop
-                $packageJson = ConvertFrom-Json $packageJsonContent -ErrorAction Stop
 
-                if ($packageJson.dependencies -and
-                    ($packageJson.dependencies.express -or
-                    $packageJson.dependencies.koa -or
-                    $packageJson.dependencies.fastify -or
-                    $packageJson.dependencies.hapi)) {
-                    Write-Verbose "Detected backend Node.js framework, using appservice deployment"
-                    return "appservice"
-                }
-            }
-            catch [System.ArgumentException] {
-                Write-Warning "Failed to parse package.json: Invalid JSON format. $($_.Exception.Message)"
-                Write-Host "Continuing with static deployment as fallback..." -ForegroundColor Yellow
-            }
-            catch [System.IO.IOException] {
-                Write-Warning "Failed to read package.json: File access error. $($_.Exception.Message)"
-                Write-Host "Continuing with static deployment as fallback..." -ForegroundColor Yellow
-            }
-            catch {
-                Write-Warning "Failed to process package.json: $($_.Exception.Message)"
-                Write-Host "Continuing with static deployment as fallback..." -ForegroundColor Yellow
-            }
-        }
-        
-        if ((Test-Path -Path "$Path\requirements.txt") -or 
-            (Test-Path -Path "$Path\Pipfile") -or 
-            (Test-Path -Path "$Path\setup.py")) {
-            if ((Test-Path -Path "$Path\wsgi.py") -or 
-                (Test-Path -Path "$Path\asgi.py") -or 
-                (Test-Path -Path "$Path\manage.py")) {
-                return "appservice"
-            }
-        }
-        
-        if ((Get-ChildItem -Path $Path -Filter "*.csproj" -Recurse) -or 
-            (Test-Path -Path "$Path\Program.cs") -or 
-            (Test-Path -Path "$Path\Startup.cs")) {
-            return "appservice"
-        }
-        
-        # Check for static site indicators
-        if ((Test-Path -Path "$Path\index.html") -or 
-            (Test-Path -Path "$Path\build\index.html") -or 
-            (Test-Path -Path "$Path\dist\index.html")) {
-            return "static"
-        }
-        
-        # Default to static if unclear
-        return "static"
-    }
     
-    # Function to create resource group if it doesn't exist
-    function New-ResourceGroupIfNotExists {
-        param (
-            [string]$ResourceGroupName,
-            [string]$Location
-        )
 
-        Write-Host "Checking resource group: $ResourceGroupName" -ForegroundColor Yellow
-        $resourceGroup = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
-
-        if (-not $resourceGroup) {
-            try {
-                Write-Host "Creating resource group: $ResourceGroupName in $Location" -ForegroundColor Yellow
-                $resourceGroup = New-AzResourceGroup -Name $ResourceGroupName -Location $Location -ErrorAction Stop
-                Write-Host "Resource group created successfully!" -ForegroundColor Green
-            }
-            catch {
-                Write-Error "Failed to create resource group '$ResourceGroupName': $($_.Exception.Message)"
-                Write-Host "Error details: $($_.Exception.InnerException.Message)" -ForegroundColor Red
-                Write-Host "Please verify that:" -ForegroundColor Yellow
-                Write-Host "  - The resource group name is valid and unique" -ForegroundColor Yellow
-                Write-Host "  - The location '$Location' is a valid Azure region" -ForegroundColor Yellow
-                Write-Host "  - You have the necessary permissions to create resource groups" -ForegroundColor Yellow
-                throw "Resource group creation failed. Cannot continue with deployment."
-            }
-        }
-        else {
-            Write-Host "Resource group already exists." -ForegroundColor Green
-        }
-
-        return $resourceGroup
-    }
-    
-    # Function to deploy static web app
-    function Deploy-StaticWebApp {
-        param (
-            [string]$AppName,
-            [string]$ResourceGroup,
-            [string]$RepoUrl,
-            [string]$Branch,
-            [SecureString]$GitHubToken,
-            [string]$Location,
-            [string]$CustomDomain,
-            [string]$Subdomain
-        )
-        
-        Write-Host "Deploying Azure Static Web App: $AppName"
-        
-        # Create the static web app
-        try {
-            # Convert SecureString to plain text only at the point of use
-            $plainTextToken = $null
-            if ($GitHubToken) {
-                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($GitHubToken)
-                try {
-                    $plainTextToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                }
-                finally {
-                    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
-                }
-            }
-
-            $staticWebApp = New-AzStaticWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -RepositoryUrl $RepoUrl -Branch $Branch -RepositoryToken $plainTextToken -Sku Free -ErrorAction Stop
-
-            # Clear the plain text token from memory immediately
-            $plainTextToken = $null
-
-            Write-Host "Static Web App created successfully: $AppName" -ForegroundColor Green
-        }
-        catch {
-            Write-Error "Failed to create Static Web App: $_"
-            return $null
-        }
-        finally {
-            # Ensure token is cleared even if an exception occurs
-            if ($plainTextToken) {
-                $plainTextToken = $null
-            }
-        }
-        
-        # Configure custom domain if provided
-        if ($CustomDomain -and $Subdomain) {
-            $domain = "$Subdomain.$CustomDomain"
-            try {
-                Configure-CustomDomainStatic -AppName $AppName -ResourceGroup $ResourceGroup -Domain $domain
-            }
-            catch {
-                Write-Error "Failed to configure custom domain: $_"
-                Write-Warning "Static Web App was created but custom domain configuration failed"
-            }
-        }
-        
-        return $staticWebApp
-    }
-    
-    # Function to deploy app service
-    function Deploy-AppService {
-        param (
-            [string]$AppName,
-            [string]$ResourceGroup,
-            [string]$Location,
-            [string]$RepoUrl,
-            [string]$Branch,
-            [SecureString]$GitHubToken,
-            [string]$CustomDomain,
-            [string]$Subdomain
-        )
-        
-        Write-Host "Deploying Azure App Service: $AppName"
-
-        # Create app service plan
-        $planName = "$AppName-plan"
-        try {
-            Write-Host "Creating App Service Plan: $planName" -ForegroundColor Yellow
-            $appServicePlan = New-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Location $Location -Tier Basic -WorkerSize Small -Linux -ErrorAction Stop
-            Write-Host "Successfully created App Service Plan: $planName" -ForegroundColor Green
-        }
-        catch {
-            Write-Error "Failed to create App Service Plan '$planName': $($_.Exception.Message)"
-            throw
-        }
-
-        # Create web app
-        try {
-            Write-Host "Creating Web App: $AppName" -ForegroundColor Yellow
-            $webApp = New-AzWebApp -Name $AppName -ResourceGroupName $ResourceGroup -Location $Location -AppServicePlan $planName -RuntimeStack "NODE|18-lts" -ErrorAction Stop
-            Write-Host "Successfully created Web App: $AppName" -ForegroundColor Green
-        }
-        catch {
-            Write-Error "Failed to create Web App '$AppName': $($_.Exception.Message)"
-
-            # Cleanup: Remove the app service plan if web app creation failed
-            try {
-                Write-Host "Cleaning up App Service Plan due to Web App creation failure..." -ForegroundColor Yellow
-                Remove-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Force -ErrorAction SilentlyContinue
-                Write-Host "App Service Plan cleanup completed" -ForegroundColor Yellow
-            }
-            catch {
-                Write-Warning "Failed to cleanup App Service Plan '$planName': $($_.Exception.Message)"
-            }
-
-            throw
-        }
-        
-        # Configure deployment from GitHub
-        if ($RepoUrl -and $GitHubToken) {
-            try {
-                Write-Host "Configuring GitHub deployment..." -ForegroundColor Yellow
-                $props = @{
-                    repoUrl             = $RepoUrl
-                    branch              = $Branch
-                    isManualIntegration = $true
-                }
-
-                Set-AzResource -ResourceId "$($webApp.Id)/sourcecontrols/web" -Properties $props -ApiVersion 2015-08-01 -Force -ErrorAction Stop
-                Write-Host "GitHub deployment configured successfully!" -ForegroundColor Green
-            }
-            catch {
-                Write-Error "Failed to configure GitHub deployment: $($_.Exception.Message)"
-                Write-Host "Error details: $($_.Exception.InnerException.Message)" -ForegroundColor Red
-                Write-Host "Please verify that:" -ForegroundColor Yellow
-                Write-Host "  - The repository URL is valid and accessible" -ForegroundColor Yellow
-                Write-Host "  - The GitHub token has the necessary permissions" -ForegroundColor Yellow
-                Write-Host "  - The branch name exists in the repository" -ForegroundColor Yellow
-                Write-Host "Continuing with deployment without GitHub integration..." -ForegroundColor Yellow
-            }
-        }
-        
-        # Configure custom domain if provided
-        if ($CustomDomain -and $Subdomain) {
-            $domain = "$Subdomain.$CustomDomain"
-            Configure-CustomDomainAppService -AppName $AppName -ResourceGroup $ResourceGroup -Domain $domain
-        }
-        
-        return $webApp
-    }
-    
-    # Function to configure custom domain for static web app
-    function Configure-CustomDomainStatic {
-        param (
-            [string]$AppName,
-            [string]$ResourceGroup,
-            [string]$Domain
-        )
-
-        Write-Host "Configuring custom domain for Static Web App: $Domain"
-
-        try {
-            # Add custom domain
-            Write-Host "Adding custom domain to Static Web App..." -ForegroundColor Yellow
-            New-AzStaticWebAppCustomDomain -Name $AppName -ResourceGroupName $ResourceGroup -DomainName $Domain -ErrorAction Stop
-
-            $staticWebApp = Get-AzStaticWebApp -Name $AppName -ResourceGroupName $ResourceGroup -ErrorAction Stop
-
-            Write-Host "Custom domain configured successfully!" -ForegroundColor Green
-            Write-Host "Please update your DNS records:" -ForegroundColor Cyan
-            Write-Host "Type: CNAME" -ForegroundColor White
-            Write-Host "Name: $(($Domain -split '\.')[0])" -ForegroundColor White
-            Write-Host "Value: $($staticWebApp.DefaultHostname)" -ForegroundColor White
-        }
-        catch {
-            Write-Error "Failed to configure custom domain for Static Web App: $($_.Exception.Message)"
-            Write-Host "Error details: $($_.Exception.InnerException.Message)" -ForegroundColor Red
-            Write-Host "Please verify that:" -ForegroundColor Yellow
-            Write-Host "  - The domain name is valid and properly formatted" -ForegroundColor Yellow
-            Write-Host "  - You have the necessary permissions to configure domains" -ForegroundColor Yellow
-            Write-Host "  - The Static Web App exists and is accessible" -ForegroundColor Yellow
-            return $false
-        }
-
-        return $true
-    }
-    
-    # Function to configure custom domain for app service
-    function Configure-CustomDomainAppService {
-        param (
-            [string]$AppName,
-            [string]$ResourceGroup,
-            [string]$Domain
-        )
-
-        Write-Host "Configuring custom domain for App Service: $Domain"
-
-        try {
-            # Add custom domain
-            Write-Host "Adding custom domain to App Service..." -ForegroundColor Yellow
-            Set-AzWebApp -Name $AppName -ResourceGroupName $ResourceGroup -HostNames @($Domain, "$AppName.azurewebsites.net") -ErrorAction Stop
-
-            Write-Host "Custom domain configured successfully!" -ForegroundColor Green
-            Write-Host "Please update your DNS records:" -ForegroundColor Cyan
-            Write-Host "Type: CNAME" -ForegroundColor White
-            Write-Host "Name: $(($Domain -split '\.')[0])" -ForegroundColor White
-            Write-Host "Value: $AppName.azurewebsites.net" -ForegroundColor White
-        }
-        catch {
-            Write-Error "Failed to configure custom domain for App Service: $($_.Exception.Message)"
-            Write-Host "Error details: $($_.Exception.InnerException.Message)" -ForegroundColor Red
-            Write-Host "Please verify that:" -ForegroundColor Yellow
-            Write-Host "  - The domain name is valid and not already in use" -ForegroundColor Yellow
-            Write-Host "  - You have the necessary permissions to configure domains" -ForegroundColor Yellow
-            Write-Host "  - The App Service exists and is running" -ForegroundColor Yellow
-            Write-Host "  - The domain ownership has been verified" -ForegroundColor Yellow
-            return $false
-        }
-
-        return $true
-    }
     
     # Main execution
-    Write-Host "Starting Azure website deployment..."
+    Write-Host "Starting website deployment..."
     Write-Host "Deployment type: $DeploymentType"
     Write-Host "Application name: $AppName"
-    Write-Host "Resource group: $ResourceGroup"
+    Write-Host "Platform: $Platform"
     Write-Host "Location: $Location"
     
-    # Check prerequisites
-    if (-not (Test-AzurePowerShell)) {
-        return
+    # Handle Azure-specific deployments
+    if ($DeploymentType -in @("static", "appservice", "auto") -or $Platform -eq "azure") {
+        Write-Host "Using Azure deployment..." -ForegroundColor Cyan
+        # Azure-specific logic is now handled in Deploy-Azure function
     }
-    
-    # Set subscription with error handling
-    try {
-        Write-Host "Setting Azure subscription context..." -ForegroundColor Yellow
-        $context = Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
-        Write-Host "Successfully set subscription context: $($context.Subscription.Name)" -ForegroundColor Green
-    }
-    catch [Microsoft.Azure.Commands.Profile.Errors.AzPSResourceNotFoundCloudException] {
-        Write-Error "Subscription ID '$SubscriptionId' not found. Please verify the subscription ID is correct and you have access to it."
-        Write-Host "To list available subscriptions, run: Get-AzSubscription" -ForegroundColor Cyan
-        return
-    }
-    catch [Microsoft.Azure.Commands.Profile.Errors.AzPSAuthenticationFailedException] {
-        Write-Error "Authentication failed. Please run 'Connect-AzAccount' to authenticate with Azure."
-        return
-    }
-    catch {
-        Write-Error "Failed to set Azure subscription context: $($_.Exception.Message)"
-        Write-Host "Please verify your subscription ID and authentication status." -ForegroundColor Yellow
-        return
-    }
-    
-    # Create resource group
-    New-ResourceGroupIfNotExists -ResourceGroupName $ResourceGroup -Location $Location
     
     # Auto-detect deployment type if specified
     if ($DeploymentType -eq "auto" -and $ProjectPath) {
@@ -494,16 +156,40 @@ function Deploy-Website {
         Write-Host "Auto-detected deployment type: $DeploymentType"
     }
     
-    # Deploy based on type
+    # Deploy based on type and platform
     switch ($DeploymentType) {
         "static" {
-            $result = Deploy-StaticWebApp -AppName $AppName -ResourceGroup $ResourceGroup -RepoUrl $RepoUrl -Branch $Branch -GitHubToken $GitHubToken -Location $Location -CustomDomain $CustomDomain -Subdomain $Subdomain
+            # Import Azure deployment function
+            . "$PSScriptRoot\Deploy-Azure.ps1"
+            $result = Deploy-Azure -AppName $AppName -ResourceGroup $ResourceGroup -Location $Location -SubscriptionId $SubscriptionId -DeploymentType "static" -CustomDomain $CustomDomain -Subdomain $Subdomain -GitHubToken $GitHubToken -RepoUrl $RepoUrl -Branch $Branch -ProjectPath $ProjectPath
         }
         "appservice" {
-            $result = Deploy-AppService -AppName $AppName -ResourceGroup $ResourceGroup -Location $Location -RepoUrl $RepoUrl -Branch $Branch -GitHubToken $GitHubToken -CustomDomain $CustomDomain -Subdomain $Subdomain
+            # Import Azure deployment function
+            . "$PSScriptRoot\Deploy-Azure.ps1"
+            $result = Deploy-Azure -AppName $AppName -ResourceGroup $ResourceGroup -Location $Location -SubscriptionId $SubscriptionId -DeploymentType "appservice" -CustomDomain $CustomDomain -Subdomain $Subdomain -GitHubToken $GitHubToken -RepoUrl $RepoUrl -Branch $Branch -ProjectPath $ProjectPath
+        }
+        "vercel" {
+            # Import Vercel deployment function
+            . "$PSScriptRoot\Deploy-Vercel.ps1"
+            $result = Deploy-Vercel -AppName $AppName -ProjectPath $ProjectPath -Location $Location -VercelToken $VercelToken -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "netlify" {
+            # Import Netlify deployment function
+            . "$PSScriptRoot\Deploy-Netlify.ps1"
+            $result = Deploy-Netlify -AppName $AppName -ProjectPath $ProjectPath -Location $Location -NetlifyToken $NetlifyToken -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "aws" {
+            # Import AWS deployment function
+            . "$PSScriptRoot\Deploy-AWS.ps1"
+            $result = Deploy-AWS -AppName $AppName -ProjectPath $ProjectPath -Location $Location -AwsRegion $AwsRegion -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "gcp" {
+            # Import Google Cloud deployment function
+            . "$PSScriptRoot\Deploy-GoogleCloud.ps1"
+            $result = Deploy-GoogleCloud -AppName $AppName -ProjectPath $ProjectPath -Location $Location -GcpProject $GcpProject -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
         }
         default {
-            Write-Error "Error: Invalid deployment type. Use 'static' or 'appservice'"
+            Write-Error "Error: Invalid deployment type. Use 'static', 'appservice', 'vercel', 'netlify', 'aws', or 'gcp'"
             return
         }
     }

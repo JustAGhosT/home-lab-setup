@@ -187,11 +187,17 @@ function Invoke-WebsiteHandler {
         "Deploy-StaticWebsite" {
             Clear-Host
             Write-Host "=== Deploy Static Website ===" -ForegroundColor Cyan
+            Write-Host "Deploys a static website to Azure Static Web Apps" -ForegroundColor Yellow
+            Write-Host ""
             
-            # Import the helper function
+            # Import the helper functions
             . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
             
-            # Get deployment parameters using the helper function
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
             $params = Get-DeploymentParameters -DeploymentType "static" -Config $config
             
             if ($null -eq $params) {
@@ -201,21 +207,53 @@ function Invoke-WebsiteHandler {
                 return
             }
             
-            # Deploy website
-            Deploy-Website @params
+            # Step 2: Deploy website with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying static website..." -Activity "Step 2/4"
+            Write-Host "`nDeploying static website to Azure..." -ForegroundColor Yellow
             
-            Write-Host "Press any key to continue..."
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nStatic website deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Resource Group: $($params.ResourceGroup)" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            Write-Host "Deployment Type: Static Website" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
         
         "Deploy-AppServiceWebsite" {
             Clear-Host
             Write-Host "=== Deploy App Service Website ===" -ForegroundColor Cyan
+            Write-Host "Deploys a web application to Azure App Service" -ForegroundColor Yellow
+            Write-Host ""
             
-            # Import the helper function
+            # Import the helper functions
             . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
             
-            # Get deployment parameters using the helper function
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
             $params = Get-DeploymentParameters -DeploymentType "appservice" -Config $config
             
             if ($null -eq $params) {
@@ -225,21 +263,273 @@ function Invoke-WebsiteHandler {
                 return
             }
             
-            # Deploy website
-            Deploy-Website @params
+            # Step 2: Deploy website with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying App Service..." -Activity "Step 2/4"
+            Write-Host "`nDeploying web application to Azure App Service..." -ForegroundColor Yellow
             
-            Write-Host "Press any key to continue..."
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nApp Service deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Resource Group: $($params.ResourceGroup)" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            Write-Host "Deployment Type: App Service" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-VercelWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Vercel ===" -ForegroundColor Cyan
+            Write-Host "Deploys a website to Vercel (Next.js, React, Vue optimized)" -ForegroundColor Green
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "vercel" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to Vercel with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Vercel..." -Activity "Step 2/4"
+            Write-Host "`nDeploying website to Vercel..." -ForegroundColor Green
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nVercel deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Vercel" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-NetlifyWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Netlify ===" -ForegroundColor Cyan
+            Write-Host "Deploys a static website to Netlify (JAMstack optimized)" -ForegroundColor Blue
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "netlify" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to Netlify with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Netlify..." -Activity "Step 2/4"
+            Write-Host "`nDeploying static website to Netlify..." -ForegroundColor Blue
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nNetlify deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Netlify" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-AWSWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to AWS ===" -ForegroundColor Cyan
+            Write-Host "Deploys a website to AWS (S3 + CloudFront, Amplify)" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "aws" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to AWS with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to AWS..." -Activity "Step 2/4"
+            Write-Host "`nDeploying website to AWS..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAWS deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: AWS" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-GCPWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Google Cloud ===" -ForegroundColor Cyan
+            Write-Host "Deploys a website to Google Cloud (Cloud Run, App Engine)" -ForegroundColor Red
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "gcp" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to Google Cloud with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Google Cloud..." -Activity "Step 2/4"
+            Write-Host "`nDeploying website to Google Cloud..." -ForegroundColor Red
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nGoogle Cloud deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Google Cloud" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
         
         "Deploy-AutoDetectWebsite" {
             Clear-Host
             Write-Host "=== Auto-Detect and Deploy Website ===" -ForegroundColor Cyan
+            Write-Host "Analyzes your project and chooses the best deployment type" -ForegroundColor Yellow
+            Write-Host ""
             
-            # Import the helper function
+            # Import the helper functions
             . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
             
-            # Get deployment parameters using the helper function
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 20 -Activity "Step 1/5" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
             $params = Get-DeploymentParameters -DeploymentType "auto" -Config $config
             
             if ($null -eq $params) {
@@ -249,10 +539,40 @@ function Invoke-WebsiteHandler {
                 return
             }
             
-            # Deploy website
-            Deploy-Website @params
+            # Step 2: Analyze project for auto-detection
+            Update-ProgressBar -PercentComplete 40 -Status "Analyzing project structure..." -Activity "Step 2/5"
+            Write-Host "`nAnalyzing project structure for optimal deployment type..." -ForegroundColor Yellow
             
-            Write-Host "Press any key to continue..."
+            # Step 3: Deploy website with progress
+            Update-ProgressBar -PercentComplete 60 -Status "Deploying website..." -Activity "Step 3/5"
+            Write-Host "`nDeploying website with auto-detected configuration..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 80 -Status "Deployment completed successfully!" -Activity "Step 4/5"
+                Write-Host "`nWebsite deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 5/5" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 4: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 5/5"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Resource Group: $($params.ResourceGroup)" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            Write-Host "Deployment Type: Auto-detected" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
         
@@ -414,7 +734,4 @@ function Invoke-WebsiteHandler {
             Start-Sleep -Seconds 2
         }
     }
-    
-    # Show the menu again
-    Show-WebsiteMenu
 }

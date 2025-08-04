@@ -1,11 +1,38 @@
-# Website Deployment Guide
+# Multi-Platform Website Deployment Guide
 
-This guide explains how to deploy websites to Azure using the HomeLab environment.
+This comprehensive guide explains how to deploy websites to multiple cloud platforms using the HomeLab environment, including Azure, Vercel, Netlify, AWS, and Google Cloud.
 
-## Deployment Types
+## 🚀 Supported Platforms
 
-### Static Web App
+### Azure (First-Class Citizen)
+- **Static Web Apps**: Perfect for JAMstack and static sites
+- **App Service**: Full-stack applications with server-side logic
+- **Auto-Detection**: Intelligent project type detection
+- **Resource Management**: Comprehensive Azure resource handling
 
+### Vercel
+- **Optimized for**: Next.js, React, Vue, Angular
+- **Features**: Automatic framework detection, edge functions
+- **Global CDN**: Lightning-fast deployments worldwide
+
+### Netlify
+- **JAMstack Optimized**: Perfect for static sites and SPAs
+- **Features**: Form handling, serverless functions, continuous deployment
+- **Build System**: Automatic build and deployment from Git
+
+### AWS
+- **S3 + CloudFront**: Scalable static hosting with global CDN
+- **Cost-Effective**: Pay only for what you use
+- **Enterprise Ready**: Full AWS ecosystem integration
+
+### Google Cloud
+- **Cloud Run**: Serverless containers for dynamic applications
+- **App Engine**: Platform-as-a-Service for traditional web apps
+- **Global Infrastructure**: Google's worldwide network
+
+## 📋 Deployment Types
+
+### Static Deployment
 **Description**: Use for static sites, SPAs, JAMstack apps
 
 **Use Cases**:
@@ -14,6 +41,7 @@ This guide explains how to deploy websites to Azure using the HomeLab environmen
 - JAMstack applications
 - Documentation sites
 - Blogs
+- Portfolio websites
 
 **Characteristics**:
 - No server-side rendering
@@ -21,21 +49,13 @@ This guide explains how to deploy websites to Azure using the HomeLab environmen
 - No database connections
 - Static files only
 
-**Azure Resources**:
-- Azure Static Web Apps
-- Azure CDN (optional)
-- Azure DNS (for custom domains)
-
-**Pricing**: Free tier available, pay-as-you-go
-
 **Auto-detect Files**:
-- index.html
-- build/index.html
-- dist/index.html
-- public/index.html
+- `index.html`
+- `build/index.html`
+- `dist/index.html`
+- `public/index.html`
 
-### App Service
-
+### App Service/Backend Deployment
 **Description**: Use for dynamic web applications with server-side logic
 
 **Use Cases**:
@@ -44,6 +64,7 @@ This guide explains how to deploy websites to Azure using the HomeLab environmen
 - .NET applications
 - PHP applications
 - Applications with APIs
+- Full-stack applications
 
 **Characteristics**:
 - Server-side rendering
@@ -51,173 +72,350 @@ This guide explains how to deploy websites to Azure using the HomeLab environmen
 - Database connections
 - Dynamic content
 
-**Azure Resources**:
-- Azure App Service
-- App Service Plan
-- Azure Application Insights (optional)
-- Azure DNS (for custom domains)
-
-**Pricing**: Starts from Basic tier, various plans available
-
 **Auto-detect Files**:
-- package.json (with server frameworks)
-- requirements.txt
-- wsgi.py
-- asgi.py
-- manage.py
-- *.csproj
-- Program.cs
+- `package.json` (with server frameworks like Express, Koa, Fastify)
+- `requirements.txt`, `Pipfile`, `setup.py`
+- `wsgi.py`, `asgi.py`, `manage.py`
+- `*.csproj`, `Program.cs`, `Startup.cs`
 
-## Decision Matrix
+### Auto-Detection
+**Description**: Let the system automatically determine the best deployment type
 
-| Question | Static Web App | App Service |
-|----------|---------------|-------------|
-| Does your app need server-side processing? | No | Yes |
-| Do you need to connect to databases? | No | Yes |
-| Do you have API endpoints? | No (or use Azure Functions) | Yes |
-| Is your content pre-built/static? | Yes | No |
-| Do you need custom runtime environments? | No | Yes |
+**Features**:
+- Analyzes project structure
+- Detects framework indicators
+- Chooses optimal deployment strategy
+- Provides intelligent recommendations
 
-## Environments
+## 🎯 Platform Decision Matrix
 
-| Environment | Description | Subdomain Suffix | Azure Location | SKU |
-|-------------|-------------|------------------|----------------|-----|
-| dev | Development environment | -dev | eastus | Free |
-| staging | Staging environment | -staging | eastus | Basic |
-| prod | Production environment | (none) | eastus | Standard |
+| Feature              | Azure             | Vercel            | Netlify           | AWS             | Google Cloud  |
+| -------------------- | ----------------- | ----------------- | ----------------- | --------------- | ------------- |
+| **Static Sites**     | ✅ Static Web Apps | ✅ Optimized       | ✅ JAMstack        | ✅ S3+CloudFront | ✅ Cloud Run   |
+| **Full-Stack Apps**  | ✅ App Service     | ✅ Edge Functions  | ✅ Serverless      | ✅ ECS/Lambda    | ✅ App Engine  |
+| **Auto-Detection**   | ✅                 | ✅                 | ✅                 | ✅               | ✅             |
+| **Custom Domains**   | ✅                 | ✅                 | ✅                 | ✅               | ✅             |
+| **SSL Certificates** | ✅ Auto            | ✅ Auto            | ✅ Auto            | ✅ Auto          | ✅ Auto        |
+| **Global CDN**       | ✅                 | ✅                 | ✅                 | ✅               | ✅             |
+| **Git Integration**  | ✅                 | ✅                 | ✅                 | ✅               | ✅             |
+| **Cost**             | Pay-as-you-go     | Free tier + usage | Free tier + usage | Pay-as-you-go   | Pay-as-you-go |
 
-## Custom Domain Configuration
+## 🔧 Platform-Specific Functions
 
-### DNS Records
-
-**CNAME Record**:
-- Description: Points subdomain to Azure service
-- Format: subdomain.yourdomain.com -> azure-service.net
-
-**TXT Record**:
-- Description: Domain verification record
-- Format: asuid.subdomain.yourdomain.com -> verification-id
-
-### SSL Certificates
-
-- Static Web Apps: Automatic SSL certificates
-- App Service: Automatic SSL certificates with custom domains
-
-## Authentication Setup (Recommended: OIDC)
-
-**Recommended**: Use GitHub-to-Azure OIDC federation for password-less deployments:
-
-```
-AZURE_SUBSCRIPTION_ID      # Your Azure subscription ID
-AZURE_CLIENT_ID            # Service principal client ID (no secret needed)
-AZURE_TENANT_ID            # Your Azure tenant ID
-GITHUB_TOKEN               # GitHub personal access token
-```
-
-> **Security Note**: OIDC federation eliminates the need for `AZURE_CLIENT_SECRET` or `AZURE_CREDENTIALS`, reducing secret sprawl and following least-privilege principles. See [Microsoft's OIDC setup guide](https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure) for configuration.
-
-**Legacy (Not Recommended)**: If OIDC is not available, configure these secrets:
-
-```
-AZURE_CLIENT_SECRET        # Service principal client secret (legacy)
-AZURE_CREDENTIALS          # Complete Azure credentials JSON (legacy)
-```
-
-## Azure OIDC Federation Setup
-
-```bash
-# Create service principal for OIDC federation
-az ad sp create-for-rbac \
-  --name "github-actions-deployment" \
-  --role contributor \
-  --scopes /subscriptions/{subscription-id}/resourceGroups/{rg-name}
-
-# Configure federated credentials (replace with your values)
-az ad app federated-credential create \
-  --id {client-id} \
-  --parameters '{"name":"github-actions","issuer":"https://token.actions.githubusercontent.com","subject":"repo:{owner}/{repo}:ref:refs/heads/main","audiences":["api://AzureADTokenExchange"]}'
-```
-
-For detailed OIDC setup instructions, see [Microsoft's official guide](https://docs.microsoft.com/en-us/azure/developer/github/connect-from-azure).
-
-## Usage Examples
-
-### Manual Deployment
-
-**Deploy a React Application**:
+### Deploy-Azure
+**Comprehensive Azure deployment with auto-detection**
 
 ```powershell
-Deploy-Website -DeploymentType static -ResourceGroup "rg-portfolio" -AppName "portfolio-prod" -SubscriptionId "abc123" -CustomDomain "johndoe.com" -Subdomain "portfolio"
+Deploy-Azure -AppName "my-app" -ResourceGroup "my-rg" -SubscriptionId "00000000-0000-0000-0000-000000000000" -DeploymentType "auto" -ProjectPath "C:\Projects\my-app"
 ```
-Result: <https://portfolio.johndoe.com>
 
-**Deploy a Node.js API**:
+**Features**:
+- Static Web Apps and App Service support
+- Resource group management
+- Subscription context handling
+- Custom domain configuration
+- GitHub integration
+
+### Deploy-Vercel
+**Vercel deployment with framework optimization**
 
 ```powershell
-Deploy-Website -DeploymentType appservice -ResourceGroup "rg-api" -AppName "backend-api" -SubscriptionId "abc123" -CustomDomain "mycompany.com" -Subdomain "api"
+Deploy-Vercel -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -VercelToken "your-token"
 ```
-Result: <https://api.mycompany.com>
 
-### GitHub Actions Deployment
+**Features**:
+- Automatic framework detection
+- Edge function support
+- Global CDN deployment
+- Environment variable management
 
-1. Navigate to your repository's Actions tab
-2. Select "Deploy to Azure with Custom Domain"
-3. Click "Run workflow"
-4. Configure parameters:
-   - Deployment Type: static/appservice/auto
-   - Environment: dev/staging/prod
-   - Subdomain: Your desired subdomain
-   - Custom Domain: Your domain (e.g., liquidmesh.ai)
+### Deploy-Netlify
+**Netlify deployment for JAMstack applications**
 
-### Multi-Environment Deployment
+```powershell
+Deploy-Netlify -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -NetlifyToken "your-token"
+```
 
-For deploying to multiple environments simultaneously:
+**Features**:
+- JAMstack optimization
+- Form handling setup
+- Serverless function deployment
+- Continuous deployment from Git
 
-1. Select "Deploy to Multiple Environments" workflow
-2. Set environments: "dev,staging,prod"
-3. Set base subdomain: "myapp"
+### Deploy-AWS
+**AWS deployment with S3 and CloudFront**
 
-Results:
-- myapp-dev.yourdomain.com
-- myapp-staging.yourdomain.com
-- myapp.yourdomain.com
+```powershell
+Deploy-AWS -AppName "my-static-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -AwsRegion "us-east-1"
+```
 
-## DNS Configuration
+**Features**:
+- S3 static hosting
+- CloudFront CDN configuration
+- Cost-effective scaling
+- AWS CLI integration
 
-After deployment, configure your DNS provider with the appropriate records:
+### Deploy-GoogleCloud
+**Google Cloud deployment with Cloud Run and App Engine**
 
-**For Static Web Apps**:
+```powershell
+Deploy-GoogleCloud -AppName "my-app" -ProjectPath "C:\Projects\my-app" -Location "us-central1" -GcpProject "my-project" -DeploymentType "cloudrun"
+```
+
+**Features**:
+- Cloud Run serverless containers
+- App Engine platform-as-a-service
+- Automatic Dockerfile generation
+- Global Google infrastructure
+
+## 🎨 Progress Tracking & User Experience
+
+### Step-by-Step Progress Indicators
+All deployment functions include comprehensive progress tracking:
+
+```powershell
+Step 1/6: Checking Azure PowerShell prerequisites...
+Step 2/6: Setting Azure subscription...
+Step 3/6: Creating resource group...
+Step 4/6: Determining deployment type...
+Step 5/6: Deploying to Azure...
+Step 6/6: Configuring custom domain...
+```
+
+### AI-Powered Repository Suggestions
+Intelligent repository scoring algorithm considers:
+- **Language Detection**: Identifies primary programming language
+- **Description Keywords**: Analyzes repository descriptions
+- **Name Patterns**: Recognizes common naming conventions
+- **Recent Activity**: Considers recent commits and updates
+- **Repository Size**: Evaluates project complexity
+- **Stars and Forks**: Community engagement indicators
+
+### Consistent Return Values
+All deployment functions return standardized information:
+
+```powershell
+@{
+    Success = $true
+    DeploymentUrl = "https://my-app.azurewebsites.net"
+    AppName = "my-app"
+    Platform = "Azure"
+    Service = "Static Web Apps" # or "App Service"
+    Region = "westeurope"
+    ResourceGroup = "my-rg"
+    CustomDomain = "example.com"
+}
+```
+
+## 🌍 Environments & Naming Conventions
+
+### Environment-Specific Configuration
+
+| Environment | Description             | Subdomain Suffix | Location          | Pricing Tier     |
+| ----------- | ----------------------- | ---------------- | ----------------- | ---------------- |
+| dev         | Development environment | -dev             | Platform-specific | Free/Basic       |
+| staging     | Staging environment     | -staging         | Platform-specific | Basic/Standard   |
+| prod        | Production environment  | (none)           | Platform-specific | Standard/Premium |
+
+### Resource Naming Convention
+All platforms follow the consistent naming pattern:
+```
+[env]-[regionabbreviation]-[typeabbreviation]-project
+```
+
+**Examples**:
+- `dev-eus-ver-myapp` (Development, East US, Vercel)
+- `prod-weu-aws-myapp` (Production, West Europe, AWS)
+- `staging-use-gcp-myapp` (Staging, US East, Google Cloud)
+
+## 🔐 Authentication & Security
+
+### Platform-Specific Authentication
+
+#### Azure
+- **OIDC Federation** (Recommended): Password-less authentication
+- **Service Principal**: Traditional Azure authentication
+- **Managed Identity**: Azure-native identity management
+
+#### Vercel
+- **Personal Access Token**: API-based authentication
+- **OAuth Integration**: GitHub/GitLab integration
+- **Team Tokens**: Organization-level access
+
+#### Netlify
+- **Personal Access Token**: API-based authentication
+- **OAuth Integration**: Git provider integration
+- **Site Tokens**: Site-specific deployment tokens
+
+#### AWS
+- **AWS CLI**: Standard AWS authentication
+- **IAM Roles**: Role-based access control
+- **Access Keys**: Programmatic access
+
+#### Google Cloud
+- **gcloud CLI**: Standard GCP authentication
+- **Service Accounts**: Application-level authentication
+- **OAuth 2.0**: User-based authentication
+
+## 📝 Usage Examples
+
+### Azure Deployment Examples
+
+**Static Web App**:
+```powershell
+Deploy-Azure -AppName "portfolio-prod" -ResourceGroup "rg-portfolio" -SubscriptionId "abc123" -DeploymentType "static" -CustomDomain "johndoe.com" -Subdomain "portfolio"
+```
+
+**App Service**:
+```powershell
+Deploy-Azure -AppName "backend-api" -ResourceGroup "rg-api" -SubscriptionId "abc123" -DeploymentType "appservice" -CustomDomain "mycompany.com" -Subdomain "api"
+```
+
+**Auto-Detect**:
+```powershell
+Deploy-Azure -AppName "my-app" -ResourceGroup "rg-app" -SubscriptionId "abc123" -ProjectPath "C:\Projects\my-app"
+```
+
+### Vercel Deployment
+```powershell
+Deploy-Vercel -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-nextjs-app" -Location "us-east-1" -VercelToken "ver_abc123" -CustomDomain "myapp.com"
+```
+
+### Netlify Deployment
+```powershell
+Deploy-Netlify -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-jamstack-site" -Location "us-east-1" -NetlifyToken "abc123" -CustomDomain "myapp.com"
+```
+
+### AWS Deployment
+```powershell
+Deploy-AWS -AppName "my-static-site" -ProjectPath "C:\Projects\my-static-site" -Location "us-east-1" -AwsRegion "us-east-1" -CustomDomain "myapp.com"
+```
+
+### Google Cloud Deployment
+```powershell
+Deploy-GoogleCloud -AppName "my-app" -ProjectPath "C:\Projects\my-app" -Location "us-central1" -GcpProject "my-project" -DeploymentType "cloudrun" -CustomDomain "myapp.com"
+```
+
+## 🎛️ Interactive Menu System
+
+### Website Deployment Menu
+Access through the HomeLab interactive menu:
+
+```
+=== Website Deployment ===
+1. Auto-Detect and Deploy Website
+2. Deploy Static Web App (Azure)
+3. Deploy App Service (Azure)
+4. Deploy to Vercel
+5. Deploy to Netlify
+6. Deploy to AWS
+7. Deploy to Google Cloud
+8. Configure Custom Domain
+9. Add GitHub Workflows
+10. Back to Main Menu
+```
+
+### Platform Selection
+The system guides you through platform selection:
+
+```
+Step 1: Cloud Platform Selection
+Choose your deployment platform:
+1. Azure (Static Web Apps & App Service)
+2. Vercel (Next.js, React, Vue optimized)
+3. Netlify (JAMstack platform)
+4. AWS (S3 + CloudFront)
+5. Google Cloud (Cloud Run & App Engine)
+6. Auto-detect (recommended)
+```
+
+## 🔄 GitHub Integration
+
+### Automated Workflows
+All platforms support GitHub Actions integration:
+
+- **Azure**: OIDC federation for secure authentication
+- **Vercel**: Automatic deployments from Git
+- **Netlify**: Continuous deployment with build hooks
+- **AWS**: CodePipeline integration
+- **Google Cloud**: Cloud Build integration
+
+### Repository Suggestions
+AI-powered repository analysis provides intelligent suggestions based on:
+- Project type and framework
+- Recent activity and popularity
+- Repository size and complexity
+- Community engagement metrics
+
+## 🌐 Custom Domain Configuration
+
+### DNS Configuration by Platform
+
+#### Azure
 ```
 Type: CNAME
 Name: {subdomain}
-Value: {app-name}.azurestaticapps.net
+Value: {app-name}.azurestaticapps.net (Static Web Apps)
+Value: {app-name}.azurewebsites.net (App Service)
 ```
 
-**For App Service**:
+#### Vercel
 ```
 Type: CNAME
 Name: {subdomain}
-Value: {app-name}.azurewebsites.net
+Value: {app-name}.vercel.app
 ```
 
-**Domain Verification (Required)**:
+#### Netlify
 ```
-Type: TXT
-Name: asuid.{subdomain}
-Value: {verification-id-from-azure}
+Type: CNAME
+Name: {subdomain}
+Value: {app-name}.netlify.app
 ```
 
-## Key Features
+#### AWS
+```
+Type: CNAME
+Name: {subdomain}
+Value: {app-name}.s3-website-{region}.amazonaws.com
+```
 
-- ✅ Intelligent Auto-Detection - Automatically chooses the best deployment type
-- ✅ Custom Subdomain Support - Deploy to your own domain with subdomains
-- ✅ Multi-Environment Deployment - Deploy to dev, staging, and prod simultaneously
-- ✅ GitHub Actions Integration - Automated CI/CD workflows
-- ✅ SSL Certificate Automation - Free SSL certificates for all deployments
-- ✅ Cost Optimization - Choose the most cost-effective Azure service
+#### Google Cloud
+```
+Type: CNAME
+Name: {subdomain}
+Value: {app-name}-{hash}.run.app (Cloud Run)
+Value: {app-name}.appspot.com (App Engine)
+```
 
-## Environment-Specific Configuration
+## 🎯 Key Features
 
-- **Development**: Free tier, -dev suffix, debug logging
-- **Staging**: Basic tier, -staging suffix, production-like config
-- **Production**: Standard tier, no suffix, performance optimized
+- ✅ **Multi-Platform Support** - Deploy to 5 major cloud platforms
+- ✅ **Intelligent Auto-Detection** - Automatically chooses optimal deployment type
+- ✅ **Progress Tracking** - Step-by-step deployment progress
+- ✅ **AI Repository Suggestions** - Smart repository recommendations
+- ✅ **Custom Domain Support** - Deploy to your own domain with subdomains
+- ✅ **Multi-Environment Deployment** - Deploy to dev, staging, and prod
+- ✅ **GitHub Integration** - Automated CI/CD workflows
+- ✅ **SSL Certificate Automation** - Free SSL certificates for all platforms
+- ✅ **Cost Optimization** - Choose the most cost-effective platform
+- ✅ **Consistent Interface** - Unified experience across all platforms
+- ✅ **First-Class Azure Support** - Comprehensive Azure resource management
+
+## 🚀 Getting Started
+
+1. **Choose Your Platform**: Select from Azure, Vercel, Netlify, AWS, or Google Cloud
+2. **Prepare Your Project**: Ensure your project is ready for deployment
+3. **Run Deployment**: Use the interactive menu or direct function calls
+4. **Configure Domain**: Set up custom domains and DNS records
+5. **Monitor & Optimize**: Track performance and costs
+
+## 📚 Additional Resources
+
+- [Azure Static Web Apps Documentation](https://docs.microsoft.com/en-us/azure/static-web-apps/)
+- [Vercel Documentation](https://vercel.com/docs)
+- [Netlify Documentation](https://docs.netlify.com/)
+- [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
+- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
+- [HomeLab API Reference](./API-REFERENCE.md)
+- [Troubleshooting Guide](./TROUBLESHOOTING.md)
