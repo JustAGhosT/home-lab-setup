@@ -724,6 +724,446 @@ function Invoke-WebsiteHandler {
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
         
+        "Deploy-ContainerAppsWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Azure Container Apps ===" -ForegroundColor Cyan
+            Write-Host "Deploys a containerized application to Azure Container Apps (serverless containers)" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "containerapps" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to Azure Container Apps with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Azure Container Apps..." -Activity "Step 2/4"
+            Write-Host "`nDeploying containerized application to Azure Container Apps..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAzure Container Apps deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Azure Container Apps" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-FunctionsWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Azure Functions ===" -ForegroundColor Cyan
+            Write-Host "Deploys serverless functions to Azure Functions" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "functions" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to Azure Functions with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Azure Functions..." -Activity "Step 2/4"
+            Write-Host "`nDeploying serverless functions to Azure Functions..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAzure Functions deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Azure Functions" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-ECSWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to AWS ECS Fargate ===" -ForegroundColor Cyan
+            Write-Host "Deploys a containerized application to AWS ECS with Fargate (serverless containers)" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "ecs" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to AWS ECS with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to AWS ECS Fargate..." -Activity "Step 2/4"
+            Write-Host "`nDeploying containerized application to AWS ECS Fargate..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAWS ECS Fargate deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: AWS ECS Fargate" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Region: $($params.AwsRegion)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-LambdaWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to AWS Lambda ===" -ForegroundColor Cyan
+            Write-Host "Deploys serverless functions to AWS Lambda" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "lambda" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to AWS Lambda with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to AWS Lambda..." -Activity "Step 2/4"
+            Write-Host "`nDeploying serverless functions to AWS Lambda..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAWS Lambda deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: AWS Lambda" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Region: $($params.AwsRegion)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-CloudFunctionsWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Google Cloud Functions ===" -ForegroundColor Cyan
+            Write-Host "Deploys serverless functions to Google Cloud Functions" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "cloudfunctions" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to Google Cloud Functions with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Google Cloud Functions..." -Activity "Step 2/4"
+            Write-Host "`nDeploying serverless functions to Google Cloud Functions..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nGoogle Cloud Functions deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Google Cloud Functions" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-AKSWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Azure Kubernetes Service (AKS) ===" -ForegroundColor Cyan
+            Write-Host "Deploys a containerized application to Azure Kubernetes Service" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "aks" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to AKS with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Azure Kubernetes Service..." -Activity "Step 2/4"
+            Write-Host "`nDeploying containerized application to Azure Kubernetes Service..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAzure Kubernetes Service deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Azure Kubernetes Service (AKS)" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-EKSWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to AWS EKS (Elastic Kubernetes Service) ===" -ForegroundColor Cyan
+            Write-Host "Deploys a containerized application to AWS EKS" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "eks" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to EKS with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to AWS EKS..." -Activity "Step 2/4"
+            Write-Host "`nDeploying containerized application to AWS EKS..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nAWS EKS deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: AWS EKS (Elastic Kubernetes Service)" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Region: $($params.AwsRegion)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
+        "Deploy-GKEWebsite" {
+            Clear-Host
+            Write-Host "=== Deploy to Google Kubernetes Engine (GKE) ===" -ForegroundColor Cyan
+            Write-Host "Deploys a containerized application to Google Kubernetes Engine" -ForegroundColor Yellow
+            Write-Host ""
+            
+            # Import the helper functions
+            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
+            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
+            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            
+            # Step 1: Get deployment parameters with progress
+            Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
+            $params = Get-DeploymentParameters -DeploymentType "gke" -Config $config
+            
+            if ($null -eq $params) {
+                Write-Host "Deployment canceled." -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 2: Deploy to GKE with progress
+            Update-ProgressBar -PercentComplete 50 -Status "Deploying to Google Kubernetes Engine..." -Activity "Step 2/4"
+            Write-Host "`nDeploying containerized application to Google Kubernetes Engine..." -ForegroundColor Yellow
+            
+            try {
+                Deploy-Website @params
+                Update-ProgressBar -PercentComplete 75 -Status "Deployment completed successfully!" -Activity "Step 3/4"
+                Write-Host "`nGoogle Kubernetes Engine deployment completed successfully!" -ForegroundColor Green
+            }
+            catch {
+                Update-ProgressBar -PercentComplete 100 -Status "Deployment failed!" -Activity "Step 4/4" -ForegroundColor Red
+                Write-Host "`nDeployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
+            
+            # Step 3: Show final summary
+            Update-ProgressBar -PercentComplete 100 -Status "Process complete!" -Activity "Step 4/4"
+            Write-Host "`n=== Deployment Summary ===" -ForegroundColor Green
+            Write-Host "Platform: Google Kubernetes Engine (GKE)" -ForegroundColor White
+            Write-Host "Application Name: $($params.AppName)" -ForegroundColor White
+            Write-Host "Location: $($params.Location)" -ForegroundColor White
+            
+            if ($params.CustomDomain) {
+                Write-Host "Custom Domain: $($params.Subdomain).$($params.CustomDomain)" -ForegroundColor White
+            }
+            
+            Write-Host "`nPress any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        }
+        
         "Back" {
             # Return to main menu
             return

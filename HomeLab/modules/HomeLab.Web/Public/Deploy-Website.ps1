@@ -80,7 +80,7 @@ function Deploy-Website {
     [CmdletBinding()]
     param (
         [Parameter()]
-        [ValidateSet("static", "appservice", "auto", "vercel", "netlify", "aws", "gcp")]
+        [ValidateSet("static", "appservice", "auto", "vercel", "netlify", "aws", "gcp", "containerapps", "functions", "ecs", "lambda", "cloudfunctions", "aks", "eks", "gke")]
         [string]$DeploymentType = "static",
         
         [Parameter()]
@@ -188,8 +188,48 @@ function Deploy-Website {
             . "$PSScriptRoot\Deploy-GoogleCloud.ps1"
             $result = Deploy-GoogleCloud -AppName $AppName -ProjectPath $ProjectPath -Location $Location -GcpProject $GcpProject -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
         }
+        "containerapps" {
+            # Import Azure Container Apps deployment function
+            . "$PSScriptRoot\Deploy-ContainerApps.ps1"
+            $result = Deploy-ContainerApps -AppName $AppName -ResourceGroup $ResourceGroup -SubscriptionId $SubscriptionId -Location $Location -ProjectPath $ProjectPath -CustomDomain $CustomDomain -GitHubToken $GitHubToken -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "functions" {
+            # Import Azure Functions deployment function
+            . "$PSScriptRoot\Deploy-AzureFunctions.ps1"
+            $result = Deploy-AzureFunctions -AppName $AppName -ResourceGroup $ResourceGroup -SubscriptionId $SubscriptionId -Location $Location -ProjectPath $ProjectPath -CustomDomain $CustomDomain -GitHubToken $GitHubToken -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "ecs" {
+            # Import AWS ECS deployment function
+            . "$PSScriptRoot\Deploy-AWSECS.ps1"
+            $result = Deploy-AWSECS -AppName $AppName -ProjectPath $ProjectPath -AwsRegion $AwsRegion -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "lambda" {
+            # Import AWS Lambda deployment function
+            . "$PSScriptRoot\Deploy-AWSLambda.ps1"
+            $result = Deploy-AWSLambda -AppName $AppName -ProjectPath $ProjectPath -AwsRegion $AwsRegion -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "cloudfunctions" {
+            # Import Google Cloud Functions deployment function
+            . "$PSScriptRoot\Deploy-GoogleCloudFunctions.ps1"
+            $result = Deploy-GoogleCloudFunctions -AppName $AppName -ProjectPath $ProjectPath -Location $Location -GcpProject $GcpProject -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "aks" {
+            # Import Azure Kubernetes Service deployment function
+            . "$PSScriptRoot\Deploy-AKS.ps1"
+            $result = Deploy-AKS -AppName $AppName -ResourceGroup $ResourceGroup -SubscriptionId $SubscriptionId -Location $Location -ProjectPath $ProjectPath -CustomDomain $CustomDomain -GitHubToken $GitHubToken -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "eks" {
+            # Import AWS EKS deployment function
+            . "$PSScriptRoot\Deploy-AWSEKS.ps1"
+            $result = Deploy-AWSEKS -AppName $AppName -ProjectPath $ProjectPath -AwsRegion $AwsRegion -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
+        "gke" {
+            # Import Google Kubernetes Engine deployment function
+            . "$PSScriptRoot\Deploy-GKE.ps1"
+            $result = Deploy-GKE -AppName $AppName -ProjectPath $ProjectPath -Location $Location -GcpProject $GcpProject -CustomDomain $CustomDomain -RepoUrl $RepoUrl -Branch $Branch
+        }
         default {
-            Write-Error "Error: Invalid deployment type. Use 'static', 'appservice', 'vercel', 'netlify', 'aws', or 'gcp'"
+            Write-Error "Error: Invalid deployment type. Use 'static', 'appservice', 'vercel', 'netlify', 'aws', 'gcp', 'containerapps', 'functions', 'ecs', 'lambda', 'cloudfunctions', 'aks', 'eks', or 'gke'"
             return
         }
     }
