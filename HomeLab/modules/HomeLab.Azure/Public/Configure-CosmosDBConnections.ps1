@@ -68,23 +68,41 @@ function Configure-CosmosDBConnections {
     try {
         Write-ColorOutput "Configuring Cosmos DB connections..." -ForegroundColor Cyan
         
+        # Helper function to mask sensitive data
+        function Get-MaskedValue {
+            param([string]$Value, [int]$VisibleChars = 4)
+            if ([string]::IsNullOrEmpty($Value)) {
+                return "[NOT SET]"
+            }
+            if ($Value.Length -le $VisibleChars) {
+                return "*" * $Value.Length
+            }
+            return "*" * ($Value.Length - $VisibleChars) + $Value.Substring($Value.Length - $VisibleChars)
+        }
+        
         # Get connection string and primary key if not provided
         if (-not $ConnectionString) {
-            $ConnectionString = az cosmosdb keys list `
-                --name $AccountName `
-                --resource-group $ResourceGroup `
-                --type connection-strings `
-                --query "connectionStrings[0].connectionString" `
-                --output tsv
+            $azArgs = @(
+                "cosmosdb", "keys", "list",
+                "--name", $AccountName,
+                "--resource-group", $ResourceGroup,
+                "--type", "connection-strings",
+                "--query", "connectionStrings[0].connectionString",
+                "--output", "tsv"
+            )
+            $ConnectionString = & az @azArgs
         }
         
         if (-not $PrimaryKey) {
-            $PrimaryKey = az cosmosdb keys list `
-                --name $AccountName `
-                --resource-group $ResourceGroup `
-                --type keys `
-                --query "primaryMasterKey" `
-                --output tsv
+            $azArgs = @(
+                "cosmosdb", "keys", "list",
+                "--name", $AccountName,
+                "--resource-group", $ResourceGroup,
+                "--type", "keys",
+                "--query", "primaryMasterKey",
+                "--output", "tsv"
+            )
+            $PrimaryKey = & az @azArgs
         }
         
         # Build Cosmos DB endpoint URL
@@ -101,8 +119,8 @@ function Configure-CosmosDBConnections {
         if ($ContainerName) {
             Write-ColorOutput "Container: $ContainerName" -ForegroundColor Gray
         }
-        Write-ColorOutput "Connection String: $ConnectionString" -ForegroundColor Gray
-        Write-ColorOutput "Primary Key: $PrimaryKey" -ForegroundColor Gray
+        Write-ColorOutput "Connection String: $(Get-MaskedValue -Value $ConnectionString)" -ForegroundColor Gray
+        Write-ColorOutput "Primary Key: $(Get-MaskedValue -Value $PrimaryKey)" -ForegroundColor Gray
         
         # Update project configuration files if project path is provided
         if ($ProjectPath -and (Test-Path -Path $ProjectPath)) {
@@ -151,7 +169,14 @@ function Configure-CosmosDBConnections {
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
-            @"
+            
+            if (Test-Path -Path $envPath) {
+                $overwrite = Read-Host "`.env file already exists. Overwrite? (y/N)"
+                if ($overwrite -ne "y" -and $overwrite -ne "Y") {
+                    Write-ColorOutput "Skipping .env file creation to preserve existing data." -ForegroundColor Yellow
+                }
+                else {
+                    @"
 # Cosmos DB Configuration
 COSMOS_DB_ENDPOINT=$endpointUrl
 COSMOS_DB_KEY=$PrimaryKey
@@ -160,11 +185,26 @@ COSMOS_DB_CONTAINER=$ContainerName
 COSMOS_DB_CONNECTION_STRING=$ConnectionString
 COSMOS_DB_API_TYPE=$ApiType
 "@ | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+                    Write-ColorOutput "Updated .env file" -ForegroundColor Green
+                }
+            }
+            else {
+                @"
+# Cosmos DB Configuration
+COSMOS_DB_ENDPOINT=$endpointUrl
+COSMOS_DB_KEY=$PrimaryKey
+COSMOS_DB_DATABASE=$DatabaseName
+COSMOS_DB_CONTAINER=$ContainerName
+COSMOS_DB_CONNECTION_STRING=$ConnectionString
+COSMOS_DB_API_TYPE=$ApiType
+"@ | Set-Content -Path $envPath
+                Write-ColorOutput "Created .env file" -ForegroundColor Green
+            }
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\cosmos-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\cosmos-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null

@@ -74,6 +74,11 @@ function Configure-IoTEdgeModules {
     try {
         Write-ColorOutput "Configuring IoT Edge modules..." -ForegroundColor Cyan
         
+        # Validate Azure CLI availability
+        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+            throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+        }
+        
         # Get device connection string if not provided
         if (-not $DeviceConnectionString) {
             $DeviceConnectionString = az iot hub device-identity connection-string show `
@@ -162,8 +167,16 @@ function Configure-IoTEdgeModules {
                 $appSettings.IoTEdge.DeviceId = $deviceDetails.deviceId
                 $appSettings.IoTEdge.DeviceStatus = $deviceDetails.status
                 
-                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                # Validate JSON structure before writing
+                try {
+                    $jsonString = $appSettings | ConvertTo-Json -Depth 10
+                    $validatedJson = $jsonString | ConvertFrom-Json
+                    $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                }
+                catch {
+                    throw "Invalid JSON structure generated. Cannot save appsettings.json: $($_.Exception.Message)"
+                }
             }
             
             # Update package.json for Node.js projects
@@ -193,6 +206,35 @@ function Configure-IoTEdgeModules {
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
+            
+            # Security warning for sensitive data
+            Write-ColorOutput "`n⚠️  SECURITY WARNING:" -ForegroundColor Yellow
+            Write-ColorOutput "The .env file will contain sensitive connection strings and credentials." -ForegroundColor Yellow
+            Write-ColorOutput "For production environments, consider using Azure Key Vault for secure storage." -ForegroundColor Yellow
+            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits." -ForegroundColor Yellow
+            
+            # Check if .gitignore exists and contains .env
+            $gitignorePath = Join-Path -Path $ProjectPath -ChildPath ".gitignore"
+            if (Test-Path -Path $gitignorePath) {
+                $gitignoreContent = Get-Content -Path $gitignorePath
+                if ($gitignoreContent -notcontains ".env") {
+                    Write-ColorOutput "Adding .env to .gitignore for security..." -ForegroundColor Cyan
+                    Add-Content -Path $gitignorePath -Value "`n# Environment variables with sensitive data`n.env"
+                }
+            }
+            else {
+                Write-ColorOutput "Creating .gitignore file with .env exclusion..." -ForegroundColor Cyan
+                @"
+# Environment variables with sensitive data
+.env
+
+# Other common exclusions
+node_modules/
+*.log
+.DS_Store
+"@ | Set-Content -Path $gitignorePath
+            }
+            
             @"
 # Azure IoT Edge Configuration
 AZURE_IOT_EDGE_IOT_HUB_NAME=$IoTHubName

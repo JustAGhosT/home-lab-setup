@@ -56,6 +56,22 @@ function Configure-IoTHubEndpoints {
     try {
         Write-ColorOutput "Configuring IoT Hub endpoints..." -ForegroundColor Cyan
         
+        # Validate Azure CLI availability and authentication
+        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+            throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+        }
+        
+        # Check if user is authenticated
+        try {
+            $null = az account show --query id --output tsv 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                throw "You are not logged in to Azure. Please run 'az login' to authenticate."
+            }
+        }
+        catch {
+            throw "Azure authentication failed. Please run 'az login' to authenticate with Azure."
+        }
+        
         # Get connection strings if not provided
         if (-not $ConnectionString) {
             $ConnectionString = az iot hub connection-string show `
@@ -90,8 +106,8 @@ function Configure-IoTHubEndpoints {
         Write-ColorOutput "`nIoT Hub Connection Information:" -ForegroundColor Green
         Write-ColorOutput "IoT Hub Name: $IoTHubName" -ForegroundColor Gray
         Write-ColorOutput "Resource Group: $ResourceGroup" -ForegroundColor Gray
-        Write-ColorOutput "Connection String: $ConnectionString" -ForegroundColor Gray
-        Write-ColorOutput "Event Hub Connection String: $EventHubConnectionString" -ForegroundColor Gray
+        Write-ColorOutput "Connection String: [REDACTED]" -ForegroundColor Gray
+        Write-ColorOutput "Event Hub Connection String: [REDACTED]" -ForegroundColor Gray
         Write-ColorOutput "IoT Hub ID: $($iothubDetails.id)" -ForegroundColor Gray
         Write-ColorOutput "SKU: $($iothubDetails.sku.name)" -ForegroundColor Gray
         Write-ColorOutput "Unit Count: $($iothubDetails.sku.capacity)" -ForegroundColor Gray
@@ -108,59 +124,85 @@ function Configure-IoTHubEndpoints {
             $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
             if (Test-Path -Path $appSettingsPath) {
                 Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
-                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
-                
-                if (-not $appSettings.IoTHub) {
-                    $appSettings | Add-Member -MemberType NoteProperty -Name "IoTHub" -Value @{}
+                try {
+                    $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                    
+                    if (-not $appSettings.IoTHub) {
+                        $appSettings | Add-Member -MemberType NoteProperty -Name "IoTHub" -Value @{}
+                    }
+                    
+                    $appSettings.IoTHub.Name = $IoTHubName
+                    $appSettings.IoTHub.ResourceGroup = $ResourceGroup
+                    $appSettings.IoTHub.ConnectionString = $ConnectionString
+                    $appSettings.IoTHub.EventHubConnectionString = $EventHubConnectionString
+                    $appSettings.IoTHub.DeviceProvisioningService = $DeviceProvisioningService
+                    $appSettings.IoTHub.Sku = $iothubDetails.sku.name
+                    $appSettings.IoTHub.UnitCount = $iothubDetails.sku.capacity
+                    
+                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
                 }
-                
-                $appSettings.IoTHub.Name = $IoTHubName
-                $appSettings.IoTHub.ResourceGroup = $ResourceGroup
-                $appSettings.IoTHub.ConnectionString = $ConnectionString
-                $appSettings.IoTHub.EventHubConnectionString = $EventHubConnectionString
-                $appSettings.IoTHub.DeviceProvisioningService = $DeviceProvisioningService
-                $appSettings.IoTHub.Sku = $iothubDetails.sku.name
-                $appSettings.IoTHub.UnitCount = $iothubDetails.sku.capacity
-                
-                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update appsettings.json: $($_.Exception.Message)"
+                }
             }
             
             # Update package.json for Node.js projects
             $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
             if (Test-Path -Path $packageJsonPath) {
                 Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
-                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
-                
-                if (-not $packageJson.config) {
-                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                try {
+                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                    
+                    if (-not $packageJson.config) {
+                        $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    }
+                    
+                    $packageJson.config.iothubName = $IoTHubName
+                    $packageJson.config.iothubResourceGroup = $ResourceGroup
+                    $packageJson.config.iothubConnectionString = $ConnectionString
+                    $packageJson.config.iothubEventHubConnectionString = $EventHubConnectionString
+                    $packageJson.config.iothubDeviceProvisioningService = $DeviceProvisioningService
+                    $packageJson.config.iothubSku = $iothubDetails.sku.name
+                    $packageJson.config.iothubUnitCount = $iothubDetails.sku.capacity
+                    
+                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
                 }
-                
-                $packageJson.config.iothubName = $IoTHubName
-                $packageJson.config.iothubResourceGroup = $ResourceGroup
-                $packageJson.config.iothubConnectionString = $ConnectionString
-                $packageJson.config.iothubEventHubConnectionString = $EventHubConnectionString
-                $packageJson.config.iothubDeviceProvisioningService = $DeviceProvisioningService
-                $packageJson.config.iothubSku = $iothubDetails.sku.name
-                $packageJson.config.iothubUnitCount = $iothubDetails.sku.capacity
-                
-                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update package.json: $($_.Exception.Message)"
+                }
             }
             
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
-            @"
-# Azure IoT Hub Configuration
-AZURE_IOT_HUB_NAME=$IoTHubName
-AZURE_IOT_HUB_RESOURCE_GROUP=$ResourceGroup
-AZURE_IOT_HUB_CONNECTION_STRING=$ConnectionString
-AZURE_IOT_HUB_EVENT_HUB_CONNECTION_STRING=$EventHubConnectionString
-AZURE_IOT_HUB_DEVICE_PROVISIONING_SERVICE=$DeviceProvisioningService
-AZURE_IOT_HUB_SKU=$($iothubDetails.sku.name)
-AZURE_IOT_HUB_UNIT_COUNT=$($iothubDetails.sku.capacity)
-"@ | Set-Content -Path $envPath
+            
+            # Read existing .env content if it exists
+            $existingEnvContent = @()
+            if (Test-Path -Path $envPath) {
+                $existingEnvContent = Get-Content -Path $envPath | Where-Object { 
+                    $_ -notmatch '^AZURE_IOT_HUB_' -and -not [string]::IsNullOrWhiteSpace($_) 
+                }
+            }
+            
+            # Create new IoT Hub environment variables
+            $newEnvContent = @(
+                "# Azure IoT Hub Configuration",
+                "AZURE_IOT_HUB_NAME=$IoTHubName",
+                "AZURE_IOT_HUB_RESOURCE_GROUP=$ResourceGroup",
+                "AZURE_IOT_HUB_CONNECTION_STRING=$ConnectionString",
+                "AZURE_IOT_HUB_EVENT_HUB_CONNECTION_STRING=$EventHubConnectionString",
+                "AZURE_IOT_HUB_DEVICE_PROVISIONING_SERVICE=$DeviceProvisioningService",
+                "AZURE_IOT_HUB_SKU=$($iothubDetails.sku.name)",
+                "AZURE_IOT_HUB_UNIT_COUNT=$($iothubDetails.sku.capacity)"
+            )
+            
+            # Combine existing and new content
+            $combinedContent = $existingEnvContent + "" + $newEnvContent
+            $combinedContent | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
         }
         

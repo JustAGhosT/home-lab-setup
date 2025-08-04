@@ -62,6 +62,18 @@ function Configure-CognitiveServicesEndpoints {
     try {
         Write-ColorOutput "Configuring Cognitive Services endpoints..." -ForegroundColor Cyan
         
+        # Helper function to mask sensitive keys
+        function Get-MaskedKey {
+            param([string]$Key)
+            if ([string]::IsNullOrEmpty($Key)) {
+                return "[NOT SET]"
+            }
+            if ($Key.Length -le 4) {
+                return "*" * $Key.Length
+            }
+            return "*" * ($Key.Length - 4) + $Key.Substring($Key.Length - 4)
+        }
+        
         # Get endpoint and keys if not provided
         if (-not $Endpoint) {
             $Endpoint = az cognitiveservices account show `
@@ -101,8 +113,8 @@ function Configure-CognitiveServicesEndpoints {
         Write-ColorOutput "Account: $AccountName" -ForegroundColor Gray
         Write-ColorOutput "Service Type: $ServiceType" -ForegroundColor Gray
         Write-ColorOutput "Endpoint: $Endpoint" -ForegroundColor Gray
-        Write-ColorOutput "Key 1: $Key1" -ForegroundColor Gray
-        Write-ColorOutput "Key 2: $Key2" -ForegroundColor Gray
+        Write-ColorOutput "Key 1: $(Get-MaskedKey -Key $Key1)" -ForegroundColor Gray
+        Write-ColorOutput "Key 2: $(Get-MaskedKey -Key $Key2)" -ForegroundColor Gray
         
         # Update project configuration files if project path is provided
         if ($ProjectPath -and (Test-Path -Path $ProjectPath)) {

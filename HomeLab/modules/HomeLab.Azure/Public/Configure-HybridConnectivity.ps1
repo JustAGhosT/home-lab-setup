@@ -68,6 +68,27 @@ function Configure-HybridConnectivity {
         [string]$VirtualNetwork,
         
         [Parameter(Mandatory = $false)]
+        [ValidateScript({
+                if ([string]::IsNullOrEmpty($_)) { return $true }
+                $cidrPattern = '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+                if ($_ -notmatch $cidrPattern) {
+                    throw "Invalid CIDR format. Expected format: x.x.x.x/y (e.g., 192.168.1.0/24)"
+                }
+                $parts = $_.Split('/')
+                $ip = $parts[0]
+                $mask = [int]$parts[1]
+                if ($mask -lt 0 -or $mask -gt 32) {
+                    throw "Invalid subnet mask. Must be between 0 and 32."
+                }
+                $ipParts = $ip.Split('.')
+                foreach ($part in $ipParts) {
+                    $num = [int]$part
+                    if ($num -lt 0 -or $num -gt 255) {
+                        throw "Invalid IP address. Each octet must be between 0 and 255."
+                    }
+                }
+                return $true
+            })]
         [string]$OnPremisesNetwork,
         
         [Parameter(Mandatory = $false)]
@@ -149,61 +170,81 @@ function Configure-HybridConnectivity {
             $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
             if (Test-Path -Path $appSettingsPath) {
                 Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
-                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
-                
-                if (-not $appSettings.HybridCloud) {
-                    $appSettings | Add-Member -MemberType NoteProperty -Name "HybridCloud" -Value @{}
+                try {
+                    $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                    
+                    if (-not $appSettings.HybridCloud) {
+                        $appSettings | Add-Member -MemberType NoteProperty -Name "HybridCloud" -Value @{}
+                    }
+                    
+                    $appSettings.HybridCloud.ProjectName = $ProjectName
+                    $appSettings.HybridCloud.ResourceGroup = $ResourceGroup
+                    $appSettings.HybridCloud.VirtualNetwork = $VirtualNetwork
+                    $appSettings.HybridCloud.OnPremisesNetwork = $OnPremisesNetwork
+                    $appSettings.HybridCloud.VPNGateway = $VPNGateway
+                    $appSettings.HybridCloud.LocalNetworkGateway = $LocalNetworkGateway
+                    $appSettings.HybridCloud.VPNConnection = $VPNConnection
+                    $appSettings.HybridCloud.ExpressRouteGateway = $ExpressRouteGateway
+                    $appSettings.HybridCloud.AzureBastion = $AzureBastion
+                    $appSettings.HybridCloud.DNSZone = $DNSZone
+                    $appSettings.HybridCloud.LogAnalyticsWorkspace = $LogAnalyticsWorkspace
+                    $appSettings.HybridCloud.KeyVault = $KeyVault
+                    $appSettings.HybridCloud.NetworkSecurityGroup = $NetworkSecurityGroup
+                    
+                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
                 }
-                
-                $appSettings.HybridCloud.ProjectName = $ProjectName
-                $appSettings.HybridCloud.ResourceGroup = $ResourceGroup
-                $appSettings.HybridCloud.VirtualNetwork = $VirtualNetwork
-                $appSettings.HybridCloud.OnPremisesNetwork = $OnPremisesNetwork
-                $appSettings.HybridCloud.VPNGateway = $VPNGateway
-                $appSettings.HybridCloud.LocalNetworkGateway = $LocalNetworkGateway
-                $appSettings.HybridCloud.VPNConnection = $VPNConnection
-                $appSettings.HybridCloud.ExpressRouteGateway = $ExpressRouteGateway
-                $appSettings.HybridCloud.AzureBastion = $AzureBastion
-                $appSettings.HybridCloud.DNSZone = $DNSZone
-                $appSettings.HybridCloud.LogAnalyticsWorkspace = $LogAnalyticsWorkspace
-                $appSettings.HybridCloud.KeyVault = $KeyVault
-                $appSettings.HybridCloud.NetworkSecurityGroup = $NetworkSecurityGroup
-                
-                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update appsettings.json: $($_.Exception.Message)"
+                }
             }
             
             # Update package.json for Node.js projects
             $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
             if (Test-Path -Path $packageJsonPath) {
                 Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
-                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
-                
-                if (-not $packageJson.config) {
-                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                try {
+                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                    
+                    if (-not $packageJson.config) {
+                        $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    }
+                    
+                    $packageJson.config.hybridCloudProjectName = $ProjectName
+                    $packageJson.config.hybridCloudResourceGroup = $ResourceGroup
+                    $packageJson.config.hybridCloudVirtualNetwork = $VirtualNetwork
+                    $packageJson.config.hybridCloudOnPremisesNetwork = $OnPremisesNetwork
+                    $packageJson.config.hybridCloudVPNGateway = $VPNGateway
+                    $packageJson.config.hybridCloudLocalNetworkGateway = $LocalNetworkGateway
+                    $packageJson.config.hybridCloudVPNConnection = $VPNConnection
+                    $packageJson.config.hybridCloudExpressRouteGateway = $ExpressRouteGateway
+                    $packageJson.config.hybridCloudAzureBastion = $AzureBastion
+                    $packageJson.config.hybridCloudDNSZone = $DNSZone
+                    $packageJson.config.hybridCloudLogAnalyticsWorkspace = $LogAnalyticsWorkspace
+                    $packageJson.config.hybridCloudKeyVault = $KeyVault
+                    $packageJson.config.hybridCloudNetworkSecurityGroup = $NetworkSecurityGroup
+                    
+                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
                 }
-                
-                $packageJson.config.hybridCloudProjectName = $ProjectName
-                $packageJson.config.hybridCloudResourceGroup = $ResourceGroup
-                $packageJson.config.hybridCloudVirtualNetwork = $VirtualNetwork
-                $packageJson.config.hybridCloudOnPremisesNetwork = $OnPremisesNetwork
-                $packageJson.config.hybridCloudVPNGateway = $VPNGateway
-                $packageJson.config.hybridCloudLocalNetworkGateway = $LocalNetworkGateway
-                $packageJson.config.hybridCloudVPNConnection = $VPNConnection
-                $packageJson.config.hybridCloudExpressRouteGateway = $ExpressRouteGateway
-                $packageJson.config.hybridCloudAzureBastion = $AzureBastion
-                $packageJson.config.hybridCloudDNSZone = $DNSZone
-                $packageJson.config.hybridCloudLogAnalyticsWorkspace = $LogAnalyticsWorkspace
-                $packageJson.config.hybridCloudKeyVault = $KeyVault
-                $packageJson.config.hybridCloudNetworkSecurityGroup = $NetworkSecurityGroup
-                
-                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update package.json: $($_.Exception.Message)"
+                }
             }
             
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
+            
+            if (Test-Path -Path $envPath) {
+                $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+                $backupPath = Join-Path -Path $ProjectPath -ChildPath ".env.backup.$timestamp"
+                Copy-Item -Path $envPath -Destination $backupPath
+                Write-ColorOutput "Backed up existing .env file to: $backupPath" -ForegroundColor Yellow
+            }
+            
             @"
 # Hybrid Cloud Configuration
 HYBRID_CLOUD_PROJECT_NAME=$ProjectName
@@ -224,7 +265,8 @@ HYBRID_CLOUD_NETWORK_SECURITY_GROUP=$NetworkSecurityGroup
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\hybrid-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\hybrid-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
