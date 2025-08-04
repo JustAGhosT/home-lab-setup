@@ -165,7 +165,7 @@ function Get-GitHubRepositories {
         try {
             $headers = @{
                 'Authorization' = "token $plainToken"
-                'Accept' = 'application/vnd.github.v3+json'
+                'Accept'        = 'application/vnd.github.v3+json'
             }
             
             $response = Invoke-RestMethod -Uri "https://api.github.com/user/repos" -Headers $headers -Method Get

@@ -1,19 +1,46 @@
 # Direct deployment function embedded in this file
 function Deploy-Website-Direct {
+    <#
+    .SYNOPSIS
+        Direct deployment function for Azure websites
+    .DESCRIPTION
+        Deploys websites directly to Azure using PowerShell modules
+    .PARAMETER DeploymentType
+        Type of deployment: static, appservice, or auto
+    .PARAMETER ResourceGroup
+        Azure resource group name
+    .PARAMETER Location
+        Azure location
+    .PARAMETER AppName
+        Application name
+    .PARAMETER SubscriptionId
+        Azure subscription ID
+    .PARAMETER CustomDomain
+        Custom domain name
+    .PARAMETER Subdomain
+        Subdomain name
+    .PARAMETER RepoUrl
+        GitHub repository URL
+    .PARAMETER Branch
+        Git branch name
+    .PARAMETER GitHubToken
+        GitHub personal access token as SecureString
+    .PARAMETER ProjectPath
+        Local project path
+    .PARAMETER RecursionDepth
+        Internal parameter to prevent infinite recursion
+    #>
     [CmdletBinding()]
-    param (
-        [Parameter()]
+    param(
+        [Parameter(Mandatory = $true)]
         [ValidateSet("static", "appservice", "auto")]
-        [string]$DeploymentType = "static",
-        
-        [Parameter()]
-        [string]$Subdomain,
+        [string]$DeploymentType,
         
         [Parameter(Mandatory = $true)]
         [string]$ResourceGroup,
         
-        [Parameter()]
-        [string]$Location = "westeurope",
+        [Parameter(Mandatory = $true)]
+        [string]$Location,
         
         [Parameter(Mandatory = $true)]
         [string]$AppName,
@@ -25,7 +52,7 @@ function Deploy-Website-Direct {
         [string]$CustomDomain,
         
         [Parameter()]
-        [SecureString]$GitHubToken,
+        [string]$Subdomain,
         
         [Parameter()]
         [string]$RepoUrl,
@@ -34,13 +61,24 @@ function Deploy-Website-Direct {
         [string]$Branch = "main",
         
         [Parameter()]
-        [string]$ProjectPath
+        [System.Security.SecureString]$GitHubToken,
+        
+        [Parameter()]
+        [string]$ProjectPath,
+        
+        [Parameter()]
+        [int]$RecursionDepth = 0
     )
+    
+    # Recursion guard to prevent infinite recursion
+    if ($RecursionDepth -gt 2) {
+        throw "Maximum recursion depth exceeded. Auto-detection failed to determine deployment type."
+    }
     
     Write-Host "Direct Deployment Function Ready" -ForegroundColor Green
     Write-Host "====================================" -ForegroundColor Cyan
 
-    # 1. Login to Azure if not already logged in
+    # 1. Login to Azure if not already logged in (using Azure PowerShell only)
     try {
         $context = Get-AzContext -ErrorAction Stop
         if (-not $context) {
@@ -57,7 +95,7 @@ function Deploy-Website-Direct {
         Connect-AzAccount -ErrorAction Stop
     }
 
-    # 2. Set the subscription context
+    # 2. Set the subscription context (using Azure PowerShell only)
     try {
         Write-Host "Setting Azure subscription context to: $SubscriptionId" -ForegroundColor Yellow
         Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
@@ -68,7 +106,7 @@ function Deploy-Website-Direct {
         throw "Failed to set subscription context."
     }
 
-    # 3. Check if resource group exists and create if necessary
+    # 3. Check if resource group exists and create if necessary (using Azure PowerShell only)
     try {
         $resourceGroupExists = Get-AzResourceGroup -Name $ResourceGroup -ErrorAction SilentlyContinue
         if (-not $resourceGroupExists) {
@@ -105,7 +143,7 @@ function Deploy-Website-Direct {
                 $staticWebAppParams.RepositoryUrl = $RepoUrl
                 $staticWebAppParams.RepositoryBranch = $Branch
                 
-                # Convert SecureString to plain text for API call
+                # Convert SecureString to plain text for API call with proper memory cleanup
                 if ($GitHubToken) {
                     $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($GitHubToken)
                     try {
@@ -113,7 +151,12 @@ function Deploy-Website-Direct {
                         $staticWebAppParams.RepositoryToken = $plainTextToken
                     }
                     finally {
+                        # Clear plain text from memory immediately
+                        if ($plainTextToken) {
+                            $plainTextToken = $null
+                        }
                         [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+                        [System.GC]::Collect()
                     }
                 }
             }
@@ -202,28 +245,30 @@ function Deploy-Website-Direct {
                 
                 # Step 1: Check for Node.js frameworks
                 $currentStep++
-                Write-Host "`nStep $currentStep/$analysisSteps: Checking for Node.js frameworks..." -ForegroundColor Cyan
-                $isServerSide = $false
+                Write-Host ("`nStep {0}/{1}: Checking for Node.js frameworks..." -f $currentStep, $analysisSteps) -ForegroundColor Cyan
                 
+                $isServerSide = $false
                 if (Test-Path -Path "$ProjectPath\package.json") {
-                    try {
-                        $packageJsonContent = Get-Content -Path "$ProjectPath\package.json" -Raw -ErrorAction Stop
-                        $packageJson = ConvertFrom-Json $packageJsonContent -ErrorAction Stop
+                    $packageJson = Get-Content -Path "$ProjectPath\package.json" | ConvertFrom-Json
+                    if ($packageJson.dependencies -or $packageJson.devDependencies) {
+                        # Check for server-side frameworks
+                        $serverFrameworks = @("express", "koa", "fastify", "hapi", "restify", "adonis", "strapi", "next", "nuxt")
+                        $hasServerFramework = $false
                         
-                        if ($packageJson.dependencies -and
-                            ($packageJson.dependencies.express -or
-                            $packageJson.dependencies.koa -or
-                            $packageJson.dependencies.fastify -or
-                            $packageJson.dependencies.hapi)) {
+                        foreach ($framework in $serverFrameworks) {
+                            if ($packageJson.dependencies[$framework] -or $packageJson.devDependencies[$framework]) {
+                                $hasServerFramework = $true
+                                break
+                            }
+                        }
+                        
+                        if ($hasServerFramework) {
                             $isServerSide = $true
                             Write-Host "[OK] Detected Node.js server framework - will use App Service." -ForegroundColor Green
                         }
                         else {
-                            Write-Host "[OK] No server-side Node.js framework detected." -ForegroundColor Gray
+                            Write-Host "[OK] Node.js project detected but no server framework found." -ForegroundColor Gray
                         }
-                    }
-                    catch {
-                        Write-Host "[WARN] Warning: Error analyzing package.json: $($_.Exception.Message)" -ForegroundColor Yellow
                     }
                 }
                 else {
@@ -232,7 +277,7 @@ function Deploy-Website-Direct {
                 
                 # Step 2: Check for Python frameworks
                 $currentStep++
-                Write-Host "`nStep $currentStep/$analysisSteps: Checking for Python frameworks..." -ForegroundColor Cyan
+                Write-Host ("`nStep {0}/{1}: Checking for Python frameworks..." -f $currentStep, $analysisSteps) -ForegroundColor Cyan
                 
                 if ((Test-Path -Path "$ProjectPath\requirements.txt") -or
                     (Test-Path -Path "$ProjectPath\Pipfile") -or
@@ -253,7 +298,7 @@ function Deploy-Website-Direct {
                 
                 # Step 3: Check for .NET frameworks
                 $currentStep++
-                Write-Host "`nStep $currentStep/$analysisSteps: Checking for .NET frameworks..." -ForegroundColor Cyan
+                Write-Host ("`nStep {0}/{1}: Checking for .NET frameworks..." -f $currentStep, $analysisSteps) -ForegroundColor Cyan
                 
                 if ((Get-ChildItem -Path $ProjectPath -Filter "*.csproj" -Recurse) -or
                     (Test-Path -Path "$ProjectPath\Program.cs") -or
@@ -267,7 +312,7 @@ function Deploy-Website-Direct {
                 
                 # Step 4: Check for static site indicators
                 $currentStep++
-                Write-Host "`nStep $currentStep/$analysisSteps: Checking for static site files..." -ForegroundColor Cyan
+                Write-Host ("`nStep {0}/{1}: Checking for static site files..." -f $currentStep, $analysisSteps) -ForegroundColor Cyan
                 
                 $isStaticSite = $false
                 if ((Test-Path -Path "$ProjectPath\index.html") -or
@@ -299,14 +344,14 @@ function Deploy-Website-Direct {
                 Write-Host "`nAuto-detection complete. Using deployment type: $detectedType" -ForegroundColor Green
                 Write-Host "Proceeding with deployment..." -ForegroundColor Cyan
                 
-                # Call this function recursively with the detected type
-                return Deploy-Website-Direct -DeploymentType $detectedType -ResourceGroup $ResourceGroup -Location $Location -AppName $AppName -SubscriptionId $SubscriptionId -CustomDomain $CustomDomain -Subdomain $Subdomain -RepoUrl $RepoUrl -Branch $Branch -GitHubToken $GitHubToken -ProjectPath $ProjectPath
+                # Call this function recursively with the detected type and increased recursion depth
+                return Deploy-Website-Direct -DeploymentType $detectedType -ResourceGroup $ResourceGroup -Location $Location -AppName $AppName -SubscriptionId $SubscriptionId -CustomDomain $CustomDomain -Subdomain $Subdomain -RepoUrl $RepoUrl -Branch $Branch -GitHubToken $GitHubToken -ProjectPath $ProjectPath -RecursionDepth ($RecursionDepth + 1)
             }
             elseif ($RepoUrl) {
                 # For GitHub repos, we'll default to static for now
                 # In a production environment, you'd want to clone the repo and analyze it
                 Write-Host "GitHub repository provided but no local path for analysis - defaulting to Static Web App." -ForegroundColor Yellow
-                return Deploy-Website-Direct -DeploymentType "static" -ResourceGroup $ResourceGroup -Location $Location -AppName $AppName -SubscriptionId $SubscriptionId -CustomDomain $CustomDomain -Subdomain $Subdomain -RepoUrl $RepoUrl -Branch $Branch -GitHubToken $GitHubToken
+                return Deploy-Website-Direct -DeploymentType "static" -ResourceGroup $ResourceGroup -Location $Location -AppName $AppName -SubscriptionId $SubscriptionId -CustomDomain $CustomDomain -Subdomain $Subdomain -RepoUrl $RepoUrl -Branch $Branch -GitHubToken $GitHubToken -RecursionDepth ($RecursionDepth + 1)
             }
             else {
                 throw "Project path or GitHub repository required for auto-detection."
