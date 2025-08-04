@@ -1,0 +1,241 @@
+function Configure-IoTEdgeModules {
+    <#
+    .SYNOPSIS
+        Configures IoT Edge modules and settings.
+    
+    .DESCRIPTION
+        Configures modules and settings for IoT Edge deployments,
+        including updating application configuration files.
+    
+    .PARAMETER ResourceGroup
+        The resource group name.
+    
+    .PARAMETER IoTHubName
+        The IoT Hub name.
+    
+    .PARAMETER EdgeDeviceName
+        The edge device name.
+    
+    .PARAMETER DeviceConnectionString
+        The device connection string.
+    
+    .PARAMETER DeploymentName
+        The deployment name.
+    
+    .PARAMETER ContainerRegistryName
+        The container registry name.
+    
+    .PARAMETER ContainerRegistryLoginServer
+        The container registry login server.
+    
+    .PARAMETER LogAnalyticsWorkspace
+        The Log Analytics workspace name.
+    
+    .PARAMETER ProjectPath
+        The path to the project to configure.
+    
+    .EXAMPLE
+        Configure-IoTEdgeModules -ResourceGroup "my-rg" -IoTHubName "my-iothub" -EdgeDeviceName "my-edge-device"
+    
+    .NOTES
+        Author: HomeLab Team
+        Date: March 2025
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceGroup,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$IoTHubName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$EdgeDeviceName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$DeviceConnectionString,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$DeploymentName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ContainerRegistryName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ContainerRegistryLoginServer,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$LogAnalyticsWorkspace,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ProjectPath
+    )
+    
+    try {
+        Write-ColorOutput "Configuring IoT Edge modules..." -ForegroundColor Cyan
+        
+        # Get device connection string if not provided
+        if (-not $DeviceConnectionString) {
+            $DeviceConnectionString = az iot hub device-identity connection-string show `
+                --hub-name $IoTHubName `
+                --device-id $EdgeDeviceName `
+                --query connectionString `
+                --output tsv
+        }
+        
+        # Get device details
+        $deviceDetails = az iot hub device-identity show `
+            --hub-name $IoTHubName `
+            --device-id $EdgeDeviceName `
+            --output json | ConvertFrom-Json
+        
+        # Get deployment details if not provided
+        if (-not $DeploymentName) {
+            $deployments = az iot edge deployment list `
+                --hub-name $IoTHubName `
+                --output json | ConvertFrom-Json
+            
+            if ($deployments.Count -gt 0) {
+                $DeploymentName = $deployments[0].id
+            }
+        }
+        
+        # Get container registry details if not provided
+        if ($ContainerRegistryName -and -not $ContainerRegistryLoginServer) {
+            $ContainerRegistryLoginServer = az acr show `
+                --name $ContainerRegistryName `
+                --resource-group $ResourceGroup `
+                --query loginServer `
+                --output tsv
+        }
+        
+        # Get Log Analytics workspace details if not provided
+        if (-not $LogAnalyticsWorkspace) {
+            $workspaces = az monitor log-analytics workspace list `
+                --resource-group $ResourceGroup `
+                --output json | ConvertFrom-Json
+            
+            if ($workspaces.Count -gt 0) {
+                $LogAnalyticsWorkspace = $workspaces[0].name
+            }
+        }
+        
+        # Display connection information
+        Write-ColorOutput "`nIoT Edge Device Information:" -ForegroundColor Green
+        Write-ColorOutput "IoT Hub Name: $IoTHubName" -ForegroundColor Gray
+        Write-ColorOutput "Edge Device Name: $EdgeDeviceName" -ForegroundColor Gray
+        Write-ColorOutput "Device Connection String: $DeviceConnectionString" -ForegroundColor Gray
+        Write-ColorOutput "Device ID: $($deviceDetails.deviceId)" -ForegroundColor Gray
+        Write-ColorOutput "Device Status: $($deviceDetails.status)" -ForegroundColor Gray
+        Write-ColorOutput "Deployment Name: $DeploymentName" -ForegroundColor Gray
+        
+        if ($ContainerRegistryName) {
+            Write-ColorOutput "Container Registry: $ContainerRegistryName" -ForegroundColor Gray
+            Write-ColorOutput "ACR Login Server: $ContainerRegistryLoginServer" -ForegroundColor Gray
+        }
+        
+        if ($LogAnalyticsWorkspace) {
+            Write-ColorOutput "Log Analytics Workspace: $LogAnalyticsWorkspace" -ForegroundColor Gray
+        }
+        
+        # Update project configuration files if project path is provided
+        if ($ProjectPath -and (Test-Path -Path $ProjectPath)) {
+            Write-ColorOutput "`nUpdating project configuration files..." -ForegroundColor Yellow
+            
+            # Update appsettings.json for .NET projects
+            $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
+            if (Test-Path -Path $appSettingsPath) {
+                Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
+                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                
+                if (-not $appSettings.IoTEdge) {
+                    $appSettings | Add-Member -MemberType NoteProperty -Name "IoTEdge" -Value @{}
+                }
+                
+                $appSettings.IoTEdge.IoTHubName = $IoTHubName
+                $appSettings.IoTEdge.EdgeDeviceName = $EdgeDeviceName
+                $appSettings.IoTEdge.DeviceConnectionString = $DeviceConnectionString
+                $appSettings.IoTEdge.DeploymentName = $DeploymentName
+                $appSettings.IoTEdge.ContainerRegistryName = $ContainerRegistryName
+                $appSettings.IoTEdge.ContainerRegistryLoginServer = $ContainerRegistryLoginServer
+                $appSettings.IoTEdge.LogAnalyticsWorkspace = $LogAnalyticsWorkspace
+                $appSettings.IoTEdge.DeviceId = $deviceDetails.deviceId
+                $appSettings.IoTEdge.DeviceStatus = $deviceDetails.status
+                
+                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+            }
+            
+            # Update package.json for Node.js projects
+            $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
+            if (Test-Path -Path $packageJsonPath) {
+                Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
+                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                
+                if (-not $packageJson.config) {
+                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                }
+                
+                $packageJson.config.iotEdgeIoTHubName = $IoTHubName
+                $packageJson.config.iotEdgeDeviceName = $EdgeDeviceName
+                $packageJson.config.iotEdgeDeviceConnectionString = $DeviceConnectionString
+                $packageJson.config.iotEdgeDeploymentName = $DeploymentName
+                $packageJson.config.iotEdgeContainerRegistryName = $ContainerRegistryName
+                $packageJson.config.iotEdgeContainerRegistryLoginServer = $ContainerRegistryLoginServer
+                $packageJson.config.iotEdgeLogAnalyticsWorkspace = $LogAnalyticsWorkspace
+                $packageJson.config.iotEdgeDeviceId = $deviceDetails.deviceId
+                $packageJson.config.iotEdgeDeviceStatus = $deviceDetails.status
+                
+                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+            }
+            
+            # Create .env file for environment variables
+            $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
+            Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
+            @"
+# Azure IoT Edge Configuration
+AZURE_IOT_EDGE_IOT_HUB_NAME=$IoTHubName
+AZURE_IOT_EDGE_DEVICE_NAME=$EdgeDeviceName
+AZURE_IOT_EDGE_DEVICE_CONNECTION_STRING=$DeviceConnectionString
+AZURE_IOT_EDGE_DEPLOYMENT_NAME=$DeploymentName
+AZURE_IOT_EDGE_CONTAINER_REGISTRY_NAME=$ContainerRegistryName
+AZURE_IOT_EDGE_CONTAINER_REGISTRY_LOGIN_SERVER=$ContainerRegistryLoginServer
+AZURE_IOT_EDGE_LOG_ANALYTICS_WORKSPACE=$LogAnalyticsWorkspace
+AZURE_IOT_EDGE_DEVICE_ID=$($deviceDetails.deviceId)
+AZURE_IOT_EDGE_DEVICE_STATUS=$($deviceDetails.status)
+"@ | Set-Content -Path $envPath
+            Write-ColorOutput "Created .env file" -ForegroundColor Green
+        }
+        
+        # Save connection information to a configuration file
+        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\iotedge-connections.json"
+        $configDir = Split-Path -Path $configPath -Parent
+        if (-not (Test-Path -Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        }
+        
+        $connectionConfig = @{
+            ResourceGroup                = $ResourceGroup
+            IoTHubName                   = $IoTHubName
+            EdgeDeviceName               = $EdgeDeviceName
+            DeviceConnectionString       = $DeviceConnectionString
+            DeploymentName               = $DeploymentName
+            ContainerRegistryName        = $ContainerRegistryName
+            ContainerRegistryLoginServer = $ContainerRegistryLoginServer
+            LogAnalyticsWorkspace        = $LogAnalyticsWorkspace
+            DeviceId                     = $deviceDetails.deviceId
+            DeviceStatus                 = $deviceDetails.status
+            CreatedAt                    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        }
+        
+        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
+        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        
+        Write-ColorOutput "`nIoT Edge modules configuration completed successfully!" -ForegroundColor Green
+    }
+    catch {
+        Write-ColorOutput "Error configuring IoT Edge modules: $_" -ForegroundColor Red
+        throw
+    }
+} 

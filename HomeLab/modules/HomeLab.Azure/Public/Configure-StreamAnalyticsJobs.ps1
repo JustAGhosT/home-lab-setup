@@ -1,0 +1,222 @@
+function Configure-StreamAnalyticsJobs {
+    <#
+    .SYNOPSIS
+        Configures Stream Analytics jobs and settings.
+    
+    .DESCRIPTION
+        Configures jobs and settings for Stream Analytics deployments,
+        including updating application configuration files.
+    
+    .PARAMETER ResourceGroup
+        The resource group name.
+    
+    .PARAMETER JobName
+        The Stream Analytics job name.
+    
+    .PARAMETER JobId
+        The job ID.
+    
+    .PARAMETER JobStatus
+        The job status.
+    
+    .PARAMETER InputType
+        The input type.
+    
+    .PARAMETER InputName
+        The input name.
+    
+    .PARAMETER OutputType
+        The output type.
+    
+    .PARAMETER OutputName
+        The output name.
+    
+    .PARAMETER ProjectPath
+        The path to the project to configure.
+    
+    .EXAMPLE
+        Configure-StreamAnalyticsJobs -ResourceGroup "my-rg" -JobName "my-stream-job"
+    
+    .NOTES
+        Author: HomeLab Team
+        Date: March 2025
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceGroup,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$JobName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$JobId,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$JobStatus,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$InputType,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$InputName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$OutputType,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$OutputName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ProjectPath
+    )
+    
+    try {
+        Write-ColorOutput "Configuring Stream Analytics jobs..." -ForegroundColor Cyan
+        
+        # Get job details if not provided
+        if (-not $JobId -or -not $JobStatus) {
+            $jobDetails = az stream-analytics job show `
+                --name $JobName `
+                --resource-group $ResourceGroup `
+                --output json | ConvertFrom-Json
+            
+            if (-not $JobId) {
+                $JobId = $jobDetails.id
+            }
+            
+            if (-not $JobStatus) {
+                $JobStatus = $jobDetails.properties.jobState
+            }
+        }
+        
+        # Get input and output details if not provided
+        if (-not $InputName -or -not $OutputName) {
+            $inputs = az stream-analytics input list `
+                --job-name $JobName `
+                --resource-group $ResourceGroup `
+                --output json | ConvertFrom-Json
+            
+            $outputs = az stream-analytics output list `
+                --job-name $JobName `
+                --resource-group $ResourceGroup `
+                --output json | ConvertFrom-Json
+            
+            if (-not $InputName -and $inputs.Count -gt 0) {
+                $InputName = $inputs[0].name
+                $InputType = $inputs[0].properties.datasource.type
+            }
+            
+            if (-not $OutputName -and $outputs.Count -gt 0) {
+                $OutputName = $outputs[0].name
+                $OutputType = $outputs[0].properties.datasource.type
+            }
+        }
+        
+        # Display connection information
+        Write-ColorOutput "`nStream Analytics Job Information:" -ForegroundColor Green
+        Write-ColorOutput "Job Name: $JobName" -ForegroundColor Gray
+        Write-ColorOutput "Job ID: $JobId" -ForegroundColor Gray
+        Write-ColorOutput "Job Status: $JobStatus" -ForegroundColor Gray
+        if ($InputName) {
+            Write-ColorOutput "Input Name: $InputName" -ForegroundColor Gray
+            Write-ColorOutput "Input Type: $InputType" -ForegroundColor Gray
+        }
+        if ($OutputName) {
+            Write-ColorOutput "Output Name: $OutputName" -ForegroundColor Gray
+            Write-ColorOutput "Output Type: $OutputType" -ForegroundColor Gray
+        }
+        
+        # Update project configuration files if project path is provided
+        if ($ProjectPath -and (Test-Path -Path $ProjectPath)) {
+            Write-ColorOutput "`nUpdating project configuration files..." -ForegroundColor Yellow
+            
+            # Update appsettings.json for .NET projects
+            $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
+            if (Test-Path -Path $appSettingsPath) {
+                Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
+                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                
+                if (-not $appSettings.StreamAnalytics) {
+                    $appSettings | Add-Member -MemberType NoteProperty -Name "StreamAnalytics" -Value @{}
+                }
+                
+                $appSettings.StreamAnalytics.JobName = $JobName
+                $appSettings.StreamAnalytics.JobId = $JobId
+                $appSettings.StreamAnalytics.JobStatus = $JobStatus
+                $appSettings.StreamAnalytics.InputName = $InputName
+                $appSettings.StreamAnalytics.InputType = $InputType
+                $appSettings.StreamAnalytics.OutputName = $OutputName
+                $appSettings.StreamAnalytics.OutputType = $OutputType
+                
+                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+            }
+            
+            # Update package.json for Node.js projects
+            $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
+            if (Test-Path -Path $packageJsonPath) {
+                Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
+                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                
+                if (-not $packageJson.config) {
+                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                }
+                
+                $packageJson.config.streamAnalyticsJobName = $JobName
+                $packageJson.config.streamAnalyticsJobId = $JobId
+                $packageJson.config.streamAnalyticsJobStatus = $JobStatus
+                $packageJson.config.streamAnalyticsInputName = $InputName
+                $packageJson.config.streamAnalyticsInputType = $InputType
+                $packageJson.config.streamAnalyticsOutputName = $OutputName
+                $packageJson.config.streamAnalyticsOutputType = $OutputType
+                
+                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+            }
+            
+            # Create .env file for environment variables
+            $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
+            Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
+            @"
+# Azure Stream Analytics Configuration
+AZURE_STREAM_ANALYTICS_JOB_NAME=$JobName
+AZURE_STREAM_ANALYTICS_JOB_ID=$JobId
+AZURE_STREAM_ANALYTICS_JOB_STATUS=$JobStatus
+AZURE_STREAM_ANALYTICS_INPUT_NAME=$InputName
+AZURE_STREAM_ANALYTICS_INPUT_TYPE=$InputType
+AZURE_STREAM_ANALYTICS_OUTPUT_NAME=$OutputName
+AZURE_STREAM_ANALYTICS_OUTPUT_TYPE=$OutputType
+"@ | Set-Content -Path $envPath
+            Write-ColorOutput "Created .env file" -ForegroundColor Green
+        }
+        
+        # Save connection information to a configuration file
+        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\stream-analytics-connections.json"
+        $configDir = Split-Path -Path $configPath -Parent
+        if (-not (Test-Path -Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        }
+        
+        $connectionConfig = @{
+            ResourceGroup = $ResourceGroup
+            JobName       = $JobName
+            JobId         = $JobId
+            JobStatus     = $JobStatus
+            InputName     = $InputName
+            InputType     = $InputType
+            OutputName    = $OutputName
+            OutputType    = $OutputType
+            CreatedAt     = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        }
+        
+        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
+        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        
+        Write-ColorOutput "`nStream Analytics job configuration completed successfully!" -ForegroundColor Green
+    }
+    catch {
+        Write-ColorOutput "Error configuring Stream Analytics jobs: $_" -ForegroundColor Red
+        throw
+    }
+} 
