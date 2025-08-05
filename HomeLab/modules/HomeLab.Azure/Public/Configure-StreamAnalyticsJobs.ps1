@@ -168,6 +168,7 @@ function Configure-StreamAnalyticsJobs {
                     
                     $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
                     Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: appsettings.json contains Stream Analytics configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -196,6 +197,7 @@ function Configure-StreamAnalyticsJobs {
                     
                     $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
                     Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: package.json contains Stream Analytics configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -229,12 +231,30 @@ function Configure-StreamAnalyticsJobs {
             
             # Combine existing and new content
             $combinedContent = $existingEnvContent + "" + $newEnvContent
-            $combinedContent | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+            try {
+                $combinedContent | Set-Content -Path $envPath -ErrorAction Stop
+                Write-ColorOutput "Created .env file" -ForegroundColor Green
+            
+                # Security warning for .env file
+                Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+                Write-ColorOutput "The .env file contains Stream Analytics configuration data." -ForegroundColor Yellow
+                Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+                Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+                Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+                Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+                Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+                Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
+            }
+            catch {
+                Write-ColorOutput "Error creating .env file: $($_.Exception.Message)" -ForegroundColor Red
+                Write-ColorOutput "This may be due to file permissions or disk space issues." -ForegroundColor Yellow
+                throw "Failed to create .env file: $($_.Exception.Message)"
+            }
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\stream-analytics-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\stream-analytics-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
@@ -252,8 +272,15 @@ function Configure-StreamAnalyticsJobs {
             CreatedAt     = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        try {
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath -ErrorAction Stop
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains Stream Analytics configuration data - ensure file is protected" -ForegroundColor Yellow
+        }
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nStream Analytics job configuration completed successfully!" -ForegroundColor Green
     }

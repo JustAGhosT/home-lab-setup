@@ -84,6 +84,13 @@ function Deploy-Website-Direct {
         if (-not $context) {
             Write-Host "Not logged in to Azure. Please login." -ForegroundColor Yellow
             Connect-AzAccount -ErrorAction Stop
+            
+            # Verify login was successful
+            $context = Get-AzContext -ErrorAction Stop
+            if (-not $context) {
+                throw "Failed to authenticate with Azure after login attempt."
+            }
+            Write-Host "Successfully logged in as $($context.Account.Id)" -ForegroundColor Green
         }
         else {
             Write-Host "Already logged in as $($context.Account.Id)" -ForegroundColor Green
@@ -93,17 +100,30 @@ function Deploy-Website-Direct {
         Write-Host "Error checking Azure login status: $($_.Exception.Message)" -ForegroundColor Red
         Write-Host "Please login to Azure." -ForegroundColor Yellow
         Connect-AzAccount -ErrorAction Stop
+        
+        # Verify login was successful after error
+        $context = Get-AzContext -ErrorAction Stop
+        if (-not $context) {
+            throw "Failed to authenticate with Azure. Please ensure you have valid credentials."
+        }
+        Write-Host "Successfully logged in as $($context.Account.Id)" -ForegroundColor Green
     }
 
     # 2. Set the subscription context (using Azure PowerShell only)
     try {
         Write-Host "Setting Azure subscription context to: $SubscriptionId" -ForegroundColor Yellow
-        Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
-        Write-Host "Subscription context set successfully." -ForegroundColor Green
+        $subscriptionContext = Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
+        
+        # Verify subscription context was set correctly
+        if ($subscriptionContext.Subscription.Id -ne $SubscriptionId) {
+            throw "Failed to set subscription context. Expected: $SubscriptionId, Got: $($subscriptionContext.Subscription.Id)"
+        }
+        
+        Write-Host "Subscription context set successfully to: $($subscriptionContext.Subscription.Name) ($($subscriptionContext.Subscription.Id))" -ForegroundColor Green
     }
     catch {
         Write-Host "Error setting subscription context: $($_.Exception.Message)" -ForegroundColor Red
-        throw "Failed to set subscription context."
+        throw "Failed to set subscription context. Please ensure the subscription ID is correct and you have access to it."
     }
 
     # 3. Check if resource group exists and create if necessary (using Azure PowerShell only)

@@ -79,7 +79,13 @@ function Configure-CDNEndpoints {
             if (Test-Path -Path $appSettingsPath) {
                 Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
                 try {
-                    $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                    # Read and parse JSON with error handling
+                    $appSettingsContent = Get-Content -Path $appSettingsPath -Raw -ErrorAction Stop
+                    if ([string]::IsNullOrWhiteSpace($appSettingsContent)) {
+                        throw "appsettings.json file is empty or contains only whitespace"
+                    }
+                    
+                    $appSettings = $appSettingsContent | ConvertFrom-Json -ErrorAction Stop
                     
                     if (-not $appSettings.CDN) {
                         $appSettings | Add-Member -MemberType NoteProperty -Name "CDN" -Value @{}
@@ -90,11 +96,14 @@ function Configure-CDNEndpoints {
                     $appSettings.CDN.Url = $CdnUrl
                     $appSettings.CDN.OriginHostName = $OriginHostName
                     
-                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    # Convert back to JSON and write with error handling
+                    $updatedJson = $appSettings | ConvertTo-Json -Depth 10 -ErrorAction Stop
+                    Set-Content -Path $appSettingsPath -Value $updatedJson -ErrorAction Stop
                     Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
                 }
                 catch {
                     Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
+                    Write-ColorOutput "This may be due to malformed JSON, file permissions, or disk space issues." -ForegroundColor Yellow
                     throw "Failed to update appsettings.json: $($_.Exception.Message)"
                 }
             }
@@ -104,7 +113,13 @@ function Configure-CDNEndpoints {
             if (Test-Path -Path $packageJsonPath) {
                 Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
                 try {
-                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                    # Read and parse JSON with error handling
+                    $packageJsonContent = Get-Content -Path $packageJsonPath -Raw -ErrorAction Stop
+                    if ([string]::IsNullOrWhiteSpace($packageJsonContent)) {
+                        throw "package.json file is empty or contains only whitespace"
+                    }
+                    
+                    $packageJson = $packageJsonContent | ConvertFrom-Json -ErrorAction Stop
                     
                     if (-not $packageJson.config) {
                         $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
@@ -115,11 +130,14 @@ function Configure-CDNEndpoints {
                     $packageJson.config.cdnUrl = $CdnUrl
                     $packageJson.config.cdnOriginHostName = $OriginHostName
                     
-                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    # Convert back to JSON and write with error handling
+                    $updatedJson = $packageJson | ConvertTo-Json -Depth 10 -ErrorAction Stop
+                    Set-Content -Path $packageJsonPath -Value $updatedJson -ErrorAction Stop
                     Write-ColorOutput "Updated package.json" -ForegroundColor Green
                 }
                 catch {
                     Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
+                    Write-ColorOutput "This may be due to malformed JSON, file permissions, or disk space issues." -ForegroundColor Yellow
                     throw "Failed to update package.json: $($_.Exception.Message)"
                 }
             }
@@ -127,14 +145,30 @@ function Configure-CDNEndpoints {
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
-            @"
+            try { @"
 # Azure CDN Configuration
 AZURE_CDN_PROFILE_NAME=$CdnProfileName
 AZURE_CDN_ENDPOINT_NAME=$CdnEndpointName
 AZURE_CDN_URL=$CdnUrl
 AZURE_CDN_ORIGIN_HOST_NAME=$OriginHostName
-"@ | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+"@ | Set-Content -Path $envPath -ErrorAction Stop
+                Write-ColorOutput "Created .env file" -ForegroundColor Green
+                
+                # Security warning for .env file
+                Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+                Write-ColorOutput "The .env file contains sensitive Azure CDN configuration data." -ForegroundColor Yellow
+                Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+                Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+                Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+                Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+                Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+                Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
+            }
+            catch {
+                Write-ColorOutput "Error creating .env file: $($_.Exception.Message)" -ForegroundColor Red
+                Write-ColorOutput "This may be due to file permissions or disk space issues." -ForegroundColor Yellow
+                throw "Failed to create .env file: $($_.Exception.Message)"
+            }
         }
         
         # Save connection information to a configuration file
@@ -145,12 +179,12 @@ AZURE_CDN_ORIGIN_HOST_NAME=$OriginHostName
         }
         
         $connectionConfig = @{
-            ResourceGroup   = $ResourceGroup
-            CdnProfileName  = $CdnProfileName
+            ResourceGroup = $ResourceGroup
+            CdnProfileName = $CdnProfileName
             CdnEndpointName = $CdnEndpointName
-            CdnUrl          = $CdnUrl
-            OriginHostName  = $OriginHostName
-            CreatedAt       = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            CdnUrl = $CdnUrl
+            OriginHostName = $OriginHostName
+            CreatedAt = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
         try {

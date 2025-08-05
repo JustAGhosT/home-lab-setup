@@ -56,6 +56,18 @@ function Configure-SQLDatabaseConnections {
     try {
         Write-ColorOutput "Configuring SQL Database connections..." -ForegroundColor Cyan
         
+        # Helper function to mask sensitive connection strings
+        function Get-MaskedConnectionString {
+            param([string]$ConnectionString)
+            if ([string]::IsNullOrEmpty($ConnectionString)) {
+                return "[NOT SET]"
+            }
+            if ($ConnectionString.Length -le 8) {
+                return "*" * $ConnectionString.Length
+            }
+            return "*" * ($ConnectionString.Length - 8) + $ConnectionString.Substring($ConnectionString.Length - 8)
+        }
+        
         # Convert SecureString to plain text
         $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($AdminPassword)
         $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
@@ -73,7 +85,7 @@ function Configure-SQLDatabaseConnections {
         Write-ColorOutput "Server: $ServerName.database.windows.net" -ForegroundColor Gray
         Write-ColorOutput "Database: $DatabaseName" -ForegroundColor Gray
         Write-ColorOutput "Username: $AdminUsername" -ForegroundColor Gray
-        Write-ColorOutput "Connection String: $connectionString" -ForegroundColor Gray
+        Write-ColorOutput "Connection String: $(Get-MaskedConnectionString $connectionString)" -ForegroundColor Gray
         
         # Update project configuration files if project path is provided
         if ($ProjectPath -and (Test-Path -Path $ProjectPath)) {
@@ -83,16 +95,23 @@ function Configure-SQLDatabaseConnections {
             $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
             if (Test-Path -Path $appSettingsPath) {
                 Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
-                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                try {
+                    $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
                 
-                if (-not $appSettings.ConnectionStrings) {
-                    $appSettings | Add-Member -MemberType NoteProperty -Name "ConnectionStrings" -Value @{}
+                    if (-not $appSettings.ConnectionStrings) {
+                        $appSettings | Add-Member -MemberType NoteProperty -Name "ConnectionStrings" -Value @{}
+                    }
+                
+                    $appSettings.ConnectionStrings.DefaultConnection = $connectionString
+                
+                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive SQL connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
-                
-                $appSettings.ConnectionStrings.DefaultConnection = $connectionString
-                
-                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update appsettings.json: $($_.Exception.Message)"
+                }
             }
             
             # Update web.config for .NET Framework projects
@@ -128,22 +147,30 @@ function Configure-SQLDatabaseConnections {
                 
                 $webConfig.Save($webConfigPath)
                 Write-ColorOutput "Updated web.config" -ForegroundColor Green
+                Write-ColorOutput "⚠️  Note: web.config contains sensitive SQL connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
             }
             
             # Update package.json for Node.js projects
             $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
             if (Test-Path -Path $packageJsonPath) {
                 Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
-                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                try {
+                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
                 
-                if (-not $packageJson.config) {
-                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    if (-not $packageJson.config) {
+                        $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    }
+                
+                    $packageJson.config.sqlConnectionString = $connectionString
+                
+                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: package.json contains sensitive SQL connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
-                
-                $packageJson.config.sqlConnectionString = $connectionString
-                
-                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update package.json: $($_.Exception.Message)"
+                }
             }
             
             # Create .env file for environment variables
@@ -151,10 +178,14 @@ function Configure-SQLDatabaseConnections {
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
             
             # Security warning for sensitive data
-            Write-ColorOutput "`n⚠️  SECURITY WARNING:" -ForegroundColor Yellow
-            Write-ColorOutput "The .env file will contain sensitive connection information." -ForegroundColor Yellow
-            Write-ColorOutput "For production environments, consider using Azure Key Vault for secure storage." -ForegroundColor Yellow
-            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits." -ForegroundColor Yellow
+            Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+            Write-ColorOutput "The .env file contains sensitive SQL Database connection strings." -ForegroundColor Yellow
+            Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+            Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+            Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+            Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+            Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+            Write-ColorOutput "  • For production, use Azure Key Vault to store sensitive credentials" -ForegroundColor Yellow
             
             @"
 # SQL Database Configuration
@@ -170,7 +201,8 @@ SQL_USERNAME=$AdminUsername
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\sql-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\sql-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
@@ -185,8 +217,15 @@ SQL_USERNAME=$AdminUsername
             CreatedAt        = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        try {
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath -ErrorAction Stop
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains sensitive SQL connection strings - ensure file is protected" -ForegroundColor Yellow
+        }
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nSQL Database connection configuration completed successfully!" -ForegroundColor Green
     }

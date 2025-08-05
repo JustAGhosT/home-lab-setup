@@ -375,27 +375,27 @@ try {
     
     switch ($Platform) {
         "Azure" {
-            Deploy-Azure @deployParams
+            $deploymentResult = Deploy-Azure @deployParams
         }
         "Vercel" {
-            Deploy-Vercel @deployParams
+            $deploymentResult = Deploy-Vercel @deployParams
         }
         "Netlify" {
-            Deploy-Netlify @deployParams
+            $deploymentResult = Deploy-Netlify @deployParams
         }
         "AWS" {
-            Deploy-AWS @deployParams
+            $deploymentResult = Deploy-AWS @deployParams
         }
         "GoogleCloud" {
-            Deploy-GoogleCloud @deployParams
+            $deploymentResult = Deploy-GoogleCloud @deployParams
         }
     }
     
     Write-Host "`nDeployment completed successfully!" -ForegroundColor Green
     Write-Host "You can now access your website at:" -ForegroundColor Cyan
     
-    # Generate appropriate URL based on platform
-    $deploymentUrl = Get-PlatformDeploymentUrl -Platform $Platform -AppName $AppName -DeploymentResult $deployParams
+    # Generate appropriate URL based on platform using actual deployment result
+    $deploymentUrl = Get-PlatformDeploymentUrl -Platform $Platform -AppName $AppName -DeploymentResult $deploymentResult
     
     if ($CustomDomain -and $Subdomain) {
         Write-Host "https://$Subdomain.$CustomDomain" -ForegroundColor White

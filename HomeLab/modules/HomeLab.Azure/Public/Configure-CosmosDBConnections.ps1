@@ -144,6 +144,7 @@ function Configure-CosmosDBConnections {
                 
                 $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
                 Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive Cosmos DB keys - ensure it's not committed to version control" -ForegroundColor Yellow
             }
             
             # Update package.json for Node.js projects
@@ -164,6 +165,7 @@ function Configure-CosmosDBConnections {
                 
                 $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
                 Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                Write-ColorOutput "⚠️  Note: package.json contains sensitive Cosmos DB keys - ensure it's not committed to version control" -ForegroundColor Yellow
             }
             
             # Create .env file for environment variables
@@ -186,6 +188,16 @@ COSMOS_DB_CONNECTION_STRING=$ConnectionString
 COSMOS_DB_API_TYPE=$ApiType
 "@ | Set-Content -Path $envPath
                     Write-ColorOutput "Updated .env file" -ForegroundColor Green
+                    
+                    # Security warning for .env file
+                    Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+                    Write-ColorOutput "The .env file contains sensitive Cosmos DB connection strings and keys." -ForegroundColor Yellow
+                    Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+                    Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+                    Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+                    Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+                    Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+                    Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
                 }
             }
             else {
@@ -199,6 +211,16 @@ COSMOS_DB_CONNECTION_STRING=$ConnectionString
 COSMOS_DB_API_TYPE=$ApiType
 "@ | Set-Content -Path $envPath
                 Write-ColorOutput "Created .env file" -ForegroundColor Green
+                
+                # Security warning for .env file
+                Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+                Write-ColorOutput "The .env file contains sensitive Cosmos DB connection strings and keys." -ForegroundColor Yellow
+                Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+                Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+                Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+                Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+                Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+                Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
             }
         }
         
@@ -222,8 +244,15 @@ COSMOS_DB_API_TYPE=$ApiType
             CreatedAt        = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        try {
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath -ErrorAction Stop
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains sensitive Cosmos DB keys - ensure file is protected" -ForegroundColor Yellow
+        }
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nCosmos DB connection configuration completed successfully!" -ForegroundColor Green
     }

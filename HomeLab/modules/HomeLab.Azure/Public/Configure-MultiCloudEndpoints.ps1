@@ -72,8 +72,18 @@ function Configure-MultiCloudEndpoints {
             $sanitized = $Value -replace '[\$\"'';&|><!*?\[\]{}()]', ''
             # Remove any newlines or carriage returns
             $sanitized = $sanitized -replace '[\r\n]', ''
-            # Trim whitespace
-            return $sanitized.Trim()
+            # Remove any backticks that could be used for command substitution
+            $sanitized = $sanitized -replace '`', ''
+            # Remove any percent signs that could be used for variable expansion
+            $sanitized = $sanitized -replace '%', ''
+            # Remove any backslashes that could be used for escaping
+            $sanitized = $sanitized -replace '\\', ''
+            # Trim whitespace and limit length to prevent buffer overflow
+            $sanitized = $sanitized.Trim()
+            if ($sanitized.Length -gt 1000) {
+                $sanitized = $sanitized.Substring(0, 1000)
+            }
+            return $sanitized
         }
         
         # Display multi-cloud configuration information
@@ -146,6 +156,7 @@ function Configure-MultiCloudEndpoints {
                     
                     $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
                     Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: appsettings.json contains multi-cloud configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -178,6 +189,7 @@ function Configure-MultiCloudEndpoints {
                     
                     $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
                     Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: package.json contains multi-cloud configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -194,17 +206,35 @@ function Configure-MultiCloudEndpoints {
             $sanitizedResourceGroup = Get-SanitizedValue -Value $ResourceGroup
             $sanitizedCloudProviders = ($CloudProviders | ForEach-Object { Get-SanitizedValue -Value $_ }) -join ','
             
-            @"
+            try {
+                @"
 # Multi-Cloud Configuration
 MULTICLOUD_PROJECT_NAME=$sanitizedProjectName
 MULTICLOUD_RESOURCE_GROUP=$sanitizedResourceGroup
 MULTICLOUD_CLOUD_PROVIDERS=$sanitizedCloudProviders
-"@ | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+"@ | Set-Content -Path $envPath -ErrorAction Stop
+                Write-ColorOutput "Created .env file" -ForegroundColor Green
+            
+                # Security warning for .env file
+                Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+                Write-ColorOutput "The .env file contains multi-cloud configuration data." -ForegroundColor Yellow
+                Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+                Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+                Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+                Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+                Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+                Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
+            }
+            catch {
+                Write-ColorOutput "Error creating .env file: $($_.Exception.Message)" -ForegroundColor Red
+                Write-ColorOutput "This may be due to file permissions or disk space issues." -ForegroundColor Yellow
+                throw "Failed to create .env file: $($_.Exception.Message)"
+            }
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\multicloud-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\multicloud-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         
         try {
@@ -223,6 +253,7 @@ MULTICLOUD_CLOUD_PROVIDERS=$sanitizedCloudProviders
             
             $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
             Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains multi-cloud configuration data - ensure file is protected" -ForegroundColor Yellow
         }
         catch {
             Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red

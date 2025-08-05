@@ -74,6 +74,18 @@ function Configure-IoTEdgeModules {
     try {
         Write-ColorOutput "Configuring IoT Edge modules..." -ForegroundColor Cyan
         
+        # Helper function to mask sensitive connection strings
+        function Get-MaskedConnectionString {
+            param([string]$ConnectionString)
+            if ([string]::IsNullOrEmpty($ConnectionString)) {
+                return "[NOT SET]"
+            }
+            if ($ConnectionString.Length -le 8) {
+                return "*" * $ConnectionString.Length
+            }
+            return "*" * ($ConnectionString.Length - 8) + $ConnectionString.Substring($ConnectionString.Length - 8)
+        }
+        
         # Validate Azure CLI availability
         if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
             throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
@@ -129,7 +141,7 @@ function Configure-IoTEdgeModules {
         Write-ColorOutput "`nIoT Edge Device Information:" -ForegroundColor Green
         Write-ColorOutput "IoT Hub Name: $IoTHubName" -ForegroundColor Gray
         Write-ColorOutput "Edge Device Name: $EdgeDeviceName" -ForegroundColor Gray
-        Write-ColorOutput "Device Connection String: $DeviceConnectionString" -ForegroundColor Gray
+        Write-ColorOutput "Device Connection String: $(Get-MaskedConnectionString -ConnectionString $DeviceConnectionString)" -ForegroundColor Gray
         Write-ColorOutput "Device ID: $($deviceDetails.deviceId)" -ForegroundColor Gray
         Write-ColorOutput "Device Status: $($deviceDetails.status)" -ForegroundColor Gray
         Write-ColorOutput "Deployment Name: $DeploymentName" -ForegroundColor Gray
@@ -173,6 +185,7 @@ function Configure-IoTEdgeModules {
                     $validatedJson = $jsonString | ConvertFrom-Json
                     $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
                     Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive IoT Edge connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     throw "Invalid JSON structure generated. Cannot save appsettings.json: $($_.Exception.Message)"
@@ -199,8 +212,17 @@ function Configure-IoTEdgeModules {
                 $packageJson.config.iotEdgeDeviceId = $deviceDetails.deviceId
                 $packageJson.config.iotEdgeDeviceStatus = $deviceDetails.status
                 
-                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                # Validate JSON structure before writing
+                try {
+                    $jsonString = $packageJson | ConvertTo-Json -Depth 10
+                    $validatedJson = $jsonString | ConvertFrom-Json
+                    $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: package.json contains sensitive IoT Edge connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
+                }
+                catch {
+                    throw "Invalid JSON structure generated. Cannot save package.json: $($_.Exception.Message)"
+                }
             }
             
             # Create .env file for environment variables
@@ -251,7 +273,8 @@ AZURE_IOT_EDGE_DEVICE_STATUS=$($deviceDetails.status)
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\iotedge-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\iotedge-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
@@ -271,8 +294,15 @@ AZURE_IOT_EDGE_DEVICE_STATUS=$($deviceDetails.status)
             CreatedAt                    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        try {
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath -ErrorAction Stop
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains sensitive IoT Edge connection strings - ensure file is protected" -ForegroundColor Yellow
+        }
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nIoT Edge modules configuration completed successfully!" -ForegroundColor Green
     }

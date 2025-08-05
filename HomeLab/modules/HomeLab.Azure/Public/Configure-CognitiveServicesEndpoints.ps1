@@ -138,6 +138,7 @@ function Configure-CognitiveServicesEndpoints {
                 
                 $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
                 Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive API keys - ensure it's not committed to version control" -ForegroundColor Yellow
             }
             
             # Update package.json for Node.js projects
@@ -158,20 +159,38 @@ function Configure-CognitiveServicesEndpoints {
                 
                 $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
                 Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                Write-ColorOutput "⚠️  Note: package.json contains sensitive API keys - ensure it's not committed to version control" -ForegroundColor Yellow
             }
             
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
-            @"
+            try {
+                @"
 # Azure Cognitive Services Configuration
 AZURE_COGNITIVE_SERVICES_ACCOUNT_NAME=$AccountName
 AZURE_COGNITIVE_SERVICES_TYPE=$ServiceType
 AZURE_COGNITIVE_SERVICES_ENDPOINT=$Endpoint
 AZURE_COGNITIVE_SERVICES_KEY1=$Key1
 AZURE_COGNITIVE_SERVICES_KEY2=$Key2
-"@ | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+"@ | Set-Content -Path $envPath -ErrorAction Stop
+                Write-ColorOutput "Created .env file" -ForegroundColor Green
+                
+                # Security warning for .env file
+                Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+                Write-ColorOutput "The .env file contains sensitive Azure Cognitive Services API keys." -ForegroundColor Yellow
+                Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+                Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+                Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+                Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+                Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+                Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
+            }
+            catch {
+                Write-ColorOutput "Error creating .env file: $($_.Exception.Message)" -ForegroundColor Red
+                Write-ColorOutput "This may be due to file permissions or disk space issues." -ForegroundColor Yellow
+                throw "Failed to create .env file: $($_.Exception.Message)"
+            }
         }
         
         # Save connection information to a configuration file
@@ -191,8 +210,15 @@ AZURE_COGNITIVE_SERVICES_KEY2=$Key2
             CreatedAt     = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        try {
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath -ErrorAction Stop
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains sensitive API keys - ensure file is protected" -ForegroundColor Yellow
+        }
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nCognitive Services endpoint configuration completed successfully!" -ForegroundColor Green
     }

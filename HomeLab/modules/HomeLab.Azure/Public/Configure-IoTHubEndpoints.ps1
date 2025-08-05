@@ -56,6 +56,18 @@ function Configure-IoTHubEndpoints {
     try {
         Write-ColorOutput "Configuring IoT Hub endpoints..." -ForegroundColor Cyan
         
+        # Helper function to mask sensitive connection strings
+        function Get-MaskedConnectionString {
+            param([string]$ConnectionString)
+            if ([string]::IsNullOrEmpty($ConnectionString)) {
+                return "[NOT SET]"
+            }
+            if ($ConnectionString.Length -le 8) {
+                return "*" * $ConnectionString.Length
+            }
+            return "*" * ($ConnectionString.Length - 8) + $ConnectionString.Substring($ConnectionString.Length - 8)
+        }
+        
         # Validate Azure CLI availability and authentication
         if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
             throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
@@ -106,8 +118,8 @@ function Configure-IoTHubEndpoints {
         Write-ColorOutput "`nIoT Hub Connection Information:" -ForegroundColor Green
         Write-ColorOutput "IoT Hub Name: $IoTHubName" -ForegroundColor Gray
         Write-ColorOutput "Resource Group: $ResourceGroup" -ForegroundColor Gray
-        Write-ColorOutput "Connection String: [REDACTED]" -ForegroundColor Gray
-        Write-ColorOutput "Event Hub Connection String: [REDACTED]" -ForegroundColor Gray
+        Write-ColorOutput "Connection String: $(Get-MaskedConnectionString -ConnectionString $ConnectionString)" -ForegroundColor Gray
+        Write-ColorOutput "Event Hub Connection String: $(Get-MaskedConnectionString -ConnectionString $EventHubConnectionString)" -ForegroundColor Gray
         Write-ColorOutput "IoT Hub ID: $($iothubDetails.id)" -ForegroundColor Gray
         Write-ColorOutput "SKU: $($iothubDetails.sku.name)" -ForegroundColor Gray
         Write-ColorOutput "Unit Count: $($iothubDetails.sku.capacity)" -ForegroundColor Gray
@@ -141,6 +153,7 @@ function Configure-IoTHubEndpoints {
                     
                     $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
                     Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive IoT Hub connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -169,6 +182,7 @@ function Configure-IoTHubEndpoints {
                     
                     $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
                     Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                    Write-ColorOutput "⚠️  Note: package.json contains sensitive IoT Hub connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
                     Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -204,10 +218,21 @@ function Configure-IoTHubEndpoints {
             $combinedContent = $existingEnvContent + "" + $newEnvContent
             $combinedContent | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
+            
+            # Security warning for .env file
+            Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+            Write-ColorOutput "The .env file contains sensitive IoT Hub connection strings." -ForegroundColor Yellow
+            Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
+            Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
+            Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
+            Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
+            Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
+            Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
         }
         
         # Save connection information to a configuration file
-        $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\iothub-connections.json"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        $configPath = Join-Path -Path $userProfile -ChildPath ".homelab\iothub-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
         if (-not (Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
@@ -225,8 +250,15 @@ function Configure-IoTHubEndpoints {
             CreatedAt                 = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        try {
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath -ErrorAction Stop
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+            Write-ColorOutput "⚠️  Note: Connection config contains sensitive IoT Hub connection strings - ensure file is protected" -ForegroundColor Yellow
+        }
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nIoT Hub endpoint configuration completed successfully!" -ForegroundColor Green
     }
