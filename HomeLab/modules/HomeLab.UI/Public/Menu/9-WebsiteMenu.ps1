@@ -452,6 +452,145 @@ function Show-Layer5IoTEdgeComputing {
     } while ($true)
 }
 
+# Define the missing Invoke-MultiCloudHandler function
+function Invoke-MultiCloudHandler {
+    <#
+    .SYNOPSIS
+        Handles multi-cloud deployment menu commands.
+    
+    .DESCRIPTION
+        This function processes commands from the multi-cloud deployment menu.
+    
+    .PARAMETER Command
+        The command to process.
+    
+    .EXAMPLE
+        Invoke-MultiCloudHandler -Command "Browse-Project"
+    #>
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Command
+    )
+    
+    # Import required modules
+    try {
+        Import-Module HomeLab.Core -ErrorAction Stop
+    }
+    catch {
+        Write-Error "Failed to import HomeLab.Core module: $_"
+        return
+    }
+    
+    try {
+        Import-Module HomeLab.Azure -ErrorAction Stop
+    }
+    catch {
+        Write-Error "Failed to import HomeLab.Azure module: $_"
+        return
+    }
+    
+    # Get configuration
+    try {
+        $config = Get-Configuration -ErrorAction Stop
+    }
+    catch {
+        Write-Error "Failed to retrieve configuration: $_"
+        return
+    }
+    
+    switch ($Command) {
+        "Browse-Project" {
+            Clear-Host
+            Write-Host "=== Browse and Select Project for Multi-Cloud Deployment ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud project browsing functionality coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-MultiCloudInfrastructure" {
+            Clear-Host
+            Write-Host "=== Deploy Multi-Cloud Infrastructure ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud infrastructure deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-HybridCloudBridge" {
+            Clear-Host
+            Write-Host "=== Deploy Hybrid Cloud Bridge ===" -ForegroundColor Cyan
+            Write-Host "Hybrid cloud bridge deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-CrossCloudLoadBalancer" {
+            Clear-Host
+            Write-Host "=== Deploy Cross-Cloud Load Balancer ===" -ForegroundColor Cyan
+            Write-Host "Cross-cloud load balancer deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-MultiCloudMonitoring" {
+            Clear-Host
+            Write-Host "=== Deploy Multi-Cloud Monitoring ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud monitoring deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-CloudNativeMigration" {
+            Clear-Host
+            Write-Host "=== Deploy Cloud-Native Migration ===" -ForegroundColor Cyan
+            Write-Host "Cloud-native migration deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-HybridKubernetesCluster" {
+            Clear-Host
+            Write-Host "=== Deploy Hybrid Kubernetes Cluster ===" -ForegroundColor Cyan
+            Write-Host "Hybrid Kubernetes cluster deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-MultiCloudDatabase" {
+            Clear-Host
+            Write-Host "=== Deploy Multi-Cloud Database ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud database deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-CrossCloudSecurity" {
+            Clear-Host
+            Write-Host "=== Deploy Cross-Cloud Security ===" -ForegroundColor Cyan
+            Write-Host "Cross-cloud security deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-HybridNetworking" {
+            Clear-Host
+            Write-Host "=== Deploy Hybrid Networking ===" -ForegroundColor Cyan
+            Write-Host "Hybrid networking deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Deploy-AutoDetectMultiCloud" {
+            Clear-Host
+            Write-Host "=== Auto-Detect and Deploy Multi-Cloud ===" -ForegroundColor Cyan
+            Write-Host "Auto-detection for multi-cloud deployment coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Configure-MultiCloudOrchestration" {
+            Clear-Host
+            Write-Host "=== Configure Multi-Cloud Orchestration ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud orchestration configuration coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "Show-MultiCloudServiceTypeInfo" {
+            Clear-Host
+            Write-Host "=== Multi-Cloud Service Type Information ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud service type information coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        "List-DeployedMultiCloudServices" {
+            Clear-Host
+            Write-Host "=== List Deployed Multi-Cloud Services ===" -ForegroundColor Cyan
+            Write-Host "Multi-cloud service listing coming soon..." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+        }
+        default {
+            Write-Host "Unknown command: $Command" -ForegroundColor Red
+            Start-Sleep 2
+        }
+    }
+}
+
 function Show-MultiCloudHybrid {
     <#
     .SYNOPSIS

@@ -32,11 +32,35 @@ function Get-DeploymentParameters {
         [string]$ProjectPath
     )
     
-    # Import progress bar functions
-    $progressBarPath = "$PSScriptRoot\..\Public\ProgressBar"
-    . "$progressBarPath\Show-ProgressBar.ps1"
-    . "$progressBarPath\Update-ProgressBar.ps1"
-    . "$PSScriptRoot\Helpers.ps1"
+    # Import progress bar functions using cross-platform path construction
+    $progressBarPath = Join-Path -Path $PSScriptRoot -ChildPath "..\Public\ProgressBar"
+    . (Join-Path -Path $progressBarPath -ChildPath "Show-ProgressBar.ps1")
+    . (Join-Path -Path $progressBarPath -ChildPath "Update-ProgressBar.ps1")
+    . (Join-Path -Path $PSScriptRoot -ChildPath "Helpers.ps1")
+    
+    # Helper function to check and import Azure module
+    function Test-AzureModuleAvailability {
+        if (-not (Get-Module -Name Az -ListAvailable)) {
+            Write-Host "Azure PowerShell module (Az) is not installed or not available." -ForegroundColor Red
+            Write-Host "Please install the Az module using: Install-Module -Name Az -AllowClobber -Force" -ForegroundColor Yellow
+            Write-Host "Or import it using: Import-Module Az" -ForegroundColor Yellow
+            return $false
+        }
+        
+        # Import Az module if not already loaded
+        if (-not (Get-Module -Name Az)) {
+            try {
+                Import-Module Az -ErrorAction Stop
+                return $true
+            }
+            catch {
+                Write-Host "Failed to import Azure PowerShell module: $($_.Exception.Message)" -ForegroundColor Red
+                return $false
+            }
+        }
+        
+        return $true
+    }
     
     # Calculate total steps for progress tracking
     $totalSteps = 7  # Basic parameters + Cloud Platform + GitHub/Project + Custom domain
@@ -107,17 +131,23 @@ function Get-DeploymentParameters {
     Write-Host "`nResource Group Selection:" -ForegroundColor Yellow
     Write-Host "Current resource groups in subscription:" -ForegroundColor White
     
-    try {
-        $existingRGs = Get-AzResourceGroup -ErrorAction SilentlyContinue | Sort-Object Name
-        if ($existingRGs) {
-            for ($i = 0; $i -lt $existingRGs.Count; $i++) {
-                Write-Host "$($i + 1). $($existingRGs[$i].Name) - $($existingRGs[$i].Location)" -ForegroundColor White
+    # Check if Az module is available before calling Azure cmdlets
+    if (Test-AzureModuleAvailability) {
+        try {
+            $existingRGs = Get-AzResourceGroup -ErrorAction SilentlyContinue | Sort-Object Name
+            if ($existingRGs) {
+                for ($i = 0; $i -lt $existingRGs.Count; $i++) {
+                    Write-Host "$($i + 1). $($existingRGs[$i].Name) - $($existingRGs[$i].Location)" -ForegroundColor White
+                }
             }
+            Write-Host "N. Create New Resource Group" -ForegroundColor Green
         }
-        Write-Host "N. Create New Resource Group" -ForegroundColor Green
+        catch {
+            Write-Host "Unable to retrieve existing resource groups. You can create a new one." -ForegroundColor Yellow
+            Write-Host "N. Create New Resource Group" -ForegroundColor Green
+        }
     }
-    catch {
-        Write-Host "Unable to retrieve existing resource groups. You can create a new one." -ForegroundColor Yellow
+    else {
         Write-Host "N. Create New Resource Group" -ForegroundColor Green
     }
     
@@ -374,16 +404,16 @@ function Get-DeploymentParameters {
     switch ($cloudPlatform) {
         "vercel" {
             Write-Host "Vercel Configuration:" -ForegroundColor Green
-            $vercelToken = Read-Host "Enter Vercel API token (optional - will prompt during deployment if not provided)"
-            if (-not [string]::IsNullOrWhiteSpace($vercelToken)) {
+            $vercelToken = Read-Host "Enter Vercel API token (optional - will prompt during deployment if not provided)" -AsSecureString
+            if ($vercelToken -and $vercelToken.Length -gt 0) {
                 $params.VercelToken = $vercelToken
             }
             $params.Platform = "vercel"
         }
         "netlify" {
             Write-Host "Netlify Configuration:" -ForegroundColor Blue
-            $netlifyToken = Read-Host "Enter Netlify API token (optional - will prompt during deployment if not provided)"
-            if (-not [string]::IsNullOrWhiteSpace($netlifyToken)) {
+            $netlifyToken = Read-Host "Enter Netlify API token (optional - will prompt during deployment if not provided)" -AsSecureString
+            if ($netlifyToken -and $netlifyToken.Length -gt 0) {
                 $params.NetlifyToken = $netlifyToken
             }
             $params.Platform = "netlify"

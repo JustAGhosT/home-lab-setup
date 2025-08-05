@@ -176,7 +176,21 @@ function Get-AIMLDeploymentParameters {
                     $streamingUnits = 1
                 }
                 else {
-                    $streamingUnits = [int]$streamingUnits
+                    # Validate streaming units input
+                    try {
+                        $streamingUnitsInt = [int]$streamingUnits
+                        if ($streamingUnitsInt -lt 1 -or $streamingUnitsInt -gt 192) {
+                            Write-ColorOutput "Invalid streaming units value. Must be between 1 and 192. Using default value: 1" -ForegroundColor Yellow
+                            $streamingUnits = 1
+                        }
+                        else {
+                            $streamingUnits = $streamingUnitsInt
+                        }
+                    }
+                    catch {
+                        Write-ColorOutput "Invalid streaming units input. Must be a valid integer. Using default value: 1" -ForegroundColor Yellow
+                        $streamingUnits = 1
+                    }
                 }
                 
                 $inputType = Read-Host "Input Type (EventHub/IoTHub/Blob/PowerBI/DataLake) (default: EventHub)"

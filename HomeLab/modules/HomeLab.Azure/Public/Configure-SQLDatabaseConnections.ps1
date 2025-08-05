@@ -114,90 +114,154 @@ function Configure-SQLDatabaseConnections {
                 }
             }
             
-            # Update web.config for .NET Framework projects
+            # Update web.config for .NET Framework projects with encryption
             $webConfigPath = Join-Path -Path $ProjectPath -ChildPath "web.config"
             if (Test-Path -Path $webConfigPath) {
                 Write-ColorOutput "Updating web.config..." -ForegroundColor Gray
-                $webConfig = [xml](Get-Content -Path $webConfigPath)
                 
-                $connectionStringsNode = $webConfig.SelectSingleNode("//connectionStrings")
-                if (-not $connectionStringsNode) {
-                    $connectionStringsNode = $webConfig.CreateElement("connectionStrings")
-                    $webConfig.configuration.AppendChild($connectionStringsNode)
-                }
+                # Create temporary file for atomic write
+                $tempWebConfigPath = $webConfigPath + ".tmp"
                 
-                # Check if DefaultConnection already exists
-                $existingNode = $connectionStringsNode.SelectSingleNode("add[@name='DefaultConnection']")
-                if ($existingNode) {
-                    # Update existing connection string
-                    $existingNode.SetAttribute("connectionString", $connectionString)
-                    $existingNode.SetAttribute("providerName", "System.Data.SqlClient")
-                    Write-ColorOutput "Updated existing DefaultConnection in web.config" -ForegroundColor Green
-                }
-                else {
-                    # Create new connection string entry
-                    $addNode = $webConfig.CreateElement("add")
-                    $addNode.SetAttribute("name", "DefaultConnection")
-                    $addNode.SetAttribute("connectionString", $connectionString)
-                    $addNode.SetAttribute("providerName", "System.Data.SqlClient")
-                    
-                    $connectionStringsNode.AppendChild($addNode)
-                    Write-ColorOutput "Added new DefaultConnection to web.config" -ForegroundColor Green
-                }
-                
-                $webConfig.Save($webConfigPath)
-                Write-ColorOutput "Updated web.config" -ForegroundColor Green
-                Write-ColorOutput "⚠️  Note: web.config contains sensitive SQL connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
-            }
-            
-            # Update package.json for Node.js projects
-            $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
-            if (Test-Path -Path $packageJsonPath) {
-                Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
                 try {
-                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
-                
-                    if (-not $packageJson.config) {
-                        $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    $webConfig = [xml](Get-Content -Path $webConfigPath)
+                    
+                    $connectionStringsNode = $webConfig.SelectSingleNode("//connectionStrings")
+                    if (-not $connectionStringsNode) {
+                        $connectionStringsNode = $webConfig.CreateElement("connectionStrings")
+                        $webConfig.configuration.AppendChild($connectionStringsNode)
                     }
-                
-                    $packageJson.config.sqlConnectionString = $connectionString
-                
-                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
-                    Write-ColorOutput "⚠️  Note: package.json contains sensitive SQL connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
+                    
+                    # Check if DefaultConnection already exists
+                    $existingNode = $connectionStringsNode.SelectSingleNode("add[@name='DefaultConnection']")
+                    if ($existingNode) {
+                        # Update existing connection string
+                        $existingNode.SetAttribute("connectionString", $connectionString)
+                        $existingNode.SetAttribute("providerName", "System.Data.SqlClient")
+                        Write-ColorOutput "Updated existing DefaultConnection in web.config" -ForegroundColor Green
+                    }
+                    else {
+                        # Create new connection string entry
+                        $addNode = $webConfig.CreateElement("add")
+                        $addNode.SetAttribute("name", "DefaultConnection")
+                        $addNode.SetAttribute("connectionString", $connectionString)
+                        $addNode.SetAttribute("providerName", "System.Data.SqlClient")
+                        
+                        $connectionStringsNode.AppendChild($addNode)
+                        Write-ColorOutput "Added new DefaultConnection to web.config" -ForegroundColor Green
+                    }
+                    
+                    # Save to temporary file first
+                    $webConfig.Save($tempWebConfigPath)
+                    
+                    # Atomic move to replace original file
+                    Move-Item -Path $tempWebConfigPath -Destination $webConfigPath -Force
+                    
+                    Write-ColorOutput "Updated web.config" -ForegroundColor Green
+                    
+                    # Attempt to encrypt the connectionStrings section
+                    try {
+                        Write-ColorOutput "Attempting to encrypt connectionStrings section..." -ForegroundColor Yellow
+                        
+                        # Check if aspnet_regiis is available
+                        $aspnetRegiisPath = "${env:windir}\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe"
+                        if (Test-Path -Path $aspnetRegiisPath) {
+                            $projectDir = Split-Path -Path $webConfigPath -Parent
+                            & $aspnetRegiisPath -pef "connectionStrings" $projectDir -prov "DataProtectionConfigurationProvider"
+                            Write-ColorOutput "Successfully encrypted connectionStrings section" -ForegroundColor Green
+                        }
+                        else {
+                            Write-ColorOutput "⚠️  aspnet_regiis not found. Consider manually encrypting connectionStrings section." -ForegroundColor Yellow
+                            Write-ColorOutput "For production, use Azure Key Vault to store connection strings securely." -ForegroundColor Yellow
+                        }
+                    }
+                    catch {
+                        Write-ColorOutput "⚠️  Could not encrypt connectionStrings section: $($_.Exception.Message)" -ForegroundColor Yellow
+                        Write-ColorOutput "For production, use Azure Key Vault to store connection strings securely." -ForegroundColor Yellow
+                    }
+                    
+                    Write-ColorOutput "⚠️  Note: web.config contains sensitive SQL connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
                 }
                 catch {
-                    Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
-                    throw "Failed to update package.json: $($_.Exception.Message)"
+                    # Clean up temporary file if it exists
+                    if (Test-Path -Path $tempWebConfigPath) {
+                        Remove-Item -Path $tempWebConfigPath -Force -ErrorAction SilentlyContinue
+                    }
+                    throw
                 }
             }
             
-            # Create .env file for environment variables
+            # Note: package.json updates removed for security - connection strings should not be stored in version-controlled files
+            Write-ColorOutput "⚠️  Security Note: package.json updates skipped to prevent storing sensitive connection strings in version control" -ForegroundColor Yellow
+            Write-ColorOutput "Use environment variables or Azure Key Vault for secure connection string storage" -ForegroundColor Yellow
+            
+            # Create .env file for environment variables with enhanced security
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
             
-            # Security warning for sensitive data
+            # Enhanced security warning for sensitive data
             Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
-            Write-ColorOutput "The .env file contains sensitive SQL Database connection strings." -ForegroundColor Yellow
-            Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
-            Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
-            Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
-            Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
-            Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
-            Write-ColorOutput "  • For production, use Azure Key Vault to store sensitive credentials" -ForegroundColor Yellow
+            Write-ColorOutput "The .env file will contain sensitive SQL Database connection strings and credentials." -ForegroundColor Yellow
+            Write-ColorOutput "These connection strings provide access to your database and should be protected." -ForegroundColor Yellow
+            Write-ColorOutput "For production environments, consider using Azure Key Vault for secure storage." -ForegroundColor Yellow
+            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits to version control." -ForegroundColor Yellow
+            Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
             
-            @"
+            # Check if .gitignore exists and contains .env
+            $gitignorePath = Join-Path -Path $ProjectPath -ChildPath ".gitignore"
+            if (Test-Path -Path $gitignorePath) {
+                $gitignoreContent = Get-Content -Path $gitignorePath
+                if ($gitignoreContent -notcontains ".env") {
+                    Write-ColorOutput "Adding .env to .gitignore for security..." -ForegroundColor Cyan
+                    Add-Content -Path $gitignorePath -Value "`n# Environment variables with sensitive data`n.env"
+                }
+            }
+            else {
+                Write-ColorOutput "Creating .gitignore file with .env exclusion..." -ForegroundColor Cyan
+                @"
+# Environment variables with sensitive data
+.env
+
+# Other common exclusions
+node_modules/
+*.log
+.DS_Store
+"@ | Set-Content -Path $gitignorePath
+            }
+            
+            # Create temporary file for atomic write
+            $tempEnvPath = $envPath + ".tmp"
+            
+            try {
+                @"
 # SQL Database Configuration
-# Note: For production, use Azure Key Vault to store sensitive credentials
-SQL_CONNECTION_STRING=$connectionString
+# SECURITY WARNING: This file contains sensitive connection strings
+# For production, use Azure Key Vault to store sensitive credentials
+# Example: SQL_PASSWORD_KEY_VAULT_REF=https://your-keyvault.vault.azure.net/secrets/sql-password
+
+# Database connection details (non-sensitive)
 SQL_SERVER=$ServerName.database.windows.net
 SQL_DATABASE=$DatabaseName
 SQL_USERNAME=$AdminUsername
-# SQL_PASSWORD should be retrieved from Azure Key Vault at runtime
-# Example: SQL_PASSWORD_KEY_VAULT_REF=https://your-keyvault.vault.azure.net/secrets/sql-password
-"@ | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+
+# Connection string (sensitive - consider using Azure Key Vault in production)
+SQL_CONNECTION_STRING=$connectionString
+
+# Azure Key Vault integration (recommended for production)
+# AZURE_KEY_VAULT_URL=https://your-keyvault.vault.azure.net/
+# AZURE_KEY_VAULT_SECRET_NAME=sql-connection-string
+"@ | Set-Content -Path $tempEnvPath -ErrorAction Stop
+                
+                # Atomic move to replace original file
+                Move-Item -Path $tempEnvPath -Destination $envPath -Force
+                Write-ColorOutput "Created .env file with security protections" -ForegroundColor Green
+            }
+            catch {
+                # Clean up temporary file if it exists
+                if (Test-Path -Path $tempEnvPath) {
+                    Remove-Item -Path $tempEnvPath -Force -ErrorAction SilentlyContinue
+                }
+                throw "Failed to create .env file: $($_.Exception.Message)"
+            }
         }
         
         # Save connection information to a configuration file
@@ -209,12 +273,14 @@ SQL_USERNAME=$AdminUsername
         }
         
         $connectionConfig = @{
-            ResourceGroup    = $ResourceGroup
-            ServerName       = $ServerName
-            DatabaseName     = $DatabaseName
-            AdminUsername    = $AdminUsername
-            ConnectionString = $connectionString
-            CreatedAt        = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            ResourceGroup             = $ResourceGroup
+            ServerName                = $ServerName
+            DatabaseName              = $DatabaseName
+            AdminUsername             = $AdminUsername
+            # ConnectionString removed for security - use Azure Key Vault or environment variables
+            ConnectionStringReference = "Use Azure Key Vault or environment variables for secure storage"
+            SecurityNote              = "Sensitive connection strings should be stored in Azure Key Vault, not in configuration files"
+            CreatedAt                 = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         }
         
         try {

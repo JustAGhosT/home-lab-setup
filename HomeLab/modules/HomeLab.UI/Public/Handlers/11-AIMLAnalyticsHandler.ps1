@@ -47,7 +47,9 @@ function Invoke-AIMLAnalyticsHandler {
     # Helper function to get project path
     function Get-ProjectPathForAIMLAnalytics {
         # Use script-level variable instead of global
-        $script:SelectedProjectPath = $script:SelectedProjectPath ?? $null
+        if ($script:SelectedProjectPath -eq $null) {
+            $script:SelectedProjectPath = $null
+        }
         
         # Check if a project has already been selected
         if ($script:SelectedProjectPath -and (Test-Path -Path $script:SelectedProjectPath)) {
@@ -96,17 +98,17 @@ function Invoke-AIMLAnalyticsHandler {
                 Path               = $projectPath
                 Files              = @(Get-ChildItem -Path $projectPath -File | Select-Object -ExpandProperty Name)
                 Folders            = @(Get-ChildItem -Path $projectPath -Directory | Select-Object -ExpandProperty Name)
-                HasPackageJson     = Test-Path -Path "$projectPath\package.json"
-                HasRequirementsTxt = Test-Path -Path "$projectPath\requirements.txt"
-                HasWebConfig       = Test-Path -Path "$projectPath\web.config"
-                HasAppSettings     = Test-Path -Path "$projectPath\appsettings.json"
-                HasDockerfile      = Test-Path -Path "$projectPath\Dockerfile"
-                HasDockerCompose   = Test-Path -Path "$projectPath\docker-compose.yml"
-                HasJupyterNotebook = Test-Path -Path "$projectPath\*.ipynb"
-                HasPythonFiles     = Test-Path -Path "$projectPath\*.py"
-                HasTensorFlow      = Test-Path -Path "$projectPath\requirements.txt" -and (Get-Content "$projectPath\requirements.txt" | Select-String "tensorflow")
-                HasPyTorch         = Test-Path -Path "$projectPath\requirements.txt" -and (Get-Content "$projectPath\requirements.txt" | Select-String "torch")
-                HasScikitLearn     = Test-Path -Path "$projectPath\requirements.txt" -and (Get-Content "$projectPath\requirements.txt" | Select-String "scikit-learn")
+                HasPackageJson     = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "package.json")
+                HasRequirementsTxt = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "requirements.txt")
+                HasWebConfig       = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "web.config")
+                HasAppSettings     = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "appsettings.json")
+                HasDockerfile      = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "Dockerfile")
+                HasDockerCompose   = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "docker-compose.yml")
+                HasJupyterNotebook = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "*.ipynb")
+                HasPythonFiles     = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "*.py")
+                HasTensorFlow      = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "requirements.txt") -and (Get-Content (Join-Path -Path $projectPath -ChildPath "requirements.txt") | Select-String "tensorflow")
+                HasPyTorch         = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "requirements.txt") -and (Get-Content (Join-Path -Path $projectPath -ChildPath "requirements.txt") | Select-String "torch")
+                HasScikitLearn     = Test-Path -Path (Join-Path -Path $projectPath -ChildPath "requirements.txt") -and (Get-Content (Join-Path -Path $projectPath -ChildPath "requirements.txt") | Select-String "scikit-learn")
             }
             
             # Display project analysis
@@ -152,10 +154,10 @@ function Invoke-AIMLAnalyticsHandler {
             Write-Host ""
             
             # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Get-DeploymentParameters.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Show-ProgressBar.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Update-ProgressBar.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Helpers.ps1")
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
@@ -206,10 +208,10 @@ function Invoke-AIMLAnalyticsHandler {
             Write-Host ""
             
             # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Get-DeploymentParameters.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Show-ProgressBar.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Update-ProgressBar.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Helpers.ps1")
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
@@ -260,10 +262,10 @@ function Invoke-AIMLAnalyticsHandler {
             Write-Host ""
             
             # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Get-DeploymentParameters.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Show-ProgressBar.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Update-ProgressBar.ps1")
+            . (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Helpers.ps1")
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan

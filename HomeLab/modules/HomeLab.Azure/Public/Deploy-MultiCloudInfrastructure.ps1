@@ -1,5 +1,5 @@
 function Deploy-MultiCloudInfrastructure {
-    <#
+  <#
     .SYNOPSIS
         Deploys multi-cloud infrastructure across multiple cloud providers.
     
@@ -49,173 +49,222 @@ function Deploy-MultiCloudInfrastructure {
     .PARAMETER EnableSecurity
         Whether to enable unified security policies.
     
+    .PARAMETER GCPProjectID
+        The Google Cloud Platform project ID for GCP resources.
+        Required when EnableGCP is set to true.
+    
     .EXAMPLE
         Deploy-MultiCloudInfrastructure -ResourceGroup "my-rg" -Location "southafricanorth" -ProjectName "my-multicloud-project"
+    
+    .EXAMPLE
+        Deploy-MultiCloudInfrastructure -ResourceGroup "my-rg" -Location "southafricanorth" -ProjectName "my-multicloud-project" -EnableGCP $true -GCPProjectID "my-gcp-project-id"
     
     .NOTES
         Author: HomeLab Team
         Date: March 2025
     #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ResourceGroup,
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ResourceGroup,
         
-        [Parameter(Mandatory = $true)]
-        [string]$Location,
+    [Parameter(Mandatory = $true)]
+    [string]$Location,
         
-        [Parameter(Mandatory = $true)]
-        [string]$ProjectName,
+    [Parameter(Mandatory = $true)]
+    [string]$ProjectName,
         
-        [Parameter(Mandatory = $false)]
-        [ValidateSet("Azure", "AWS", "GCP")]
-        [string[]]$CloudProviders = @("Azure"),
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("Azure", "AWS", "GCP")]
+    [string[]]$CloudProviders = @("Azure"),
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableAzure = $true,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableAzure = $true,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableAWS = $false,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableAWS = $false,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableGCP = $false,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableGCP = $false,
         
-        [Parameter(Mandatory = $false)]
-        [ValidateSet("compute", "storage", "networking", "all")]
-        [string]$InfrastructureType = "all",
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("compute", "storage", "networking", "all")]
+    [string]$InfrastructureType = "all",
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableTerraform = $false,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableTerraform = $false,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableBicep = $true,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableBicep = $true,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableCloudFormation = $false,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableCloudFormation = $false,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableKubernetes = $false,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableKubernetes = $false,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableMonitoring = $true,
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableMonitoring = $true,
         
-        [Parameter(Mandatory = $false)]
-        [bool]$EnableSecurity = $true
-    )
+    [Parameter(Mandatory = $false)]
+    [bool]$EnableSecurity = $true,
+        
+    [Parameter(Mandatory = $false)]
+    [string]$GCPProjectID
+  )
     
-    try {
-        Write-ColorOutput "Starting Multi-Cloud Infrastructure deployment..." -ForegroundColor Cyan
+  try {
+    Write-ColorOutput "Starting Multi-Cloud Infrastructure deployment..." -ForegroundColor Cyan
         
-        # Update cloud providers based on enabled flags
-        $CloudProviders = @()
-        if ($EnableAzure) { $CloudProviders += "Azure" }
-        if ($EnableAWS) { $CloudProviders += "AWS" }
-        if ($EnableGCP) { $CloudProviders += "GCP" }
+    # Validate GCP project ID if GCP is enabled
+    if ($EnableGCP -and [string]::IsNullOrWhiteSpace($GCPProjectID)) {
+      Write-ColorOutput "Error: GCP Project ID is required when EnableGCP is set to true." -ForegroundColor Red
+      Write-ColorOutput "Please provide the GCPProjectID parameter with your actual GCP project ID." -ForegroundColor Yellow
+      throw "GCPProjectID parameter is required when EnableGCP is true"
+    }
         
-        Write-ColorOutput "Target Cloud Providers: $($CloudProviders -join ', ')" -ForegroundColor Yellow
+    if ($EnableGCP -and $GCPProjectID) {
+      Write-ColorOutput "Using GCP Project ID: $GCPProjectID" -ForegroundColor Green
+    }
         
-        # Check if resource group exists
-        $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
-        if ($rgExists -ne "true") {
-            Write-ColorOutput "Creating resource group: $ResourceGroup" -ForegroundColor Yellow
-            az group create --name $ResourceGroup --location $Location
+    # Update cloud providers based on enabled flags
+    $CloudProviders = @()
+    if ($EnableAzure) { $CloudProviders += "Azure" }
+    if ($EnableAWS) { $CloudProviders += "AWS" }
+    if ($EnableGCP) { $CloudProviders += "GCP" }
+        
+    Write-ColorOutput "Target Cloud Providers: $($CloudProviders -join ', ')" -ForegroundColor Yellow
+        
+    # Check if resource group exists
+    $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
+    if ($rgExists -ne "true") {
+      Write-ColorOutput "Creating resource group: $ResourceGroup" -ForegroundColor Yellow
+      az group create --name $ResourceGroup --location $Location
+    }
+        
+    # Create multi-cloud project configuration
+    Write-ColorOutput "Creating multi-cloud project configuration..." -ForegroundColor Yellow
+    $projectConfig = @{
+      ProjectName          = $ProjectName
+      ResourceGroup        = $ResourceGroup
+      Location             = $Location
+      CloudProviders       = $CloudProviders
+      InfrastructureType   = $InfrastructureType
+      EnableTerraform      = $EnableTerraform
+      EnableBicep          = $EnableBicep
+      EnableCloudFormation = $EnableCloudFormation
+      EnableKubernetes     = $EnableKubernetes
+      EnableMonitoring     = $EnableMonitoring
+      EnableSecurity       = $EnableSecurity
+      CreatedAt            = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    }
+        
+    # Deploy Azure infrastructure if enabled
+    if ($EnableAzure) {
+      Write-ColorOutput "Deploying Azure infrastructure..." -ForegroundColor Yellow
+            
+      # Create Azure Container Registry for multi-cloud images
+      $acrName = "$($ProjectName.ToLower())acr$(Get-Random -Minimum 1000 -Maximum 9999)"
+      Write-ColorOutput "Creating Azure Container Registry: $acrName" -ForegroundColor Gray
+      az acr create `
+        --name $acrName `
+        --resource-group $ResourceGroup `
+        --location $Location `
+        --sku Standard
+            
+      # Create Azure Key Vault for secrets management
+      $keyVaultName = "$($ProjectName.ToLower())kv$(Get-Random -Minimum 1000 -Maximum 9999)"
+      Write-ColorOutput "Creating Azure Key Vault: $keyVaultName" -ForegroundColor Gray
+      az keyvault create `
+        --name $keyVaultName `
+        --resource-group $ResourceGroup `
+        --location $Location `
+        --enable-soft-delete
+            
+      # Create Log Analytics workspace for monitoring
+      if ($EnableMonitoring) {
+        $workspaceName = "$($ProjectName.ToLower())workspace$(Get-Random -Minimum 1000 -Maximum 9999)"
+        Write-ColorOutput "Creating Log Analytics workspace: $workspaceName" -ForegroundColor Gray
+        az monitor log-analytics workspace create `
+          --workspace-name $workspaceName `
+          --resource-group $ResourceGroup `
+          --location $Location
+      }
+            
+      # Create Azure Kubernetes Service if enabled
+      if ($EnableKubernetes) {
+        $aksName = "$($ProjectName.ToLower())aks$(Get-Random -Minimum 1000 -Maximum 9999)"
+        Write-ColorOutput "Creating Azure Kubernetes Service: $aksName" -ForegroundColor Gray
+        az aks create `
+          --name $aksName `
+          --resource-group $ResourceGroup `
+          --location $Location `
+          --node-count 2 `
+          --node-vm-size Standard_DS2_v2 `
+          --attach-acr $acrName `
+          --enable-addons monitoring `
+          --generate-ssh-keys
+      }
+            
+      # Create Azure Storage Account for multi-cloud data
+      $storageAccountName = "$($ProjectName.ToLower())storage$(Get-Random -Minimum 1000 -Maximum 9999)"
+      Write-ColorOutput "Creating Azure Storage Account: $storageAccountName" -ForegroundColor Gray
+      az storage account create `
+        --name $storageAccountName `
+        --resource-group $ResourceGroup `
+        --location $Location `
+        --sku Standard_LRS `
+        --kind StorageV2
+            
+      # Create containers for multi-cloud data
+      try {
+        $storageKey = az storage account keys list `
+          --account-name $storageAccountName `
+          --resource-group $ResourceGroup `
+          --query "[0].value" `
+          --output tsv
+                
+        if ($LASTEXITCODE -ne 0) {
+          throw "Failed to retrieve storage account key. Exit code: $LASTEXITCODE"
         }
-        
-        # Create multi-cloud project configuration
-        Write-ColorOutput "Creating multi-cloud project configuration..." -ForegroundColor Yellow
-        $projectConfig = @{
-            ProjectName          = $ProjectName
-            ResourceGroup        = $ResourceGroup
-            Location             = $Location
-            CloudProviders       = $CloudProviders
-            InfrastructureType   = $InfrastructureType
-            EnableTerraform      = $EnableTerraform
-            EnableBicep          = $EnableBicep
-            EnableCloudFormation = $EnableCloudFormation
-            EnableKubernetes     = $EnableKubernetes
-            EnableMonitoring     = $EnableMonitoring
-            EnableSecurity       = $EnableSecurity
-            CreatedAt            = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                
+        if ([string]::IsNullOrWhiteSpace($storageKey)) {
+          throw "Storage account key is empty or null"
         }
-        
-        # Deploy Azure infrastructure if enabled
-        if ($EnableAzure) {
-            Write-ColorOutput "Deploying Azure infrastructure..." -ForegroundColor Yellow
+                
+        Write-ColorOutput "Successfully retrieved storage account key" -ForegroundColor Green
+      }
+      catch {
+        Write-ColorOutput "Error retrieving storage account key: $($_.Exception.Message)" -ForegroundColor Red
+        throw "Failed to retrieve storage account key for '$storageAccountName': $($_.Exception.Message)"
+      }
             
-            # Create Azure Container Registry for multi-cloud images
-            $acrName = "$($ProjectName.ToLower())acr$(Get-Random -Minimum 1000 -Maximum 9999)"
-            Write-ColorOutput "Creating Azure Container Registry: $acrName" -ForegroundColor Gray
-            az acr create `
-                --name $acrName `
-                --resource-group $ResourceGroup `
-                --location $Location `
-                --sku Standard
-            
-            # Create Azure Key Vault for secrets management
-            $keyVaultName = "$($ProjectName.ToLower())kv$(Get-Random -Minimum 1000 -Maximum 9999)"
-            Write-ColorOutput "Creating Azure Key Vault: $keyVaultName" -ForegroundColor Gray
-            az keyvault create `
-                --name $keyVaultName `
-                --resource-group $ResourceGroup `
-                --location $Location `
-                --enable-soft-delete
-            
-            # Create Log Analytics workspace for monitoring
-            if ($EnableMonitoring) {
-                $workspaceName = "$($ProjectName.ToLower())workspace$(Get-Random -Minimum 1000 -Maximum 9999)"
-                Write-ColorOutput "Creating Log Analytics workspace: $workspaceName" -ForegroundColor Gray
-                az monitor log-analytics workspace create `
-                    --workspace-name $workspaceName `
-                    --resource-group $ResourceGroup `
-                    --location $Location
-            }
-            
-            # Create Azure Kubernetes Service if enabled
-            if ($EnableKubernetes) {
-                $aksName = "$($ProjectName.ToLower())aks$(Get-Random -Minimum 1000 -Maximum 9999)"
-                Write-ColorOutput "Creating Azure Kubernetes Service: $aksName" -ForegroundColor Gray
-                az aks create `
-                    --name $aksName `
-                    --resource-group $ResourceGroup `
-                    --location $Location `
-                    --node-count 2 `
-                    --node-vm-size Standard_DS2_v2 `
-                    --attach-acr $acrName `
-                    --enable-addons monitoring `
-                    --generate-ssh-keys
-            }
-            
-            # Create Azure Storage Account for multi-cloud data
-            $storageAccountName = "$($ProjectName.ToLower())storage$(Get-Random -Minimum 1000 -Maximum 9999)"
-            Write-ColorOutput "Creating Azure Storage Account: $storageAccountName" -ForegroundColor Gray
-            az storage account create `
-                --name $storageAccountName `
-                --resource-group $ResourceGroup `
-                --location $Location `
-                --sku Standard_LRS `
-                --kind StorageV2
-            
-            # Create containers for multi-cloud data
-            $storageKey = az storage account keys list `
-                --account-name $storageAccountName `
-                --resource-group $ResourceGroup `
-                --query "[0].value" `
-                --output tsv
-            
-            $containers = @("multicloud-data", "terraform-state", "backup-data")
-            foreach ($container in $containers) {
-                az storage container create `
-                    --name $container `
-                    --account-name $storageAccountName `
-                    --account-key $storageKey
-            }
+      $containers = @("multicloud-data", "terraform-state", "backup-data")
+      foreach ($container in $containers) {
+        try {
+          az storage container create `
+            --name $container `
+            --account-name $storageAccountName `
+            --account-key $storageKey
+                    
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create storage container '$container'. Exit code: $LASTEXITCODE"
+          }
+                    
+          Write-ColorOutput "Successfully created storage container: $container" -ForegroundColor Green
         }
+        catch {
+          Write-ColorOutput "Error creating storage container '$container': $($_.Exception.Message)" -ForegroundColor Red
+          throw "Failed to create storage container '$container': $($_.Exception.Message)"
+        }
+      }
+    }
         
-        # Create Terraform configuration if enabled
-        if ($EnableTerraform) {
-            Write-ColorOutput "Creating Terraform configuration..." -ForegroundColor Yellow
+    # Create Terraform configuration if enabled
+    if ($EnableTerraform) {
+      Write-ColorOutput "Creating Terraform configuration..." -ForegroundColor Yellow
             
-            $terraformConfig = @"
+      $terraformConfig = @"
 # Multi-Cloud Infrastructure with Terraform
 terraform {
   required_version = ">= 1.0"
@@ -254,7 +303,7 @@ provider "aws" {
 
 # Google Cloud Provider
 provider "google" {
-  project = "your-gcp-project-id"
+  project = "$(if ($GCPProjectID) { $GCPProjectID } else { 'your-gcp-project-id' })"
   region  = "us-central1"
 }
 
@@ -293,20 +342,25 @@ resource "google_compute_network" "multicloud" {
 }
 "@
             
-            $terraformPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-terraform"
-            if (-not (Test-Path -Path $terraformPath)) {
-                New-Item -ItemType Directory -Path $terraformPath -Force | Out-Null
-            }
+      $terraformPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-terraform"
+      if (-not (Test-Path -Path $terraformPath)) {
+        New-Item -ItemType Directory -Path $terraformPath -Force | Out-Null
+      }
             
-            $terraformConfig | Set-Content -Path (Join-Path -Path $terraformPath -ChildPath "main.tf")
-            Write-ColorOutput "Terraform configuration created: $terraformPath" -ForegroundColor Green
-        }
+      $terraformConfig | Set-Content -Path (Join-Path -Path $terraformPath -ChildPath "main.tf")
+      Write-ColorOutput "Terraform configuration created: $terraformPath" -ForegroundColor Green
+    }
         
-        # Create Bicep configuration if enabled
-        if ($EnableBicep) {
-            Write-ColorOutput "Creating Bicep configuration..." -ForegroundColor Yellow
+    # Create Bicep configuration if enabled
+    if ($EnableBicep) {
+      Write-ColorOutput "Creating Bicep configuration..." -ForegroundColor Yellow
             
-            $bicepConfig = @"
+      # Generate dynamic resource names in PowerShell
+      $storageAccountNameBicep = "$($ProjectName.ToLower())storage$(Get-Random -Minimum 100000 -Maximum 999999)"
+      $keyVaultNameBicep = "$($ProjectName.ToLower())kv$(Get-Random -Minimum 100000 -Maximum 999999)"
+      $workspaceNameBicep = "$($ProjectName.ToLower())workspace$(Get-Random -Minimum 100000 -Maximum 999999)"
+            
+      $bicepConfig = @"
 // Multi-Cloud Infrastructure with Bicep
 @description('Name of the multi-cloud project')
 param projectName string = '$ProjectName'
@@ -328,7 +382,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 
 // Storage Account for multi-cloud data
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
-  name: '${ProjectName.ToLower()}storage${Get-Random -Minimum 1000 -Maximum 9999}'
+  name: '$storageAccountNameBicep'
   location: location
   resourceGroup: rg.name
   sku: {
@@ -343,7 +397,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
 
 // Key Vault for secrets management
 resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
-  name: '${ProjectName.ToLower()}kv${Get-Random -Minimum 1000 -Maximum 9999}'
+  name: '$keyVaultNameBicep'
   location: location
   resourceGroup: rg.name
   properties: {
@@ -360,7 +414,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
 
 // Log Analytics Workspace for monitoring
 resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = if (enableMonitoring) {
-  name: '${ProjectName.ToLower()}workspace${Get-Random -Minimum 1000 -Maximum 9999}'
+  name: '$workspaceNameBicep'
   location: location
   resourceGroup: rg.name
   properties: {
@@ -375,23 +429,23 @@ resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = if (e
 output resourceGroupName string = rg.name
 output storageAccountName string = storageAccount.name
 output keyVaultName string = keyVault.name
-output workspaceName string = workspace.name
+output workspaceName string = enableMonitoring ? workspace.name : ''
 "@
             
-            $bicepPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-bicep"
-            if (-not (Test-Path -Path $bicepPath)) {
-                New-Item -ItemType Directory -Path $bicepPath -Force | Out-Null
-            }
+      $bicepPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-bicep"
+      if (-not (Test-Path -Path $bicepPath)) {
+        New-Item -ItemType Directory -Path $bicepPath -Force | Out-Null
+      }
             
-            $bicepConfig | Set-Content -Path (Join-Path -Path $bicepPath -ChildPath "main.bicep")
-            Write-ColorOutput "Bicep configuration created: $bicepPath" -ForegroundColor Green
-        }
+      $bicepConfig | Set-Content -Path (Join-Path -Path $bicepPath -ChildPath "main.bicep")
+      Write-ColorOutput "Bicep configuration created: $bicepPath" -ForegroundColor Green
+    }
         
-        # Create CloudFormation template if enabled
-        if ($EnableCloudFormation) {
-            Write-ColorOutput "Creating CloudFormation template..." -ForegroundColor Yellow
+    # Create CloudFormation template if enabled
+    if ($EnableCloudFormation) {
+      Write-ColorOutput "Creating CloudFormation template..." -ForegroundColor Yellow
             
-            $cloudFormationConfig = @"
+      $cloudFormationConfig = @"
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Multi-Cloud Infrastructure - AWS Resources'
 
@@ -498,80 +552,80 @@ Outputs:
       Name: !Sub '${ProjectName}-bucket-name'
 "@
             
-            $cloudFormationPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-cloudformation"
-            if (-not (Test-Path -Path $cloudFormationPath)) {
-                New-Item -ItemType Directory -Path $cloudFormationPath -Force | Out-Null
-            }
+      $cloudFormationPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-cloudformation"
+      if (-not (Test-Path -Path $cloudFormationPath)) {
+        New-Item -ItemType Directory -Path $cloudFormationPath -Force | Out-Null
+      }
             
-            $cloudFormationConfig | Set-Content -Path (Join-Path -Path $cloudFormationPath -ChildPath "template.yaml")
-            Write-ColorOutput "CloudFormation template created: $cloudFormationPath" -ForegroundColor Green
-        }
-        
-        # Create multi-cloud configuration file
-        $configPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-config.json"
-        $projectConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath
-        
-        # Display deployment summary
-        Write-ColorOutput "`nMulti-Cloud Infrastructure deployment completed successfully!" -ForegroundColor Green
-        Write-ColorOutput "Project Name: $ProjectName" -ForegroundColor Gray
-        Write-ColorOutput "Resource Group: $ResourceGroup" -ForegroundColor Gray
-        Write-ColorOutput "Location: $Location" -ForegroundColor Gray
-        Write-ColorOutput "Cloud Providers: $($CloudProviders -join ', ')" -ForegroundColor Gray
-        Write-ColorOutput "Infrastructure Type: $InfrastructureType" -ForegroundColor Gray
-        
-        if ($EnableAzure) {
-            Write-ColorOutput "Azure Resources:" -ForegroundColor Gray
-            Write-ColorOutput "  - Container Registry: $acrName" -ForegroundColor Gray
-            Write-ColorOutput "  - Key Vault: $keyVaultName" -ForegroundColor Gray
-            Write-ColorOutput "  - Storage Account: $storageAccountName" -ForegroundColor Gray
-            if ($EnableMonitoring) {
-                Write-ColorOutput "  - Log Analytics Workspace: $workspaceName" -ForegroundColor Gray
-            }
-            if ($EnableKubernetes) {
-                Write-ColorOutput "  - AKS Cluster: $aksName" -ForegroundColor Gray
-            }
-        }
-        
-        Write-ColorOutput "Configuration Files:" -ForegroundColor Gray
-        if ($EnableTerraform) {
-            Write-ColorOutput "  - Terraform: $terraformPath" -ForegroundColor Gray
-        }
-        if ($EnableBicep) {
-            Write-ColorOutput "  - Bicep: $bicepPath" -ForegroundColor Gray
-        }
-        if ($EnableCloudFormation) {
-            Write-ColorOutput "  - CloudFormation: $cloudFormationPath" -ForegroundColor Gray
-        }
-        Write-ColorOutput "  - Multi-Cloud Config: $configPath" -ForegroundColor Gray
-        
-        # Return deployment info
-        return @{
-            ProjectName        = $ProjectName
-            ResourceGroup      = $ResourceGroup
-            Location           = $Location
-            CloudProviders     = $CloudProviders
-            InfrastructureType = $InfrastructureType
-            AzureResources     = if ($EnableAzure) {
-                @{
-                    ContainerRegistry     = $acrName
-                    KeyVault              = $keyVaultName
-                    StorageAccount        = $storageAccountName
-                    LogAnalyticsWorkspace = if ($EnableMonitoring) { $workspaceName } else { $null }
-                    AKSCluster            = if ($EnableKubernetes) { $aksName } else { $null }
-                }
-            }
-            else { $null }
-            ConfigurationFiles = @{
-                Terraform        = if ($EnableTerraform) { $terraformPath } else { $null }
-                Bicep            = if ($EnableBicep) { $bicepPath } else { $null }
-                CloudFormation   = if ($EnableCloudFormation) { $cloudFormationPath } else { $null }
-                MultiCloudConfig = $configPath
-            }
-            ProjectConfig      = $projectConfig
-        }
+      $cloudFormationConfig | Set-Content -Path (Join-Path -Path $cloudFormationPath -ChildPath "template.yaml")
+      Write-ColorOutput "CloudFormation template created: $cloudFormationPath" -ForegroundColor Green
     }
-    catch {
-        Write-ColorOutput "Error deploying Multi-Cloud Infrastructure: $_" -ForegroundColor Red
-        throw
+        
+    # Create multi-cloud configuration file
+    $configPath = Join-Path -Path $env:TEMP -ChildPath "multicloud-config.json"
+    $projectConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath
+        
+    # Display deployment summary
+    Write-ColorOutput "`nMulti-Cloud Infrastructure deployment completed successfully!" -ForegroundColor Green
+    Write-ColorOutput "Project Name: $ProjectName" -ForegroundColor Gray
+    Write-ColorOutput "Resource Group: $ResourceGroup" -ForegroundColor Gray
+    Write-ColorOutput "Location: $Location" -ForegroundColor Gray
+    Write-ColorOutput "Cloud Providers: $($CloudProviders -join ', ')" -ForegroundColor Gray
+    Write-ColorOutput "Infrastructure Type: $InfrastructureType" -ForegroundColor Gray
+        
+    if ($EnableAzure) {
+      Write-ColorOutput "Azure Resources:" -ForegroundColor Gray
+      Write-ColorOutput "  - Container Registry: $acrName" -ForegroundColor Gray
+      Write-ColorOutput "  - Key Vault: $keyVaultName" -ForegroundColor Gray
+      Write-ColorOutput "  - Storage Account: $storageAccountName" -ForegroundColor Gray
+      if ($EnableMonitoring) {
+        Write-ColorOutput "  - Log Analytics Workspace: $workspaceName" -ForegroundColor Gray
+      }
+      if ($EnableKubernetes) {
+        Write-ColorOutput "  - AKS Cluster: $aksName" -ForegroundColor Gray
+      }
     }
+        
+    Write-ColorOutput "Configuration Files:" -ForegroundColor Gray
+    if ($EnableTerraform) {
+      Write-ColorOutput "  - Terraform: $terraformPath" -ForegroundColor Gray
+    }
+    if ($EnableBicep) {
+      Write-ColorOutput "  - Bicep: $bicepPath" -ForegroundColor Gray
+    }
+    if ($EnableCloudFormation) {
+      Write-ColorOutput "  - CloudFormation: $cloudFormationPath" -ForegroundColor Gray
+    }
+    Write-ColorOutput "  - Multi-Cloud Config: $configPath" -ForegroundColor Gray
+        
+    # Return deployment info
+    return @{
+      ProjectName        = $ProjectName
+      ResourceGroup      = $ResourceGroup
+      Location           = $Location
+      CloudProviders     = $CloudProviders
+      InfrastructureType = $InfrastructureType
+      AzureResources     = if ($EnableAzure) {
+        @{
+          ContainerRegistry     = $acrName
+          KeyVault              = $keyVaultName
+          StorageAccount        = $storageAccountName
+          LogAnalyticsWorkspace = if ($EnableMonitoring) { $workspaceName } else { $null }
+          AKSCluster            = if ($EnableKubernetes) { $aksName } else { $null }
+        }
+      }
+      else { $null }
+      ConfigurationFiles = @{
+        Terraform        = if ($EnableTerraform) { $terraformPath } else { $null }
+        Bicep            = if ($EnableBicep) { $bicepPath } else { $null }
+        CloudFormation   = if ($EnableCloudFormation) { $cloudFormationPath } else { $null }
+        MultiCloudConfig = $configPath
+      }
+      ProjectConfig      = $projectConfig
+    }
+  }
+  catch {
+    Write-ColorOutput "Error deploying Multi-Cloud Infrastructure: $_" -ForegroundColor Red
+    throw
+  }
 } 

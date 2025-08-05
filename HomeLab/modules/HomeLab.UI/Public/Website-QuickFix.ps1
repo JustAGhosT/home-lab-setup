@@ -13,54 +13,57 @@ function Show-WebsiteMenuDirect {
         "5" = "Return to Main Menu"
     }
     
-    # Clear host for clean display
-    Clear-Host
-    
-    # Display title
-    Write-Host "===========================================" -ForegroundColor Cyan
-    Write-Host "         WEBSITE DEPLOYMENT MENU           " -ForegroundColor Cyan
-    Write-Host "===========================================" -ForegroundColor Cyan
-    Write-Host ""
-    
-    # Display menu items
-    Write-Host "  [1] Deploy Static Website" -ForegroundColor White
-    Write-Host "  [2] Deploy App Service Website" -ForegroundColor White
-    Write-Host "  [3] Auto-Detect and Deploy Website" -ForegroundColor White
-    Write-Host "  [4] Configure Custom Domain" -ForegroundColor White
-    Write-Host "  [5] Return to Main Menu" -ForegroundColor Yellow
-    
-    # Get user choice
-    Write-Host ""
-    $choice = Read-Host "Select an option (1-5)"
-    
-    # Process user choice without using complex handlers
-    switch ($choice) {
-        "1" {
-            Deploy-SimpleStaticWebsite
+    do {
+        # Clear host for clean display
+        Clear-Host
+        
+        # Display title
+        Write-Host "===========================================" -ForegroundColor Cyan
+        Write-Host "         WEBSITE DEPLOYMENT MENU           " -ForegroundColor Cyan
+        Write-Host "===========================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        # Display menu items
+        Write-Host "  [1] Deploy Static Website" -ForegroundColor White
+        Write-Host "  [2] Deploy App Service Website" -ForegroundColor White
+        Write-Host "  [3] Auto-Detect and Deploy Website" -ForegroundColor White
+        Write-Host "  [4] Configure Custom Domain" -ForegroundColor White
+        Write-Host "  [5] Return to Main Menu" -ForegroundColor Yellow
+        
+        # Get user choice with validation
+        Write-Host ""
+        $choice = Read-Host "Select an option (1-5)"
+        
+        # Validate input
+        if ($choice -match '^[1-5]$') {
+            # Process user choice without using complex handlers
+            switch ($choice) {
+                "1" {
+                    Deploy-SimpleStaticWebsite
+                }
+                "2" {
+                    Deploy-SimpleAppServiceWebsite
+                }
+                "3" {
+                    Deploy-SimpleAutoDetectWebsite
+                }
+                "4" {
+                    Configure-SimpleCustomDomain
+                }
+                "5" {
+                    # Return to main menu
+                    return
+                }
+            }
+            
+            # Return to this menu after function completes
+            Read-Host "Press Enter to continue"
         }
-        "2" {
-            Deploy-SimpleAppServiceWebsite
-        }
-        "3" {
-            Deploy-SimpleAutoDetectWebsite
-        }
-        "4" {
-            Configure-SimpleCustomDomain
-        }
-        "5" {
-            # Return to main menu
-            return
-        }
-        default {
-            Write-Host "Invalid choice. Try again." -ForegroundColor Red
+        else {
+            Write-Host "Invalid choice. Please enter a number between 1 and 5." -ForegroundColor Red
             Start-Sleep -Seconds 2
-            Show-WebsiteMenuDirect
         }
-    }
-    
-    # Return to this menu after function completes
-    Read-Host "Press Enter to continue"
-    Show-WebsiteMenuDirect
+    } while ($true)
 }
 
 # Simple deployment functions that don't rely on complex handlers
@@ -70,10 +73,38 @@ function Deploy-SimpleStaticWebsite {
     Write-Host "=== Deploy Static Website ===" -ForegroundColor Cyan
     Write-Host ""
     
-    # Get required parameters
-    $resourceGroup = Read-Host "Enter Resource Group name"
-    $appName = Read-Host "Enter App Name"
-    $subscriptionId = Read-Host "Enter Subscription ID"
+    # Get required parameters with validation
+    do {
+        $resourceGroup = Read-Host "Enter Resource Group name"
+        if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+            Write-Host "Resource Group name cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
+    
+    do {
+        $appName = Read-Host "Enter App Name"
+        if ([string]::IsNullOrWhiteSpace($appName)) {
+            Write-Host "App Name cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
+    
+    do {
+        $subscriptionId = Read-Host "Enter Subscription ID"
+        if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
+            Write-Host "Subscription ID cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        # Basic GUID format validation
+        if ($subscriptionId -notmatch '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$') {
+            Write-Host "Invalid Subscription ID format. Please enter a valid GUID." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
     
     # Ask about custom domain
     $useDomain = Read-Host "Configure custom domain? (y/n)"
@@ -96,8 +127,8 @@ function Deploy-SimpleStaticWebsite {
     # Build parameters
     $params = @{
         DeploymentType = "static"
-        ResourceGroup = $resourceGroup
-        AppName = $appName
+        ResourceGroup  = $resourceGroup
+        AppName        = $appName
         SubscriptionId = $subscriptionId
     }
     
@@ -154,10 +185,38 @@ function Deploy-SimpleAppServiceWebsite {
     Write-Host "=== Deploy App Service Website ===" -ForegroundColor Cyan
     Write-Host ""
     
-    # Get required parameters
-    $resourceGroup = Read-Host "Enter Resource Group name"
-    $appName = Read-Host "Enter App Name"
-    $subscriptionId = Read-Host "Enter Subscription ID"
+    # Get required parameters with validation
+    do {
+        $resourceGroup = Read-Host "Enter Resource Group name"
+        if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+            Write-Host "Resource Group name cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
+    
+    do {
+        $appName = Read-Host "Enter App Name"
+        if ([string]::IsNullOrWhiteSpace($appName)) {
+            Write-Host "App Name cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
+    
+    do {
+        $subscriptionId = Read-Host "Enter Subscription ID"
+        if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
+            Write-Host "Subscription ID cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        # Basic GUID format validation
+        if ($subscriptionId -notmatch '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$') {
+            Write-Host "Invalid Subscription ID format. Please enter a valid GUID." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
     
     # Ask about custom domain
     $useDomain = Read-Host "Configure custom domain? (y/n)"
@@ -180,8 +239,8 @@ function Deploy-SimpleAppServiceWebsite {
     # Build parameters
     $params = @{
         DeploymentType = "appservice"
-        ResourceGroup = $resourceGroup
-        AppName = $appName
+        ResourceGroup  = $resourceGroup
+        AppName        = $appName
         SubscriptionId = $subscriptionId
     }
     
@@ -238,75 +297,112 @@ function Deploy-SimpleAutoDetectWebsite {
     Write-Host "=== Auto-Detect and Deploy Website ===" -ForegroundColor Cyan
     Write-Host ""
     
-    # Get required parameters
-    $resourceGroup = Read-Host "Enter Resource Group name"
-    $appName = Read-Host "Enter App Name"
-    $subscriptionId = Read-Host "Enter Subscription ID"
-    $projectPath = Read-Host "Enter project path (required for auto-detection)"
-    
-    if (-not $projectPath) {
-        Write-Host "Project path is required for auto-detection." -ForegroundColor Red
-        return
-    }
-    
-    # Ask about custom domain
-    $useDomain = Read-Host "Configure custom domain? (y/n)"
-    $customDomain = $null
-    $subdomain = $null
-    
-    if ($useDomain -eq "y") {
-        $customDomain = Read-Host "Enter domain (e.g., example.com)"
-        $subdomain = Read-Host "Enter subdomain (e.g., www)"
-    }
-    
-    # Build parameters
-    $params = @{
-        DeploymentType = "auto"
-        ResourceGroup = $resourceGroup
-        AppName = $appName
-        SubscriptionId = $subscriptionId
-        ProjectPath = $projectPath
-    }
-    
-    if ($customDomain) {
-        $params.CustomDomain = $customDomain
-    }
-    
-    if ($subdomain) {
-        $params.Subdomain = $subdomain
-    }
-    
-    # Show deployment summary
-    Write-Host ""
-    Write-Host "Deployment Summary:" -ForegroundColor Cyan
-    Write-Host "Type: Auto-Detect" -ForegroundColor White
-    Write-Host "Resource Group: $resourceGroup" -ForegroundColor White
-    Write-Host "App Name: $appName" -ForegroundColor White
-    Write-Host "Subscription: $subscriptionId" -ForegroundColor White
-    Write-Host "Project Path: $projectPath" -ForegroundColor White
-    
-    if ($customDomain) {
-        Write-Host "Domain: $subdomain.$customDomain" -ForegroundColor White
-    }
-    
-    # Confirm and deploy
-    Write-Host ""
-    $confirm = Read-Host "Proceed with deployment? (y/n)"
-    
-    if ($confirm -eq "y") {
-        try {
-            # Call the actual deployment function
-            Write-Host "Auto-detecting project type and deploying website..." -ForegroundColor Yellow
-            Deploy-Website @params
-            Write-Host "Deployment completed successfully!" -ForegroundColor Green
+    # Get required parameters with validation
+    do {
+        $resourceGroup = Read-Host "Enter Resource Group name"
+        if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+            Write-Host "Resource Group name cannot be empty. Please try again." -ForegroundColor Red
+            continue
         }
-        catch {
-            Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+        break
+    } while ($true)
+    
+    do {
+        $appName = Read-Host "Enter App Name"
+        if ([string]::IsNullOrWhiteSpace($appName)) {
+            Write-Host "App Name cannot be empty. Please try again." -ForegroundColor Red
+            continue
         }
+        break
+    } while ($true)
+    
+    do {
+        $subscriptionId = Read-Host "Enter Subscription ID"
+        if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
+            Write-Host "Subscription ID cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        # Basic GUID format validation
+        if ($subscriptionId -notmatch '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$') {
+            Write-Host "Invalid Subscription ID format. Please enter a valid GUID." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
+    
+    do {
+        $projectPath = Read-Host "Enter project path (required for auto-detection)"
+        if ([string]::IsNullOrWhiteSpace($projectPath)) {
+            Write-Host "Project path is required for auto-detection. Please try again." -ForegroundColor Red
+            continue
+        }
+        if (-not (Test-Path -Path $projectPath)) {
+            Write-Host "Project path does not exist. Please enter a valid path." -ForegroundColor Red
+            continue
+        }
+        break
+    } while ($true)
+    return
+}
+    
+# Ask about custom domain
+$useDomain = Read-Host "Configure custom domain? (y/n)"
+$customDomain = $null
+$subdomain = $null
+    
+if ($useDomain -eq "y") {
+    $customDomain = Read-Host "Enter domain (e.g., example.com)"
+    $subdomain = Read-Host "Enter subdomain (e.g., www)"
+}
+    
+# Build parameters
+$params = @{
+    DeploymentType = "auto"
+    ResourceGroup  = $resourceGroup
+    AppName        = $appName
+    SubscriptionId = $subscriptionId
+    ProjectPath    = $projectPath
+}
+    
+if ($customDomain) {
+    $params.CustomDomain = $customDomain
+}
+    
+if ($subdomain) {
+    $params.Subdomain = $subdomain
+}
+    
+# Show deployment summary
+Write-Host ""
+Write-Host "Deployment Summary:" -ForegroundColor Cyan
+Write-Host "Type: Auto-Detect" -ForegroundColor White
+Write-Host "Resource Group: $resourceGroup" -ForegroundColor White
+Write-Host "App Name: $appName" -ForegroundColor White
+Write-Host "Subscription: $subscriptionId" -ForegroundColor White
+Write-Host "Project Path: $projectPath" -ForegroundColor White
+    
+if ($customDomain) {
+    Write-Host "Domain: $subdomain.$customDomain" -ForegroundColor White
+}
+    
+# Confirm and deploy
+Write-Host ""
+$confirm = Read-Host "Proceed with deployment? (y/n)"
+    
+if ($confirm -eq "y") {
+    try {
+        # Call the actual deployment function
+        Write-Host "Auto-detecting project type and deploying website..." -ForegroundColor Yellow
+        Deploy-Website @params
+        Write-Host "Deployment completed successfully!" -ForegroundColor Green
     }
-    else {
-        Write-Host "Deployment cancelled." -ForegroundColor Yellow
+    catch {
+        Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
     }
+}
+else {
+    Write-Host "Deployment cancelled." -ForegroundColor Yellow
+}
 }
 
 function Configure-SimpleCustomDomain {

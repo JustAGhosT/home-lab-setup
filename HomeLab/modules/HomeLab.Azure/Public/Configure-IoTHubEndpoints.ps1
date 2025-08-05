@@ -56,18 +56,6 @@ function Configure-IoTHubEndpoints {
     try {
         Write-ColorOutput "Configuring IoT Hub endpoints..." -ForegroundColor Cyan
         
-        # Helper function to mask sensitive connection strings
-        function Get-MaskedConnectionString {
-            param([string]$ConnectionString)
-            if ([string]::IsNullOrEmpty($ConnectionString)) {
-                return "[NOT SET]"
-            }
-            if ($ConnectionString.Length -le 8) {
-                return "*" * $ConnectionString.Length
-            }
-            return "*" * ($ConnectionString.Length - 8) + $ConnectionString.Substring($ConnectionString.Length - 8)
-        }
-        
         # Validate Azure CLI availability and authentication
         if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
             throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
@@ -82,6 +70,18 @@ function Configure-IoTHubEndpoints {
         }
         catch {
             throw "Azure authentication failed. Please run 'az login' to authenticate with Azure."
+        }
+        
+        # Helper function to mask sensitive connection strings
+        function Get-MaskedConnectionString {
+            param([string]$ConnectionString)
+            if ([string]::IsNullOrEmpty($ConnectionString)) {
+                return "[NOT SET]"
+            }
+            if ($ConnectionString.Length -le 8) {
+                return "*" * $ConnectionString.Length
+            }
+            return "*" * ($ConnectionString.Length - 8) + $ConnectionString.Substring($ConnectionString.Length - 8)
         }
         
         # Get connection strings if not provided
@@ -194,6 +194,36 @@ function Configure-IoTHubEndpoints {
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
             
+            # Enhanced security warning for sensitive data
+            Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+            Write-ColorOutput "The .env file will contain sensitive IoT Hub connection strings and credentials." -ForegroundColor Yellow
+            Write-ColorOutput "These connection strings provide access to your IoT Hub and should be protected." -ForegroundColor Yellow
+            Write-ColorOutput "For production environments, consider using Azure Key Vault for secure storage." -ForegroundColor Yellow
+            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits to version control." -ForegroundColor Yellow
+            Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
+            
+            # Check if .gitignore exists and contains .env
+            $gitignorePath = Join-Path -Path $ProjectPath -ChildPath ".gitignore"
+            if (Test-Path -Path $gitignorePath) {
+                $gitignoreContent = Get-Content -Path $gitignorePath
+                if ($gitignoreContent -notcontains ".env") {
+                    Write-ColorOutput "Adding .env to .gitignore for security..." -ForegroundColor Cyan
+                    Add-Content -Path $gitignorePath -Value "`n# Environment variables with sensitive data`n.env"
+                }
+            }
+            else {
+                Write-ColorOutput "Creating .gitignore file with .env exclusion..." -ForegroundColor Cyan
+                @"
+# Environment variables with sensitive data
+.env
+
+# Other common exclusions
+node_modules/
+*.log
+.DS_Store
+"@ | Set-Content -Path $gitignorePath
+            }
+            
             # Read existing .env content if it exists
             $existingEnvContent = @()
             if (Test-Path -Path $envPath) {
@@ -219,15 +249,8 @@ function Configure-IoTHubEndpoints {
             $combinedContent | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
             
-            # Security warning for .env file
-            Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
-            Write-ColorOutput "The .env file contains sensitive IoT Hub connection strings." -ForegroundColor Yellow
-            Write-ColorOutput "Please ensure this file is:" -ForegroundColor Yellow
-            Write-ColorOutput "  • Added to .gitignore to prevent accidental commit to version control" -ForegroundColor Yellow
-            Write-ColorOutput "  • Protected with appropriate file permissions" -ForegroundColor Yellow
-            Write-ColorOutput "  • Not shared or exposed in public repositories" -ForegroundColor Yellow
-            Write-ColorOutput "  • Considered for secure secret management in production environments" -ForegroundColor Yellow
-            Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
+            # Final security reminder
+            Write-ColorOutput "`n✅ .env file created successfully with security protections in place." -ForegroundColor Green
         }
         
         # Save connection information to a configuration file

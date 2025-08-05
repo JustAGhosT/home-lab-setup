@@ -74,6 +74,22 @@ function Configure-IoTEdgeModules {
     try {
         Write-ColorOutput "Configuring IoT Edge modules..." -ForegroundColor Cyan
         
+        # Validate Azure CLI availability
+        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+            throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+        }
+        
+        # Check if user is authenticated
+        try {
+            $null = az account show --query id --output tsv 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                throw "You are not logged in to Azure. Please run 'az login' to authenticate."
+            }
+        }
+        catch {
+            throw "Azure authentication failed. Please run 'az login' to authenticate with Azure."
+        }
+        
         # Helper function to mask sensitive connection strings
         function Get-MaskedConnectionString {
             param([string]$ConnectionString)
@@ -84,11 +100,6 @@ function Configure-IoTEdgeModules {
                 return "*" * $ConnectionString.Length
             }
             return "*" * ($ConnectionString.Length - 8) + $ConnectionString.Substring($ConnectionString.Length - 8)
-        }
-        
-        # Validate Azure CLI availability
-        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-            throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
         }
         
         # Get device connection string if not provided
@@ -179,13 +190,25 @@ function Configure-IoTEdgeModules {
                 $appSettings.IoTEdge.DeviceId = $deviceDetails.deviceId
                 $appSettings.IoTEdge.DeviceStatus = $deviceDetails.status
                 
-                # Validate JSON structure before writing
+                # Validate JSON structure before writing with atomic write
                 try {
                     $jsonString = $appSettings | ConvertTo-Json -Depth 10
                     $validatedJson = $jsonString | ConvertFrom-Json
-                    $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
-                    Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive IoT Edge connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
+                    
+                    # Atomic write to appsettings.json
+                    $tempAppSettingsPath = $appSettingsPath + ".tmp"
+                    try {
+                        $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $tempAppSettingsPath -ErrorAction Stop
+                        Move-Item -Path $tempAppSettingsPath -Destination $appSettingsPath -Force
+                        Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                        Write-ColorOutput "⚠️  Note: appsettings.json contains sensitive IoT Edge connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
+                    }
+                    catch {
+                        if (Test-Path -Path $tempAppSettingsPath) {
+                            Remove-Item -Path $tempAppSettingsPath -Force -ErrorAction SilentlyContinue
+                        }
+                        throw
+                    }
                 }
                 catch {
                     throw "Invalid JSON structure generated. Cannot save appsettings.json: $($_.Exception.Message)"
@@ -212,13 +235,25 @@ function Configure-IoTEdgeModules {
                 $packageJson.config.iotEdgeDeviceId = $deviceDetails.deviceId
                 $packageJson.config.iotEdgeDeviceStatus = $deviceDetails.status
                 
-                # Validate JSON structure before writing
+                # Validate JSON structure before writing with atomic write
                 try {
                     $jsonString = $packageJson | ConvertTo-Json -Depth 10
                     $validatedJson = $jsonString | ConvertFrom-Json
-                    $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
-                    Write-ColorOutput "⚠️  Note: package.json contains sensitive IoT Edge connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
+                    
+                    # Atomic write to package.json
+                    $tempPackageJsonPath = $packageJsonPath + ".tmp"
+                    try {
+                        $validatedJson | ConvertTo-Json -Depth 10 | Set-Content -Path $tempPackageJsonPath -ErrorAction Stop
+                        Move-Item -Path $tempPackageJsonPath -Destination $packageJsonPath -Force
+                        Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                        Write-ColorOutput "⚠️  Note: package.json contains sensitive IoT Edge connection strings - ensure it's not committed to version control" -ForegroundColor Yellow
+                    }
+                    catch {
+                        if (Test-Path -Path $tempPackageJsonPath) {
+                            Remove-Item -Path $tempPackageJsonPath -Force -ErrorAction SilentlyContinue
+                        }
+                        throw
+                    }
                 }
                 catch {
                     throw "Invalid JSON structure generated. Cannot save package.json: $($_.Exception.Message)"
@@ -229,11 +264,13 @@ function Configure-IoTEdgeModules {
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
             
-            # Security warning for sensitive data
-            Write-ColorOutput "`n⚠️  SECURITY WARNING:" -ForegroundColor Yellow
-            Write-ColorOutput "The .env file will contain sensitive connection strings and credentials." -ForegroundColor Yellow
+            # Enhanced security warning for sensitive data
+            Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+            Write-ColorOutput "The .env file will contain sensitive IoT Edge connection strings and credentials." -ForegroundColor Yellow
+            Write-ColorOutput "These connection strings provide access to your IoT Hub and should be protected." -ForegroundColor Yellow
             Write-ColorOutput "For production environments, consider using Azure Key Vault for secure storage." -ForegroundColor Yellow
-            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits." -ForegroundColor Yellow
+            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits to version control." -ForegroundColor Yellow
+            Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
             
             # Check if .gitignore exists and contains .env
             $gitignorePath = Join-Path -Path $ProjectPath -ChildPath ".gitignore"
@@ -257,7 +294,11 @@ node_modules/
 "@ | Set-Content -Path $gitignorePath
             }
             
-            @"
+            # Create temporary file for atomic write
+            $tempEnvPath = $envPath + ".tmp"
+            
+            try {
+                @"
 # Azure IoT Edge Configuration
 AZURE_IOT_EDGE_IOT_HUB_NAME=$IoTHubName
 AZURE_IOT_EDGE_DEVICE_NAME=$EdgeDeviceName
@@ -268,8 +309,19 @@ AZURE_IOT_EDGE_CONTAINER_REGISTRY_LOGIN_SERVER=$ContainerRegistryLoginServer
 AZURE_IOT_EDGE_LOG_ANALYTICS_WORKSPACE=$LogAnalyticsWorkspace
 AZURE_IOT_EDGE_DEVICE_ID=$($deviceDetails.deviceId)
 AZURE_IOT_EDGE_DEVICE_STATUS=$($deviceDetails.status)
-"@ | Set-Content -Path $envPath
-            Write-ColorOutput "Created .env file" -ForegroundColor Green
+"@ | Set-Content -Path $tempEnvPath -ErrorAction Stop
+                
+                # Atomic move to replace original file
+                Move-Item -Path $tempEnvPath -Destination $envPath -Force
+                Write-ColorOutput "Created .env file" -ForegroundColor Green
+            }
+            catch {
+                # Clean up temporary file if it exists
+                if (Test-Path -Path $tempEnvPath) {
+                    Remove-Item -Path $tempEnvPath -Force -ErrorAction SilentlyContinue
+                }
+                throw "Failed to create .env file: $($_.Exception.Message)"
+            }
         }
         
         # Save connection information to a configuration file

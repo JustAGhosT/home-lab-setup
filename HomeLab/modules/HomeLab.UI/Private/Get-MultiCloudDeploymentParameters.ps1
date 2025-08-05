@@ -31,6 +31,24 @@ function Get-MultiCloudDeploymentParameters {
     try {
         Write-ColorOutput "`nCollecting multi-cloud deployment parameters..." -ForegroundColor Cyan
         
+        # Helper function for consistent y/n input handling
+        function Read-YesNoPrompt {
+            param(
+                [string]$Prompt,
+                [bool]$DefaultValue
+            )
+            
+            $defaultText = if ($DefaultValue) { "y" } else { "n" }
+            $userInput = Read-Host "$Prompt (y/n) (default: $defaultText)"
+            
+            if ([string]::IsNullOrWhiteSpace($userInput)) {
+                return $DefaultValue
+            }
+            else {
+                return ($userInput -eq "y" -or $userInput -eq "yes")
+            }
+        }
+        
         # Get basic parameters
         $resourceGroup = Read-Host "Resource Group Name (default: $($config.env)-$($config.loc)-rg-$($config.project))"
         if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
@@ -49,82 +67,36 @@ function Get-MultiCloudDeploymentParameters {
                     $projectName = "$($config.env)-$($config.loc)-multicloud-$($config.project)"
                 }
                 
-                $enableAzure = Read-Host "Enable Azure Deployment (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableAzure) -or $enableAzure -eq "y") {
-                    $enableAzure = $true
-                }
-                else {
-                    $enableAzure = $false
-                }
+                $enableAzure = Read-YesNoPrompt -Prompt "Enable Azure Deployment" -DefaultValue $true
                 
-                $enableAWS = Read-Host "Enable AWS Deployment (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableAWS) -or $enableAWS -eq "n") {
-                    $enableAWS = $false
-                }
-                else {
-                    $enableAWS = $true
-                }
+                $enableAWS = Read-YesNoPrompt -Prompt "Enable AWS Deployment" -DefaultValue $false
                 
-                $enableGCP = Read-Host "Enable Google Cloud Deployment (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableGCP) -or $enableGCP -eq "n") {
-                    $enableGCP = $false
-                }
-                else {
-                    $enableGCP = $true
-                }
+                $enableGCP = Read-YesNoPrompt -Prompt "Enable Google Cloud Deployment" -DefaultValue $false
                 
                 $infrastructureType = Read-Host "Infrastructure Type (compute/storage/networking/all) (default: all)"
                 if ([string]::IsNullOrWhiteSpace($infrastructureType)) {
                     $infrastructureType = "all"
                 }
-                
-                $enableTerraform = Read-Host "Use Terraform for Infrastructure as Code (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableTerraform) -or $enableTerraform -eq "n") {
-                    $enableTerraform = $false
-                }
                 else {
-                    $enableTerraform = $true
-                }
-                
-                $enableBicep = Read-Host "Use Bicep for Azure Infrastructure (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableBicep) -or $enableBicep -eq "y") {
-                    $enableBicep = $true
-                }
-                else {
-                    $enableBicep = $false
+                    # Validate infrastructure type input against allowed values
+                    $allowedInfrastructureTypes = @("compute", "storage", "networking", "all")
+                    if ($infrastructureType -notin $allowedInfrastructureTypes) {
+                        Write-ColorOutput "Invalid infrastructure type. Allowed values are: compute, storage, networking, all. Using default value: all" -ForegroundColor Yellow
+                        $infrastructureType = "all"
+                    }
                 }
                 
-                $enableCloudFormation = Read-Host "Use CloudFormation for AWS Infrastructure (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableCloudFormation) -or $enableCloudFormation -eq "n") {
-                    $enableCloudFormation = $false
-                }
-                else {
-                    $enableCloudFormation = $true
-                }
+                $enableTerraform = Read-YesNoPrompt -Prompt "Use Terraform for Infrastructure as Code" -DefaultValue $false
                 
-                $enableKubernetes = Read-Host "Deploy Kubernetes Clusters (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableKubernetes) -or $enableKubernetes -eq "n") {
-                    $enableKubernetes = $false
-                }
-                else {
-                    $enableKubernetes = $true
-                }
+                $enableBicep = Read-YesNoPrompt -Prompt "Use Bicep for Azure Infrastructure" -DefaultValue $true
                 
-                $enableMonitoring = Read-Host "Enable Unified Monitoring (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableMonitoring) -or $enableMonitoring -eq "y") {
-                    $enableMonitoring = $true
-                }
-                else {
-                    $enableMonitoring = $false
-                }
+                $enableCloudFormation = Read-YesNoPrompt -Prompt "Use CloudFormation for AWS Infrastructure" -DefaultValue $false
                 
-                $enableSecurity = Read-Host "Enable Unified Security Policies (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableSecurity) -or $enableSecurity -eq "y") {
-                    $enableSecurity = $true
-                }
-                else {
-                    $enableSecurity = $false
-                }
+                $enableKubernetes = Read-YesNoPrompt -Prompt "Deploy Kubernetes Clusters" -DefaultValue $false
+                
+                $enableMonitoring = Read-YesNoPrompt -Prompt "Enable Unified Monitoring" -DefaultValue $true
+                
+                $enableSecurity = Read-YesNoPrompt -Prompt "Enable Unified Security Policies" -DefaultValue $true
                 
                 return @{
                     ResourceGroup        = $resourceGroup
@@ -153,70 +125,51 @@ function Get-MultiCloudDeploymentParameters {
                 if ([string]::IsNullOrWhiteSpace($onPremisesNetwork)) {
                     $onPremisesNetwork = "192.168.0.0/16"
                 }
-                
-                $enableVPNGateway = Read-Host "Enable VPN Gateway for Site-to-Site Connectivity (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableVPNGateway) -or $enableVPNGateway -eq "y") {
-                    $enableVPNGateway = $true
-                }
                 else {
-                    $enableVPNGateway = $false
-                }
-                
-                $enableExpressRoute = Read-Host "Enable ExpressRoute for Dedicated Connectivity (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableExpressRoute) -or $enableExpressRoute -eq "n") {
-                    $enableExpressRoute = $false
-                }
-                else {
-                    $enableExpressRoute = $true
-                }
-                
-                $enableAzureBastion = Read-Host "Enable Azure Bastion for Secure Access (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableAzureBastion) -or $enableAzureBastion -eq "y") {
-                    $enableAzureBastion = $true
-                }
-                else {
-                    $enableAzureBastion = $false
-                }
-                
-                $enableHybridDNS = Read-Host "Enable Hybrid DNS Resolution (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableHybridDNS) -or $enableHybridDNS -eq "y") {
-                    $enableHybridDNS = $true
-                }
-                else {
-                    $enableHybridDNS = $false
+                    # Validate CIDR input
+                    try {
+                        # Basic CIDR format validation
+                        $cidrPattern = '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+                        if ($onPremisesNetwork -notmatch $cidrPattern) {
+                            throw "Invalid CIDR format"
+                        }
+                        
+                        # Parse CIDR components
+                        $parts = $onPremisesNetwork.Split('/')
+                        $ipString = $parts[0]
+                        $subnetBits = [int]$parts[1]
+                        
+                        # Validate subnet mask range
+                        if ($subnetBits -lt 0 -or $subnetBits -gt 32) {
+                            throw "Invalid subnet mask"
+                        }
+                        
+                        # Validate IP address format
+                        $ipAddress = [System.Net.IPAddress]::Parse($ipString)
+                        
+                        Write-ColorOutput "Valid CIDR format: $onPremisesNetwork" -ForegroundColor Green
+                    }
+                    catch {
+                        Write-ColorOutput "Invalid CIDR format. Expected format: x.x.x.x/y (e.g., 192.168.0.0/16). Using default value: 192.168.0.0/16" -ForegroundColor Yellow
+                        $onPremisesNetwork = "192.168.0.0/16"
+                    }
                 }
                 
-                $enableHybridMonitoring = Read-Host "Enable Hybrid Monitoring and Logging (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableHybridMonitoring) -or $enableHybridMonitoring -eq "y") {
-                    $enableHybridMonitoring = $true
-                }
-                else {
-                    $enableHybridMonitoring = $false
-                }
+                $enableVPNGateway = Read-YesNoPrompt -Prompt "Enable VPN Gateway for Site-to-Site Connectivity" -DefaultValue $true
                 
-                $enableHybridSecurity = Read-Host "Enable Hybrid Security Policies (y/n) (default: y)"
-                if ([string]::IsNullOrWhiteSpace($enableHybridSecurity) -or $enableHybridSecurity -eq "y") {
-                    $enableHybridSecurity = $true
-                }
-                else {
-                    $enableHybridSecurity = $false
-                }
+                $enableExpressRoute = Read-YesNoPrompt -Prompt "Enable ExpressRoute for Dedicated Connectivity" -DefaultValue $false
                 
-                $enableHybridBackup = Read-Host "Enable Hybrid Backup Solutions (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableHybridBackup) -or $enableHybridBackup -eq "n") {
-                    $enableHybridBackup = $false
-                }
-                else {
-                    $enableHybridBackup = $true
-                }
+                $enableAzureBastion = Read-YesNoPrompt -Prompt "Enable Azure Bastion for Secure Access" -DefaultValue $true
                 
-                $enableHybridDisasterRecovery = Read-Host "Enable Hybrid Disaster Recovery (y/n) (default: n)"
-                if ([string]::IsNullOrWhiteSpace($enableHybridDisasterRecovery) -or $enableHybridDisasterRecovery -eq "n") {
-                    $enableHybridDisasterRecovery = $false
-                }
-                else {
-                    $enableHybridDisasterRecovery = $true
-                }
+                $enableHybridDNS = Read-YesNoPrompt -Prompt "Enable Hybrid DNS Resolution" -DefaultValue $true
+                
+                $enableHybridMonitoring = Read-YesNoPrompt -Prompt "Enable Hybrid Monitoring and Logging" -DefaultValue $true
+                
+                $enableHybridSecurity = Read-YesNoPrompt -Prompt "Enable Hybrid Security Policies" -DefaultValue $true
+                
+                $enableHybridBackup = Read-YesNoPrompt -Prompt "Enable Hybrid Backup Solutions" -DefaultValue $false
+                
+                $enableHybridDisasterRecovery = Read-YesNoPrompt -Prompt "Enable Hybrid Disaster Recovery" -DefaultValue $false
                 
                 return @{
                     ResourceGroup                = $resourceGroup

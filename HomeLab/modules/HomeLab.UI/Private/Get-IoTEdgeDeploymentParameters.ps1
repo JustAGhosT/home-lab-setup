@@ -53,13 +53,35 @@ function Get-IoTEdgeDeploymentParameters {
                 if ([string]::IsNullOrWhiteSpace($sku)) {
                     $sku = "S1"
                 }
+                else {
+                    # Validate SKU input against allowed values
+                    $allowedSkus = @("F1", "S1", "S2", "S3")
+                    if ($sku -notin $allowedSkus) {
+                        Write-ColorOutput "Invalid SKU value. Allowed values are: F1, S1, S2, S3. Using default value: S1" -ForegroundColor Yellow
+                        $sku = "S1"
+                    }
+                }
                 
                 $unitCount = Read-Host "Unit Count (1-200) (default: 1)"
                 if ([string]::IsNullOrWhiteSpace($unitCount)) {
                     $unitCount = 1
                 }
                 else {
-                    $unitCount = [int]$unitCount
+                    # Validate unit count input
+                    try {
+                        $unitCountInt = [int]$unitCount
+                        if ($unitCountInt -lt 1 -or $unitCountInt -gt 200) {
+                            Write-ColorOutput "Invalid unit count value. Must be between 1 and 200. Using default value: 1" -ForegroundColor Yellow
+                            $unitCount = 1
+                        }
+                        else {
+                            $unitCount = $unitCountInt
+                        }
+                    }
+                    catch {
+                        Write-ColorOutput "Invalid unit count input. Must be a valid integer. Using default value: 1" -ForegroundColor Yellow
+                        $unitCount = 1
+                    }
                 }
                 
                 $enableDeviceProvisioning = Read-Host "Enable Device Provisioning Service (y/n) (default: n)"
@@ -157,6 +179,14 @@ function Get-IoTEdgeDeploymentParameters {
                 $edgeDeviceType = Read-Host "Edge Device Type (Linux/Windows) (default: Linux)"
                 if ([string]::IsNullOrWhiteSpace($edgeDeviceType)) {
                     $edgeDeviceType = "Linux"
+                }
+                else {
+                    # Validate edge device type input
+                    $allowedDeviceTypes = @("Linux", "Windows")
+                    if ($edgeDeviceType -notin $allowedDeviceTypes) {
+                        Write-ColorOutput "Invalid edge device type. Allowed values are: Linux, Windows. Using default value: Linux" -ForegroundColor Yellow
+                        $edgeDeviceType = "Linux"
+                    }
                 }
                 
                 $containerRegistryName = Read-Host "Container Registry Name (optional, leave empty to skip)"

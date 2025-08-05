@@ -47,7 +47,9 @@ function Invoke-IoTEdgeHandler {
     # Helper function to get project path
     function Get-ProjectPathForIoTEdge {
         # Use script-level variable instead of global
-        $script:SelectedProjectPath = $script:SelectedProjectPath ?? $null
+        if ($script:SelectedProjectPath -eq $null) {
+            $script:SelectedProjectPath = $null
+        }
         
         # Check if a project has already been selected
         if ($script:SelectedProjectPath -and (Test-Path -Path $script:SelectedProjectPath)) {
@@ -159,11 +161,25 @@ function Invoke-IoTEdgeHandler {
             Write-Host "Deploys Azure IoT Hub for device connectivity and management" -ForegroundColor Gray
             Write-Host ""
             
-            # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            # Import the helper functions with file existence checks
+            $helperFiles = @(
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Get-DeploymentParameters.ps1"),
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Show-ProgressBar.ps1"),
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Update-ProgressBar.ps1"),
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Helpers.ps1")
+            )
+            
+            foreach ($file in $helperFiles) {
+                if (Test-Path -Path $file) {
+                    . $file
+                }
+                else {
+                    Write-Error "Required helper file not found: $file"
+                    Write-Host "Press any key to continue..."
+                    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                    return
+                }
+            }
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
@@ -213,11 +229,25 @@ function Invoke-IoTEdgeHandler {
             Write-Host "Deploys Azure IoT Edge Runtime for edge computing" -ForegroundColor Gray
             Write-Host ""
             
-            # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            # Import the helper functions with file existence checks
+            $helperFiles = @(
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Get-DeploymentParameters.ps1"),
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Show-ProgressBar.ps1"),
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Update-ProgressBar.ps1"),
+                (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Helpers.ps1")
+            )
+            
+            foreach ($file in $helperFiles) {
+                if (Test-Path -Path $file) {
+                    . $file
+                }
+                else {
+                    Write-Error "Required helper file not found: $file"
+                    Write-Host "Press any key to continue..."
+                    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                    return
+                }
+            }
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan

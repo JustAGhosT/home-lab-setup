@@ -47,7 +47,9 @@ function Invoke-DatabaseStorageHandler {
     # Helper function to get project path
     function Get-ProjectPathForDatabaseStorage {
         # Use script-level variable instead of global
-        $script:SelectedProjectPath = $script:SelectedProjectPath ?? $null
+        if ($script:SelectedProjectPath -eq $null) {
+            $script:SelectedProjectPath = $null
+        }
         
         # Check if a project has already been selected
         if ($script:SelectedProjectPath -and (Test-Path -Path $script:SelectedProjectPath)) {

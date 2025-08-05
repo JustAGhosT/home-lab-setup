@@ -62,28 +62,68 @@ function Configure-MultiCloudEndpoints {
             return $Object.PSObject.Properties.Name -contains $PropertyName
         }
         
-        # Helper function to sanitize input for .env files
-        function Get-SanitizedValue {
+        # Helper function to escape input for .env files while preserving integrity
+        function Get-EscapedValue {
             param([string]$Value)
             if ([string]::IsNullOrEmpty($Value)) {
                 return ""
             }
-            # Remove or escape characters that could cause command injection
-            $sanitized = $Value -replace '[\$\"'';&|><!*?\[\]{}()]', ''
-            # Remove any newlines or carriage returns
-            $sanitized = $sanitized -replace '[\r\n]', ''
-            # Remove any backticks that could be used for command substitution
-            $sanitized = $sanitized -replace '`', ''
-            # Remove any percent signs that could be used for variable expansion
-            $sanitized = $sanitized -replace '%', ''
-            # Remove any backslashes that could be used for escaping
-            $sanitized = $sanitized -replace '\\', ''
+            
+            # Escape special characters that could cause command injection while preserving valid inputs
+            $escaped = $Value
+            
+            # Escape double quotes and backslashes for .env file format
+            $escaped = $escaped -replace '\\', '\\'
+            $escaped = $escaped -replace '"', '\"'
+            
+            # Escape newlines and carriage returns
+            $escaped = $escaped -replace '[\r\n]', ' '
+            
+            # Escape backticks that could be used for command substitution
+            $escaped = $escaped -replace '`', '\`'
+            
+            # Escape dollar signs that could be used for variable expansion
+            $escaped = $escaped -replace '\$', '\$'
+            
+            # Escape semicolons that could be used for command chaining
+            $escaped = $escaped -replace ';', '\;'
+            
+            # Escape pipe characters that could be used for command piping
+            $escaped = $escaped -replace '\|', '\|'
+            
+            # Escape ampersands that could be used for background processes
+            $escaped = $escaped -replace '&', '\&'
+            
+            # Escape angle brackets that could be used for redirection
+            $escaped = $escaped -replace '<', '\<'
+            $escaped = $escaped -replace '>', '\>'
+            
+            # Escape exclamation marks that could be used for history expansion
+            $escaped = $escaped -replace '!', '\!'
+            
+            # Escape asterisks and question marks that could be used for globbing
+            $escaped = $escaped -replace '\*', '\*'
+            $escaped = $escaped -replace '\?', '\?'
+            
+            # Escape square brackets that could be used for character classes
+            $escaped = $escaped -replace '\[', '\[' 
+            $escaped = $escaped -replace '\]', '\]'
+            
+            # Escape curly braces that could be used for brace expansion
+            $escaped = $escaped -replace '\{', '\{'
+            $escaped = $escaped -replace '\}', '\}'
+            
+            # Escape parentheses that could be used for command grouping
+            $escaped = $escaped -replace '\(', '\('
+            $escaped = $escaped -replace '\)', '\)'
+            
             # Trim whitespace and limit length to prevent buffer overflow
-            $sanitized = $sanitized.Trim()
-            if ($sanitized.Length -gt 1000) {
-                $sanitized = $sanitized.Substring(0, 1000)
+            $escaped = $escaped.Trim()
+            if ($escaped.Length -gt 1000) {
+                $escaped = $escaped.Substring(0, 1000)
             }
-            return $sanitized
+            
+            return $escaped
         }
         
         # Display multi-cloud configuration information
@@ -154,9 +194,20 @@ function Configure-MultiCloudEndpoints {
                         $appSettings.MultiCloud.ConfigurationFiles = $ConfigurationFiles
                     }
                     
-                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
-                    Write-ColorOutput "⚠️  Note: appsettings.json contains multi-cloud configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
+                    # Atomic write to appsettings.json
+                    $tempAppSettingsPath = $appSettingsPath + ".tmp"
+                    try {
+                        $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $tempAppSettingsPath -ErrorAction Stop
+                        Move-Item -Path $tempAppSettingsPath -Destination $appSettingsPath -Force
+                        Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                        Write-ColorOutput "⚠️  Note: appsettings.json contains multi-cloud configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
+                    }
+                    catch {
+                        if (Test-Path -Path $tempAppSettingsPath) {
+                            Remove-Item -Path $tempAppSettingsPath -Force -ErrorAction SilentlyContinue
+                        }
+                        throw
+                    }
                 }
                 catch {
                     Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -187,9 +238,20 @@ function Configure-MultiCloudEndpoints {
                         $packageJson.config.multicloudConfigurationFiles = $ConfigurationFiles
                     }
                     
-                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
-                    Write-ColorOutput "⚠️  Note: package.json contains multi-cloud configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
+                    # Atomic write to package.json
+                    $tempPackageJsonPath = $packageJsonPath + ".tmp"
+                    try {
+                        $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $tempPackageJsonPath -ErrorAction Stop
+                        Move-Item -Path $tempPackageJsonPath -Destination $packageJsonPath -Force
+                        Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                        Write-ColorOutput "⚠️  Note: package.json contains multi-cloud configuration data - ensure it's not committed to version control" -ForegroundColor Yellow
+                    }
+                    catch {
+                        if (Test-Path -Path $tempPackageJsonPath) {
+                            Remove-Item -Path $tempPackageJsonPath -Force -ErrorAction SilentlyContinue
+                        }
+                        throw
+                    }
                 }
                 catch {
                     Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
@@ -201,18 +263,24 @@ function Configure-MultiCloudEndpoints {
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
             
-            # Sanitize input values to prevent command injection
-            $sanitizedProjectName = Get-SanitizedValue -Value $ProjectName
-            $sanitizedResourceGroup = Get-SanitizedValue -Value $ResourceGroup
-            $sanitizedCloudProviders = ($CloudProviders | ForEach-Object { Get-SanitizedValue -Value $_ }) -join ','
+            # Escape input values to prevent command injection while preserving integrity
+            $escapedProjectName = Get-EscapedValue -Value $ProjectName
+            $escapedResourceGroup = Get-EscapedValue -Value $ResourceGroup
+            $escapedCloudProviders = ($CloudProviders | ForEach-Object { Get-EscapedValue -Value $_ }) -join ','
+            
+            # Create temporary file for atomic write
+            $tempEnvPath = $envPath + ".tmp"
             
             try {
                 @"
 # Multi-Cloud Configuration
-MULTICLOUD_PROJECT_NAME=$sanitizedProjectName
-MULTICLOUD_RESOURCE_GROUP=$sanitizedResourceGroup
-MULTICLOUD_CLOUD_PROVIDERS=$sanitizedCloudProviders
-"@ | Set-Content -Path $envPath -ErrorAction Stop
+MULTICLOUD_PROJECT_NAME=$escapedProjectName
+MULTICLOUD_RESOURCE_GROUP=$escapedResourceGroup
+MULTICLOUD_CLOUD_PROVIDERS=$escapedCloudProviders
+"@ | Set-Content -Path $tempEnvPath -ErrorAction Stop
+                
+                # Atomic move to replace original file
+                Move-Item -Path $tempEnvPath -Destination $envPath -Force
                 Write-ColorOutput "Created .env file" -ForegroundColor Green
             
                 # Security warning for .env file
@@ -226,6 +294,10 @@ MULTICLOUD_CLOUD_PROVIDERS=$sanitizedCloudProviders
                 Write-ColorOutput "File location: $envPath" -ForegroundColor Gray
             }
             catch {
+                # Clean up temporary file if it exists
+                if (Test-Path -Path $tempEnvPath) {
+                    Remove-Item -Path $tempEnvPath -Force -ErrorAction SilentlyContinue
+                }
                 Write-ColorOutput "Error creating .env file: $($_.Exception.Message)" -ForegroundColor Red
                 Write-ColorOutput "This may be due to file permissions or disk space issues." -ForegroundColor Yellow
                 throw "Failed to create .env file: $($_.Exception.Message)"

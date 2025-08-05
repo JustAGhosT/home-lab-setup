@@ -70,24 +70,63 @@ function Configure-HybridConnectivity {
         [Parameter(Mandatory = $false)]
         [ValidateScript({
                 if ([string]::IsNullOrEmpty($_)) { return $true }
-                $cidrPattern = '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
-                if ($_ -notmatch $cidrPattern) {
-                    throw "Invalid CIDR format. Expected format: x.x.x.x/y (e.g., 192.168.1.0/24)"
-                }
-                $parts = $_.Split('/')
-                $ip = $parts[0]
-                $mask = [int]$parts[1]
-                if ($mask -lt 0 -or $mask -gt 32) {
-                    throw "Invalid subnet mask. Must be between 0 and 32."
-                }
-                $ipParts = $ip.Split('.')
-                foreach ($part in $ipParts) {
-                    $num = [int]$part
-                    if ($num -lt 0 -or $num -gt 255) {
-                        throw "Invalid IP address. Each octet must be between 0 and 255."
+                
+                try {
+                    # Validate CIDR format using regex for basic structure
+                    $cidrPattern = '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+                    if ($_ -notmatch $cidrPattern) {
+                        throw "Invalid CIDR format. Expected format: x.x.x.x/y (e.g., 192.168.1.0/24)"
                     }
+                    
+                    # Parse CIDR components
+                    $parts = $_.Split('/')
+                    $ipString = $parts[0]
+                    $subnetBits = [int]$parts[1]
+                    
+                    # Validate subnet mask range
+                    if ($subnetBits -lt 0 -or $subnetBits -gt 32) {
+                        throw "Invalid subnet mask. Must be between 0 and 32."
+                    }
+                    
+                    # Use .NET IPAddress to validate IP format and parse
+                    $ipAddress = [System.Net.IPAddress]::Parse($ipString)
+                    
+                    # Convert IP to bytes for network address validation
+                    $ipBytes = $ipAddress.GetAddressBytes()
+                    
+                    # Calculate subnet mask using bit shifting
+                    $subnetMaskValue = [uint32]::MaxValue -shl (32 - $subnetBits)
+                    $subnetMaskBytes = [System.BitConverter]::GetBytes($subnetMaskValue)
+                    if ([System.BitConverter]::IsLittleEndian) {
+                        [array]::Reverse($subnetMaskBytes)
+                    }
+                    
+                    # Calculate network address by ANDing IP with subnet mask
+                    $networkBytes = @()
+                    for ($i = 0; $i -lt 4; $i++) {
+                        $networkBytes += $ipBytes[$i] -band $subnetMaskBytes[$i]
+                    }
+                    
+                    # Create network address from calculated bytes
+                    $networkAddress = [System.Net.IPAddress]::new($networkBytes)
+                    
+                    # Verify that the provided IP matches the calculated network address
+                    if ($ipAddress.IPAddressToString -ne $networkAddress.IPAddressToString) {
+                        throw "Invalid network address. The IP address '$ipString' is not properly aligned with the /$subnetBits subnet mask. Expected network address: $($networkAddress.IPAddressToString)/$subnetBits"
+                    }
+                    
+                    return $true
                 }
-                return $true
+                catch [System.FormatException] {
+                    throw "Invalid IP address format in CIDR notation: $_"
+                }
+                catch [System.OverflowException] {
+                    throw "IP address value out of valid range in CIDR notation: $_"
+                }
+                catch {
+                    # Re-throw our custom exceptions
+                    throw
+                }
             })]
         [string]$OnPremisesNetwork,
         

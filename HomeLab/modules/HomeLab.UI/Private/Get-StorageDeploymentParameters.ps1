@@ -54,7 +54,19 @@ function Get-StorageDeploymentParameters {
                     $containerNames = @("uploads", "documents", "images")
                 }
                 else {
-                    $containerNames = $containerNames.Split(",") | ForEach-Object { $_.Trim() }
+                    # Split by comma, trim each entry, and filter out empty or whitespace-only strings
+                    $containerNames = $containerNames.Split(",") | 
+                        ForEach-Object { $_.Trim() } | 
+                        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+                    
+                    # If all entries were filtered out, use default values
+                    if ($containerNames.Count -eq 0) {
+                        Write-ColorOutput "No valid container names provided. Using default values: uploads, documents, images" -ForegroundColor Yellow
+                        $containerNames = @("uploads", "documents", "images")
+                    }
+                    else {
+                        Write-ColorOutput "Valid container names: $($containerNames -join ', ')" -ForegroundColor Green
+                    }
                 }
                 
                 $accessLevel = Read-Host "Access Level (Private/Blob/Container) (default: Private)"
@@ -101,6 +113,32 @@ function Get-StorageDeploymentParameters {
                 if ([string]::IsNullOrWhiteSpace($originHostName)) {
                     Write-ColorOutput "Origin host name is required!" -ForegroundColor Red
                     return $null
+                }
+                else {
+                    # Validate hostname format using regex pattern
+                    $hostnamePattern = '^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$'
+                    if ($originHostName -notmatch $hostnamePattern) {
+                        Write-ColorOutput "Invalid hostname format. Hostname must contain only letters, numbers, hyphens, and dots." -ForegroundColor Red
+                        Write-ColorOutput "Example valid format: mystorageaccount.blob.core.windows.net" -ForegroundColor Yellow
+                        return $null
+                    }
+                    
+                    # Additional validation for common CDN origin patterns
+                    $validDomains = @('.blob.core.windows.net', '.file.core.windows.net', '.web.core.windows.net', '.static.azurewebsites.net')
+                    $hasValidDomain = $false
+                    foreach ($domain in $validDomains) {
+                        if ($originHostName -like "*$domain") {
+                            $hasValidDomain = $true
+                            break
+                        }
+                    }
+                    
+                    if (-not $hasValidDomain) {
+                        Write-ColorOutput "Warning: Hostname does not match common Azure CDN origin patterns." -ForegroundColor Yellow
+                        Write-ColorOutput "Expected patterns: *.blob.core.windows.net, *.file.core.windows.net, *.web.core.windows.net, *.static.azurewebsites.net" -ForegroundColor Yellow
+                    }
+                    
+                    Write-ColorOutput "Valid hostname format: $originHostName" -ForegroundColor Green
                 }
                 
                 $originPath = Read-Host "Origin Path (default: /)"

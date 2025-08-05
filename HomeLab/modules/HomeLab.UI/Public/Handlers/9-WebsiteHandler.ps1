@@ -44,10 +44,33 @@ function Invoke-WebsiteHandler {
         return
     }
     
+    # Helper function to import deployment helpers with file existence checks
+    function Import-DeploymentHelpers {
+        $helperFiles = @(
+            (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Get-DeploymentParameters.ps1"),
+            (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Show-ProgressBar.ps1"),
+            (Join-Path -Path $PSScriptRoot -ChildPath "..\ProgressBar\Update-ProgressBar.ps1"),
+            (Join-Path -Path $PSScriptRoot -ChildPath "..\..\Private\Helpers.ps1")
+        )
+        
+        foreach ($file in $helperFiles) {
+            if (Test-Path -Path $file) {
+                . $file
+            }
+            else {
+                Write-Error "Required helper file not found: $file"
+                return $false
+            }
+        }
+        return $true
+    }
+    
     # Helper function to get project path
     function Get-ProjectPathForDeployment {
         # Use script-level variable instead of global
-        $script:SelectedProjectPath = $script:SelectedProjectPath ?? $null
+        if ($script:SelectedProjectPath -eq $null) {
+            $script:SelectedProjectPath = $null
+        }
         
         # Check if a project has already been selected
         if ($script:SelectedProjectPath -and (Test-Path -Path $script:SelectedProjectPath)) {
@@ -191,10 +214,11 @@ function Invoke-WebsiteHandler {
             Write-Host ""
             
             # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            if (-not (Import-DeploymentHelpers)) {
+                Write-Host "Failed to import required helper functions. Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan
@@ -247,10 +271,11 @@ function Invoke-WebsiteHandler {
             Write-Host ""
             
             # Import the helper functions
-            . "$PSScriptRoot\..\..\Private\Get-DeploymentParameters.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Show-ProgressBar.ps1"
-            . "$PSScriptRoot\..\ProgressBar\Update-ProgressBar.ps1"
-            . "$PSScriptRoot\..\..\Private\Helpers.ps1"
+            if (-not (Import-DeploymentHelpers)) {
+                Write-Host "Failed to import required helper functions. Press any key to continue..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                return
+            }
             
             # Step 1: Get deployment parameters with progress
             Show-ProgressBar -PercentComplete 25 -Activity "Step 1/4" -Status "Collecting deployment parameters..." -ForegroundColor Cyan

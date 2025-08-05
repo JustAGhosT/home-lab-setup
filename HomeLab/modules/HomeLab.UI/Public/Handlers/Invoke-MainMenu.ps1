@@ -33,6 +33,117 @@ function Invoke-MainMenu {
     # Initialize exit flag
     $exitApplication = $false
     
+    # Helper function to validate deployment parameters
+    function Test-DeploymentParameters {
+        param(
+            [string]$ResourceGroup,
+            [string]$AppName,
+            [string]$SubscriptionId
+        )
+        
+        # Resource Group validation: alphanumeric, hyphens, underscores, 1-90 chars
+        $rgPattern = '^[a-zA-Z0-9_-]{1,90}$'
+        if ($ResourceGroup -notmatch $rgPattern) {
+            Write-Host "Invalid Resource Group Name. Must be 1-90 characters, alphanumeric, hyphens, or underscores only." -ForegroundColor Red
+            return $false
+        }
+        
+        # App Name validation: alphanumeric, hyphens, 1-60 chars
+        $appPattern = '^[a-zA-Z0-9-]{1,60}$'
+        if ($AppName -notmatch $appPattern) {
+            Write-Host "Invalid App Name. Must be 1-60 characters, alphanumeric or hyphens only." -ForegroundColor Red
+            return $false
+        }
+        
+        # Subscription ID validation: GUID format
+        $subPattern = '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$'
+        if ($SubscriptionId -notmatch $subPattern) {
+            Write-Host "Invalid Subscription ID. Must be a valid GUID format." -ForegroundColor Red
+            return $false
+        }
+        
+        return $true
+    }
+    
+    # Helper function to get validated deployment parameters
+    function Get-ValidatedDeploymentParameters {
+        param(
+            [string]$DeploymentType
+        )
+        
+        do {
+            Clear-Host
+            Write-Host "$DeploymentType Deployment" -ForegroundColor Cyan
+            Write-Host "Please provide the following parameters:" -ForegroundColor Yellow
+            Write-Host ""
+            
+            $rg = Read-Host "Resource Group Name (1-90 chars, alphanumeric, hyphens, underscores)"
+            $app = Read-Host "App Name (1-60 chars, alphanumeric, hyphens)"
+            $sub = Read-Host "Subscription ID (GUID format)"
+            
+            if (Test-DeploymentParameters -ResourceGroup $rg -AppName $app -SubscriptionId $sub) {
+                return @{
+                    ResourceGroup  = $rg
+                    AppName        = $app
+                    SubscriptionId = $sub
+                }
+            }
+            else {
+                Write-Host "`nPlease correct the errors and try again." -ForegroundColor Yellow
+                Read-Host "Press Enter to continue"
+            }
+        } while ($true)
+    }
+    
+    # Helper function to show simple website menu
+    function Show-SimpleWebsiteMenu {
+        Clear-Host
+        Write-Host "=== WEBSITE DEPLOYMENT MENU ===" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "1. Deploy Static Website" -ForegroundColor White
+        Write-Host "2. Deploy App Service Website" -ForegroundColor White
+        Write-Host "3. Return to Main Menu" -ForegroundColor Yellow
+        Write-Host ""
+        
+        $choice = Read-Host "Select an option (1-3)"
+        
+        switch ($choice) {
+            "1" {
+                $params = Get-ValidatedDeploymentParameters -DeploymentType "Static Website"
+                if ($params) {
+                    try {
+                        Deploy-Website -DeploymentType static -ResourceGroup $params.ResourceGroup -AppName $params.AppName -SubscriptionId $params.SubscriptionId
+                        Write-Host "Static website deployment completed successfully!" -ForegroundColor Green
+                    }
+                    catch {
+                        Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                    }
+                }
+                Read-Host "Press Enter to continue"
+            }
+            "2" {
+                $params = Get-ValidatedDeploymentParameters -DeploymentType "App Service"
+                if ($params) {
+                    try {
+                        Deploy-Website -DeploymentType appservice -ResourceGroup $params.ResourceGroup -AppName $params.AppName -SubscriptionId $params.SubscriptionId
+                        Write-Host "App Service deployment completed successfully!" -ForegroundColor Green
+                    }
+                    catch {
+                        Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+                    }
+                }
+                Read-Host "Press Enter to continue"
+            }
+            "3" {
+                return
+            }
+            default {
+                Write-Host "Invalid selection. Please choose 1, 2, or 3." -ForegroundColor Red
+                Start-Sleep 2
+            }
+        }
+    }
+    
     # Validate State parameter
     if ($null -eq $State) {
         $State = @{}
@@ -219,123 +330,17 @@ function Invoke-MainMenu {
                                 # Load the direct menu script
                                 . $fixPath
                                
-                               # Call the direct menu function
-                               Show-WebsiteMenuDirect
+                                # Call the direct menu function
+                                Show-WebsiteMenuDirect
                             }
                             catch {
                                 # If that fails, use ultra simple built-in menu
-                                Clear-Host
-                                Write-Host "=== WEBSITE DEPLOYMENT MENU ===" -ForegroundColor Cyan
-                                Write-Host ""
-                                Write-Host "1. Deploy Static Website" -ForegroundColor White
-                                Write-Host "2. Deploy App Service Website" -ForegroundColor White
-                                Write-Host "3. Return to Main Menu" -ForegroundColor Yellow
-                                Write-Host ""
-                                
-                                $choice = Read-Host "Select an option (1-3)"
-                                
-                                switch ($choice) {
-                                    "1" {
-                                        Clear-Host
-                                        Write-Host "Static Website Deployment" -ForegroundColor Cyan
-                                        $rg = Read-Host "Resource Group Name"
-                                        $app = Read-Host "App Name"
-                                        $sub = Read-Host "Subscription ID"
-                                        
-                                        if ($rg -and $app -and $sub) {
-                                            try {
-                                                Deploy-Website -DeploymentType static -ResourceGroup $rg -AppName $app -SubscriptionId $sub
-                                            }
-                                            catch {
-                                                Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
-                                            }
-                                        }
-                                        else {
-                                            Write-Host "Missing required parameters." -ForegroundColor Red
-                                        }
-                                        
-                                        Read-Host "Press Enter to continue"
-                                    }
-                                    "2" {
-                                        Clear-Host
-                                        Write-Host "App Service Deployment" -ForegroundColor Cyan
-                                        $rg = Read-Host "Resource Group Name"
-                                        $app = Read-Host "App Name"
-                                        $sub = Read-Host "Subscription ID"
-                                        
-                                        if ($rg -and $app -and $sub) {
-                                            try {
-                                                Deploy-Website -DeploymentType appservice -ResourceGroup $rg -AppName $app -SubscriptionId $sub
-                                            }
-                                            catch {
-                                                Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
-                                            }
-                                        }
-                                        else {
-                                            Write-Host "Missing required parameters." -ForegroundColor Red
-                                        }
-                                        
-                                        Read-Host "Press Enter to continue"
-                                    }
-                                }
+                                Show-SimpleWebsiteMenu
                             }
                         }
                         else {
                             # If no fix file is found, use inline simple menu
-                            Clear-Host
-                            Write-Host "=== WEBSITE DEPLOYMENT MENU ===" -ForegroundColor Cyan
-                            Write-Host ""
-                            Write-Host "1. Deploy Static Website" -ForegroundColor White
-                            Write-Host "2. Deploy App Service Website" -ForegroundColor White
-                            Write-Host "3. Return to Main Menu" -ForegroundColor Yellow
-                            Write-Host ""
-                            
-                            $choice = Read-Host "Select an option (1-3)"
-                            
-                            switch ($choice) {
-                                "1" {
-                                    Clear-Host
-                                    Write-Host "Static Website Deployment" -ForegroundColor Cyan
-                                    $rg = Read-Host "Resource Group Name"
-                                    $app = Read-Host "App Name"
-                                    $sub = Read-Host "Subscription ID"
-                                    
-                                    if ($rg -and $app -and $sub) {
-                                        try {
-                                            Deploy-Website -DeploymentType static -ResourceGroup $rg -AppName $app -SubscriptionId $sub
-                                        }
-                                        catch {
-                                            Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
-                                        }
-                                    }
-                                    else {
-                                        Write-Host "Missing required parameters." -ForegroundColor Red
-                                    }
-                                    
-                                    Read-Host "Press Enter to continue"
-                                }
-                                "2" {
-                                    Clear-Host
-                                    Write-Host "App Service Deployment" -ForegroundColor Cyan
-                                    $rg = Read-Host "Resource Group Name"
-                                    $app = Read-Host "App Name"
-                                    $sub = Read-Host "Subscription ID"
-                                    
-                                    if ($rg -and $app -and $sub) {
-                                        try {
-                                            Deploy-Website -DeploymentType appservice -ResourceGroup $rg -AppName $app -SubscriptionId $sub
-                                        }
-                                        catch {
-                                            Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
-                                        }
-                                    }
-                                    else {
-                                        Write-Host "Missing required parameters." -ForegroundColor Red
-                                    }
-                                    
-                                    Read-Host "Press Enter to continue"
-                                }
-                            }
+                            Show-SimpleWebsiteMenu
                         }
                     }
                     "10" {
@@ -352,8 +357,8 @@ function Invoke-MainMenu {
                             if (Get-Command -Name Show-FlexibleMenu -ErrorAction SilentlyContinue) {
                                 do {
                                     $result = Show-FlexibleMenu -Title "DNS Management Menu" -MenuItems $dnsMenuItems `
-                                                            -ExitOption "0" -ExitText "Return to Main Menu" `
-                                                            -ValidateInput
+                                        -ExitOption "0" -ExitText "Return to Main Menu" `
+                                        -ValidateInput
                                     
                                     if ($result.IsExit -eq $true) {
                                         break
@@ -387,11 +392,13 @@ function Invoke-MainMenu {
                                         }
                                     }
                                 } while ($true)
-                            } else {
+                            }
+                            else {
                                 # Try the original method if flexible menu isn't available
                                 if (Get-Command -Name Show-DNSMenu -ErrorAction SilentlyContinue) {
                                     Show-DNSMenu
-                                } else {
+                                }
+                                else {
                                     Write-Host "`nDNS Management menu not implemented yet.`n" -ForegroundColor Yellow
                                     Start-Sleep -Seconds 2
                                 }
