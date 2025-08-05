@@ -74,6 +74,22 @@ function Configure-StreamAnalyticsJobs {
     try {
         Write-ColorOutput "Configuring Stream Analytics jobs..." -ForegroundColor Cyan
         
+        # Validate Azure CLI availability and authentication
+        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+            throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+        }
+        
+        # Check if user is authenticated
+        try {
+            $null = az account show --query id --output tsv 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                throw "You are not logged in to Azure. Please run 'az login' to authenticate."
+            }
+        }
+        catch {
+            throw "Azure authentication failed. Please run 'az login' to authenticate with Azure."
+        }
+        
         # Get job details if not provided
         if (-not $JobId -or -not $JobStatus) {
             $jobDetails = az stream-analytics job show `
@@ -135,59 +151,85 @@ function Configure-StreamAnalyticsJobs {
             $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
             if (Test-Path -Path $appSettingsPath) {
                 Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
-                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
-                
-                if (-not $appSettings.StreamAnalytics) {
-                    $appSettings | Add-Member -MemberType NoteProperty -Name "StreamAnalytics" -Value @{}
+                try {
+                    $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                    
+                    if (-not $appSettings.StreamAnalytics) {
+                        $appSettings | Add-Member -MemberType NoteProperty -Name "StreamAnalytics" -Value @{}
+                    }
+                    
+                    $appSettings.StreamAnalytics.JobName = $JobName
+                    $appSettings.StreamAnalytics.JobId = $JobId
+                    $appSettings.StreamAnalytics.JobStatus = $JobStatus
+                    $appSettings.StreamAnalytics.InputName = $InputName
+                    $appSettings.StreamAnalytics.InputType = $InputType
+                    $appSettings.StreamAnalytics.OutputName = $OutputName
+                    $appSettings.StreamAnalytics.OutputType = $OutputType
+                    
+                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
                 }
-                
-                $appSettings.StreamAnalytics.JobName = $JobName
-                $appSettings.StreamAnalytics.JobId = $JobId
-                $appSettings.StreamAnalytics.JobStatus = $JobStatus
-                $appSettings.StreamAnalytics.InputName = $InputName
-                $appSettings.StreamAnalytics.InputType = $InputType
-                $appSettings.StreamAnalytics.OutputName = $OutputName
-                $appSettings.StreamAnalytics.OutputType = $OutputType
-                
-                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update appsettings.json: $($_.Exception.Message)"
+                }
             }
             
             # Update package.json for Node.js projects
             $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
             if (Test-Path -Path $packageJsonPath) {
                 Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
-                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
-                
-                if (-not $packageJson.config) {
-                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                try {
+                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                    
+                    if (-not $packageJson.config) {
+                        $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    }
+                    
+                    $packageJson.config.streamAnalyticsJobName = $JobName
+                    $packageJson.config.streamAnalyticsJobId = $JobId
+                    $packageJson.config.streamAnalyticsJobStatus = $JobStatus
+                    $packageJson.config.streamAnalyticsInputName = $InputName
+                    $packageJson.config.streamAnalyticsInputType = $InputType
+                    $packageJson.config.streamAnalyticsOutputName = $OutputName
+                    $packageJson.config.streamAnalyticsOutputType = $OutputType
+                    
+                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
                 }
-                
-                $packageJson.config.streamAnalyticsJobName = $JobName
-                $packageJson.config.streamAnalyticsJobId = $JobId
-                $packageJson.config.streamAnalyticsJobStatus = $JobStatus
-                $packageJson.config.streamAnalyticsInputName = $InputName
-                $packageJson.config.streamAnalyticsInputType = $InputType
-                $packageJson.config.streamAnalyticsOutputName = $OutputName
-                $packageJson.config.streamAnalyticsOutputType = $OutputType
-                
-                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                Write-ColorOutput "Updated package.json" -ForegroundColor Green
+                catch {
+                    Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update package.json: $($_.Exception.Message)"
+                }
             }
             
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
-            @"
-# Azure Stream Analytics Configuration
-AZURE_STREAM_ANALYTICS_JOB_NAME=$JobName
-AZURE_STREAM_ANALYTICS_JOB_ID=$JobId
-AZURE_STREAM_ANALYTICS_JOB_STATUS=$JobStatus
-AZURE_STREAM_ANALYTICS_INPUT_NAME=$InputName
-AZURE_STREAM_ANALYTICS_INPUT_TYPE=$InputType
-AZURE_STREAM_ANALYTICS_OUTPUT_NAME=$OutputName
-AZURE_STREAM_ANALYTICS_OUTPUT_TYPE=$OutputType
-"@ | Set-Content -Path $envPath
+            
+            # Read existing .env content if it exists
+            $existingEnvContent = @()
+            if (Test-Path -Path $envPath) {
+                $existingEnvContent = Get-Content -Path $envPath | Where-Object { 
+                    $_ -notmatch '^AZURE_STREAM_ANALYTICS_' -and -not [string]::IsNullOrWhiteSpace($_) 
+                }
+            }
+            
+            # Create new Stream Analytics environment variables
+            $newEnvContent = @(
+                "# Azure Stream Analytics Configuration",
+                "AZURE_STREAM_ANALYTICS_JOB_NAME=$JobName",
+                "AZURE_STREAM_ANALYTICS_JOB_ID=$JobId",
+                "AZURE_STREAM_ANALYTICS_JOB_STATUS=$JobStatus",
+                "AZURE_STREAM_ANALYTICS_INPUT_NAME=$InputName",
+                "AZURE_STREAM_ANALYTICS_INPUT_TYPE=$InputType",
+                "AZURE_STREAM_ANALYTICS_OUTPUT_NAME=$OutputName",
+                "AZURE_STREAM_ANALYTICS_OUTPUT_TYPE=$OutputType"
+            )
+            
+            # Combine existing and new content
+            $combinedContent = $existingEnvContent + "" + $newEnvContent
+            $combinedContent | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
         }
         

@@ -74,6 +74,18 @@ function Configure-MLWorkspace {
     try {
         Write-ColorOutput "Configuring ML workspace..." -ForegroundColor Cyan
         
+        # Helper function to mask sensitive data
+        function Get-MaskedValue {
+            param([string]$Value, [int]$VisibleChars = 4)
+            if ([string]::IsNullOrEmpty($Value)) {
+                return "[NOT SET]"
+            }
+            if ($Value.Length -le $VisibleChars) {
+                return "*" * $Value.Length
+            }
+            return "*" * ($Value.Length - $VisibleChars) + $Value.Substring($Value.Length - $VisibleChars)
+        }
+        
         # Get workspace details if not provided
         if (-not $WorkspaceId -or -not $WorkspaceUrl) {
             $workspaceDetails = az ml workspace show `
@@ -104,7 +116,7 @@ function Configure-MLWorkspace {
         Write-ColorOutput "Workspace Name: $WorkspaceName" -ForegroundColor Gray
         Write-ColorOutput "Workspace ID: $WorkspaceId" -ForegroundColor Gray
         Write-ColorOutput "Workspace URL: $WorkspaceUrl" -ForegroundColor Gray
-        Write-ColorOutput "Access Token: $AccessToken" -ForegroundColor Gray
+        Write-ColorOutput "Access Token: $(Get-MaskedValue $AccessToken)" -ForegroundColor Gray
         if ($StorageAccountName) {
             Write-ColorOutput "Storage Account: $StorageAccountName" -ForegroundColor Gray
         }

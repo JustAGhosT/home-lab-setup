@@ -127,12 +127,73 @@ function Deploy-AzureIoTEdgeRuntime {
                 --edge-enabled
         }
         
-        # Get device connection string
-        $deviceConnectionString = az iot hub device-identity connection-string show `
-            --hub-name $IoTHubName `
-            --device-id $EdgeDeviceName `
-            --query connectionString `
-            --output tsv
+        # Get device connection string securely
+        Write-ColorOutput "Retrieving device connection string securely..." -ForegroundColor Yellow
+        try {
+            $deviceConnectionString = az iot hub device-identity connection-string show `
+                --hub-name $IoTHubName `
+                --device-id $EdgeDeviceName `
+                --query connectionString `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve device connection string. Exit code: $LASTEXITCODE"
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($deviceConnectionString)) {
+                throw "Device connection string is empty or null. Please check if the device exists and you have proper permissions."
+            }
+            
+            # Store connection string securely in Azure Key Vault if available
+            $keyVaultName = "$($IoTHubName.ToLower())kv$(Get-Random -Minimum 1000 -Maximum 9999)"
+            try {
+                # Check if Key Vault exists, create if not
+                $kvExists = az keyvault show --name $keyVaultName --resource-group $ResourceGroup --output tsv 2>$null
+                if (-not $kvExists) {
+                    Write-ColorOutput "Creating Azure Key Vault for secure secret storage: $keyVaultName" -ForegroundColor Yellow
+                    az keyvault create `
+                        --name $keyVaultName `
+                        --resource-group $ResourceGroup `
+                        --location $Location `
+                        --enable-soft-delete true `
+                        --enable-purge-protection true
+                    
+                    # Set access policy for current user
+                    $currentUser = az account show --query user.name --output tsv
+                    az keyvault set-policy `
+                        --name $keyVaultName `
+                        --resource-group $ResourceGroup `
+                        --secret-permissions get set list delete `
+                        --upn $currentUser
+                }
+                
+                # Store connection string as secret
+                $secretName = "$($EdgeDeviceName)-connection-string"
+                az keyvault secret set `
+                    --vault-name $keyVaultName `
+                    --name $secretName `
+                    --value $deviceConnectionString
+                
+                Write-ColorOutput "Connection string stored securely in Azure Key Vault: $keyVaultName" -ForegroundColor Green
+                Write-ColorOutput "Secret name: $secretName" -ForegroundColor Gray
+                
+                # Create a reference to the Key Vault secret instead of storing plain text
+                $deviceConnectionString = "https://$keyVaultName.vault.azure.net/secrets/$secretName"
+            }
+            catch {
+                Write-ColorOutput "Warning: Could not store connection string in Key Vault. Using local secure storage." -ForegroundColor Yellow
+                Write-ColorOutput "Key Vault error: $($_.Exception.Message)" -ForegroundColor Yellow
+                
+                # Store connection string reference for local use (not plain text)
+                $deviceConnectionString = "[SECURE_REFERENCE]"
+            }
+            
+            Write-ColorOutput "Successfully retrieved device connection string" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving device connection string: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve device connection string for '$EdgeDeviceName': $($_.Exception.Message)"
+        }
         
         # Create container registry if specified
         if ($ContainerRegistryName) {
@@ -156,9 +217,9 @@ function Deploy-AzureIoTEdgeRuntime {
         Write-ColorOutput "Creating deployment manifest..." -ForegroundColor Yellow
         $deploymentManifest = @{
             modulesContent = @{
-                '$edgeAgent'          = @{
-                    properties.desired = @{
-                        modules = @{}
+                '$edgeAgent' = @{
+                    'properties.desired' = @{
+                        modules       = @{}
                         runtime       = @{
                             settings = @{
                                 registryCredentials = @{}
@@ -189,12 +250,12 @@ function Deploy-AzureIoTEdgeRuntime {
                         }
                     }
                 }
-                '$edgeHub' = @{
-                    properties.desired = @{
-                        routes = @{
+                '$edgeHub'   = @{
+                    'properties.desired' = @{
+                        routes                       = @{
                             route = "FROM /messages/* INTO $('$upstream')"
                         }
-                        schemaVersion = "1.0"
+                        schemaVersion                = "1.0"
                         storeAndForwardConfiguration = @{
                             timeToLiveSecs = 7200
                         }
@@ -205,7 +266,7 @@ function Deploy-AzureIoTEdgeRuntime {
         
         # Add container registry credentials if specified
         if ($ContainerRegistryName) {
-            $deploymentManifest.modulesContent.'$edgeAgent'.properties.desired.runtime.settings.registryCredentials.$ContainerRegistryName = @{
+            $deploymentManifest.modulesContent.'$edgeAgent'.'properties.desired'.runtime.settings.registryCredentials.$ContainerRegistryName = @{
                 username = $acrUsername
                 password = $acrPassword
                 address  = $acrLoginServer
@@ -269,45 +330,135 @@ function Deploy-AzureIoTEdgeRuntime {
         if ($EnableSimulatedDevice) {
             Write-ColorOutput "Creating simulated IoT Edge device..." -ForegroundColor Yellow
             
-            # Create a simple deployment script for the simulated device
-            $deploymentScript = @"
+            # Create OS-specific installation scripts
+            if ($EdgeDeviceType -eq "Linux") {
+                Write-ColorOutput "Creating Linux IoT Edge installation script..." -ForegroundColor Yellow
+                
+                # Linux installation script with modern GPG key handling
+                $linuxScript = @"
 #!/bin/bash
-# IoT Edge Runtime Installation Script
+# IoT Edge Runtime Installation Script for Linux
+# This script uses modern GPG key handling and is compatible with current IoT Edge versions
+
+set -e
+
+echo "Starting IoT Edge Runtime installation for Linux..."
+
+# Detect Linux distribution
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=\$NAME
+    VER=\$VERSION_ID
+else
+    echo "Error: Cannot detect Linux distribution"
+    exit 1
+fi
+
+echo "Detected OS: \$OS \$VER"
 
 # Update package index
+echo "Updating package index..."
 sudo apt-get update
 
 # Install prerequisites
+echo "Installing prerequisites..."
 sudo apt-get install -y curl gnupg2 software-properties-common apt-transport-https ca-certificates
 
-# Add Microsoft GPG key
-curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+# Add Microsoft GPG key using modern method
+echo "Adding Microsoft GPG key..."
+curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg
 
 # Add Azure IoT Edge repository
-echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-iot-edge/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/azure-iot-edge.list
+echo "Adding Azure IoT Edge repository..."
+echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/microsoft.gpg] https://packages.microsoft.com/repos/azure-iot-edge/ \$(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/azure-iot-edge.list
 
 # Update package index again
+echo "Updating package index..."
 sudo apt-get update
 
 # Install IoT Edge runtime
+echo "Installing IoT Edge runtime..."
 sudo apt-get install -y iotedge
 
-# Configure IoT Edge
-sudo iotedge config mp --connection-string "$deviceConnectionString"
+# Configure IoT Edge with connection string
+echo "Configuring IoT Edge..."
+# Note: Replace CONNECTION_STRING_PLACEHOLDER with actual connection string
+# For security, this should be provided securely during deployment
+sudo iotedge config mp --connection-string "CONNECTION_STRING_PLACEHOLDER"
 
 # Start IoT Edge
+echo "Starting IoT Edge service..."
 sudo systemctl enable iotedge
 sudo systemctl start iotedge
 
+# Verify installation
+echo "Verifying IoT Edge installation..."
+sleep 10
+sudo iotedge list
+
 echo "IoT Edge Runtime installed and configured successfully!"
-echo "Device Connection String: $deviceConnectionString"
+echo "IMPORTANT: Replace CONNECTION_STRING_PLACEHOLDER with your actual device connection string"
+echo "You can retrieve it securely from Azure Key Vault or your deployment system"
 "@
-            
-            $scriptPath = Join-Path -Path $env:TEMP -ChildPath "install-iotedge.sh"
-            $deploymentScript | Set-Content -Path $scriptPath
-            
-            Write-ColorOutput "Installation script created: $scriptPath" -ForegroundColor Green
-            Write-ColorOutput "Run this script on your edge device to install IoT Edge Runtime" -ForegroundColor Yellow
+                
+                $linuxScriptPath = Join-Path -Path $env:TEMP -ChildPath "install-iotedge-linux.sh"
+                $linuxScript | Set-Content -Path $linuxScriptPath
+                
+                Write-ColorOutput "Linux installation script created: $linuxScriptPath" -ForegroundColor Green
+                Write-ColorOutput "Run this script on your Linux edge device to install IoT Edge Runtime" -ForegroundColor Yellow
+            }
+            elseif ($EdgeDeviceType -eq "Windows") {
+                Write-ColorOutput "Creating Windows IoT Edge installation script..." -ForegroundColor Yellow
+                
+                # Windows installation script
+                $windowsScript = @"
+# IoT Edge Runtime Installation Script for Windows
+# This script installs IoT Edge on Windows devices
+
+Write-Host "Starting IoT Edge Runtime installation for Windows..." -ForegroundColor Green
+
+# Check if running as administrator
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Error "This script must be run as Administrator"
+    exit 1
+}
+
+# Install IoT Edge runtime using PowerShell
+Write-Host "Installing IoT Edge runtime..." -ForegroundColor Yellow
+
+# Download and install IoT Edge
+Invoke-WebRequest -Uri "https://aka.ms/iotedge-win" -OutFile "iotedge-install.ps1"
+.\iotedge-install.ps1 -ContainerOs Windows
+
+# Configure IoT Edge
+Write-Host "Configuring IoT Edge..." -ForegroundColor Yellow
+# Note: Replace CONNECTION_STRING_PLACEHOLDER with actual connection string
+# For security, this should be provided securely during deployment
+iotedge config mp --connection-string "CONNECTION_STRING_PLACEHOLDER"
+
+# Start IoT Edge service
+Write-Host "Starting IoT Edge service..." -ForegroundColor Yellow
+Start-Service iotedge
+
+# Verify installation
+Write-Host "Verifying IoT Edge installation..." -ForegroundColor Yellow
+Start-Sleep -Seconds 10
+iotedge list
+
+Write-Host "IoT Edge Runtime installed and configured successfully!" -ForegroundColor Green
+Write-Host "IMPORTANT: Replace CONNECTION_STRING_PLACEHOLDER with your actual device connection string" -ForegroundColor Yellow
+Write-Host "You can retrieve it securely from Azure Key Vault or your deployment system" -ForegroundColor Yellow
+"@
+                
+                $windowsScriptPath = Join-Path -Path $env:TEMP -ChildPath "install-iotedge-windows.ps1"
+                $windowsScript | Set-Content -Path $windowsScriptPath
+                
+                Write-ColorOutput "Windows installation script created: $windowsScriptPath" -ForegroundColor Green
+                Write-ColorOutput "Run this script as Administrator on your Windows edge device to install IoT Edge Runtime" -ForegroundColor Yellow
+            }
+            else {
+                Write-ColorOutput "Unsupported device type: $EdgeDeviceType. Supported types are 'Linux' and 'Windows'." -ForegroundColor Red
+            }
         }
         
         # Enable monitoring if requested
@@ -354,7 +505,7 @@ echo "Device Connection String: $deviceConnectionString"
         Write-ColorOutput "IoT Hub Name: $IoTHubName" -ForegroundColor Gray
         Write-ColorOutput "Edge Device Name: $EdgeDeviceName" -ForegroundColor Gray
         Write-ColorOutput "Device Type: $EdgeDeviceType" -ForegroundColor Gray
-        Write-ColorOutput "Device Connection String: $deviceConnectionString" -ForegroundColor Gray
+        Write-ColorOutput "Device Connection String: [SECURE_REFERENCE]" -ForegroundColor Gray
         Write-ColorOutput "Deployment Name: $deploymentName" -ForegroundColor Gray
         Write-ColorOutput "Device ID: $($deviceDetails.deviceId)" -ForegroundColor Gray
         

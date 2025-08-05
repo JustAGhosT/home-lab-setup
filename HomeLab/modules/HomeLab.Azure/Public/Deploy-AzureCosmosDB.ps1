@@ -89,10 +89,24 @@ function Deploy-AzureCosmosDB {
         Write-ColorOutput "Starting Azure Cosmos DB deployment..." -ForegroundColor Cyan
         
         # Check if resource group exists
-        $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
-        if ($rgExists -ne "true") {
-            Write-ColorOutput "Creating resource group: $ResourceGroup" -ForegroundColor Yellow
-            az group create --name $ResourceGroup --location $Location
+        try {
+            $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to check resource group existence. Exit code: $LASTEXITCODE"
+            }
+            
+            if ($rgExists -ne "true") {
+                Write-ColorOutput "Creating resource group: $ResourceGroup" -ForegroundColor Yellow
+                az group create --name $ResourceGroup --location $Location
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create resource group '$ResourceGroup'. Exit code: $LASTEXITCODE"
+                }
+                Write-ColorOutput "Successfully created resource group: $ResourceGroup" -ForegroundColor Green
+            }
+        }
+        catch {
+            Write-ColorOutput "Error with resource group operations: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to handle resource group '$ResourceGroup': $($_.Exception.Message)"
         }
         
         # Determine API type for Azure CLI
@@ -123,7 +137,7 @@ function Deploy-AzureCosmosDB {
             $createParams += "--enable-automatic-failover"
         }
         
-        az $createParams
+        az @createParams
         
         # Create database if specified
         if ($DatabaseName) {
@@ -147,20 +161,64 @@ function Deploy-AzureCosmosDB {
         }
         
         # Get connection string
-        $connectionString = az cosmosdb keys list `
-            --name $AccountName `
-            --resource-group $ResourceGroup `
-            --type connection-strings `
-            --query "connectionStrings[0].connectionString" `
-            --output tsv
+        try {
+            $connectionString = az cosmosdb keys list `
+                --name $AccountName `
+                --resource-group $ResourceGroup `
+                --type connection-strings `
+                --query "connectionStrings[0].connectionString" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve connection string. Exit code: $LASTEXITCODE"
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($connectionString)) {
+                throw "Connection string is empty or null. Please check if the Cosmos DB account exists and you have proper permissions."
+            }
+            
+            Write-ColorOutput "Successfully retrieved connection string" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving connection string: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve connection string for '$AccountName': $($_.Exception.Message)"
+        }
         
         # Get primary key
-        $primaryKey = az cosmosdb keys list `
-            --name $AccountName `
-            --resource-group $ResourceGroup `
-            --type keys `
-            --query "primaryMasterKey" `
-            --output tsv
+        try {
+            $primaryKey = az cosmosdb keys list `
+                --name $AccountName `
+                --resource-group $ResourceGroup `
+                --type keys `
+                --query "primaryMasterKey" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve primary key. Exit code: $LASTEXITCODE"
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($primaryKey)) {
+                throw "Primary key is empty or null. Please check if the Cosmos DB account exists and you have proper permissions."
+            }
+            
+            Write-ColorOutput "Successfully retrieved primary key" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving primary key: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve primary key for '$AccountName': $($_.Exception.Message)"
+        }
+        
+        # Helper function to mask sensitive keys
+        function Get-MaskedValue {
+            param([string]$Value, [int]$VisibleChars = 4)
+            if ([string]::IsNullOrEmpty($Value)) {
+                return "[NOT SET]"
+            }
+            if ($Value.Length -le $VisibleChars) {
+                return "*" * $Value.Length
+            }
+            return "*" * ($Value.Length - $VisibleChars) + $Value.Substring($Value.Length - $VisibleChars)
+        }
         
         # Display deployment summary
         Write-ColorOutput "`nAzure Cosmos DB deployment completed successfully!" -ForegroundColor Green
@@ -173,8 +231,8 @@ function Deploy-AzureCosmosDB {
         if ($ContainerName) {
             Write-ColorOutput "Container: $ContainerName" -ForegroundColor Gray
         }
-        Write-ColorOutput "Connection String: $connectionString" -ForegroundColor Gray
-        Write-ColorOutput "Primary Key: $primaryKey" -ForegroundColor Gray
+        Write-ColorOutput "Connection String: $(Get-MaskedValue -Value $connectionString)" -ForegroundColor Gray
+        Write-ColorOutput "Primary Key: $(Get-MaskedValue -Value $primaryKey)" -ForegroundColor Gray
         
         # Return deployment info
         return @{

@@ -63,6 +63,11 @@ function Configure-SQLDatabaseConnections {
         # Build connection string
         $connectionString = "Server=tcp:$ServerName.database.windows.net,1433;Initial Catalog=$DatabaseName;Persist Security Info=False;User ID=$AdminUsername;Password=$plainPassword;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
         
+        # Clear plain text password from memory
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+        $plainPassword = $null
+        [System.GC]::Collect()
+        
         # Display connection information
         Write-ColorOutput "`nSQL Database Connection Information:" -ForegroundColor Green
         Write-ColorOutput "Server: $ServerName.database.windows.net" -ForegroundColor Gray
@@ -102,12 +107,24 @@ function Configure-SQLDatabaseConnections {
                     $webConfig.configuration.AppendChild($connectionStringsNode)
                 }
                 
-                $addNode = $webConfig.CreateElement("add")
-                $addNode.SetAttribute("name", "DefaultConnection")
-                $addNode.SetAttribute("connectionString", $connectionString)
-                $addNode.SetAttribute("providerName", "System.Data.SqlClient")
-                
-                $connectionStringsNode.AppendChild($addNode)
+                # Check if DefaultConnection already exists
+                $existingNode = $connectionStringsNode.SelectSingleNode("add[@name='DefaultConnection']")
+                if ($existingNode) {
+                    # Update existing connection string
+                    $existingNode.SetAttribute("connectionString", $connectionString)
+                    $existingNode.SetAttribute("providerName", "System.Data.SqlClient")
+                    Write-ColorOutput "Updated existing DefaultConnection in web.config" -ForegroundColor Green
+                }
+                else {
+                    # Create new connection string entry
+                    $addNode = $webConfig.CreateElement("add")
+                    $addNode.SetAttribute("name", "DefaultConnection")
+                    $addNode.SetAttribute("connectionString", $connectionString)
+                    $addNode.SetAttribute("providerName", "System.Data.SqlClient")
+                    
+                    $connectionStringsNode.AppendChild($addNode)
+                    Write-ColorOutput "Added new DefaultConnection to web.config" -ForegroundColor Green
+                }
                 
                 $webConfig.Save($webConfigPath)
                 Write-ColorOutput "Updated web.config" -ForegroundColor Green
@@ -132,13 +149,22 @@ function Configure-SQLDatabaseConnections {
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
+            
+            # Security warning for sensitive data
+            Write-ColorOutput "`n⚠️  SECURITY WARNING:" -ForegroundColor Yellow
+            Write-ColorOutput "The .env file will contain sensitive connection information." -ForegroundColor Yellow
+            Write-ColorOutput "For production environments, consider using Azure Key Vault for secure storage." -ForegroundColor Yellow
+            Write-ColorOutput "Ensure .env is added to .gitignore to prevent accidental commits." -ForegroundColor Yellow
+            
             @"
 # SQL Database Configuration
+# Note: For production, use Azure Key Vault to store sensitive credentials
 SQL_CONNECTION_STRING=$connectionString
 SQL_SERVER=$ServerName.database.windows.net
 SQL_DATABASE=$DatabaseName
 SQL_USERNAME=$AdminUsername
-SQL_PASSWORD=$plainPassword
+# SQL_PASSWORD should be retrieved from Azure Key Vault at runtime
+# Example: SQL_PASSWORD_KEY_VAULT_REF=https://your-keyvault.vault.azure.net/secrets/sql-password
 "@ | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
         }

@@ -118,11 +118,27 @@ function Deploy-AzureBlobStorage {
         
         # Get storage account keys
         Write-ColorOutput "Getting storage account keys..." -ForegroundColor Yellow
-        $storageKey = az storage account keys list `
-            --account-name $StorageAccountName `
-            --resource-group $ResourceGroup `
-            --query "[0].value" `
-            --output tsv
+        try {
+            $storageKey = az storage account keys list `
+                --account-name $StorageAccountName `
+                --resource-group $ResourceGroup `
+                --query "[0].value" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve storage account keys. Exit code: $LASTEXITCODE"
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($storageKey)) {
+                throw "Storage account key is empty or null. Please check if the storage account exists and you have proper permissions."
+            }
+            
+            Write-ColorOutput "Successfully retrieved storage account key" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving storage account keys: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve storage account keys for '$StorageAccountName': $($_.Exception.Message)"
+        }
         
         # Create containers
         foreach ($containerName in $ContainerNames) {
@@ -169,7 +185,7 @@ function Deploy-AzureBlobStorage {
         Write-ColorOutput "Containers: $($ContainerNames -join ', ')" -ForegroundColor Gray
         Write-ColorOutput "Access Level: $AccessLevel" -ForegroundColor Gray
         Write-ColorOutput "Storage URL: $storageUrl" -ForegroundColor Gray
-        Write-ColorOutput "Connection String: $connectionString" -ForegroundColor Gray
+        # Connection string intentionally omitted for security - available in return object
         
         if ($EnableStaticWebsite) {
             Write-ColorOutput "Static Website URL: $staticWebsiteUrl" -ForegroundColor Gray

@@ -56,6 +56,26 @@ function Configure-MultiCloudEndpoints {
     try {
         Write-ColorOutput "Configuring multi-cloud endpoints..." -ForegroundColor Cyan
         
+        # Helper function for robust property existence checking
+        function Test-PropertyExists {
+            param([object]$Object, [string]$PropertyName)
+            return $Object.PSObject.Properties.Name -contains $PropertyName
+        }
+        
+        # Helper function to sanitize input for .env files
+        function Get-SanitizedValue {
+            param([string]$Value)
+            if ([string]::IsNullOrEmpty($Value)) {
+                return ""
+            }
+            # Remove or escape characters that could cause command injection
+            $sanitized = $Value -replace '[\$\"'';&|><!*?\[\]{}()]', ''
+            # Remove any newlines or carriage returns
+            $sanitized = $sanitized -replace '[\r\n]', ''
+            # Trim whitespace
+            return $sanitized.Trim()
+        }
+        
         # Display multi-cloud configuration information
         Write-ColorOutput "`nMulti-Cloud Configuration Information:" -ForegroundColor Green
         Write-ColorOutput "Project Name: $ProjectName" -ForegroundColor Gray
@@ -105,62 +125,80 @@ function Configure-MultiCloudEndpoints {
             $appSettingsPath = Join-Path -Path $ProjectPath -ChildPath "appsettings.json"
             if (Test-Path -Path $appSettingsPath) {
                 Write-ColorOutput "Updating appsettings.json..." -ForegroundColor Gray
-                $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
-                
-                if (-not $appSettings.MultiCloud) {
-                    $appSettings | Add-Member -MemberType NoteProperty -Name "MultiCloud" -Value @{}
+                try {
+                    $appSettings = Get-Content -Path $appSettingsPath | ConvertFrom-Json
+                    
+                    if (-not (Test-PropertyExists -Object $appSettings -PropertyName "MultiCloud")) {
+                        $appSettings | Add-Member -MemberType NoteProperty -Name "MultiCloud" -Value @{}
+                    }
+                    
+                    $appSettings.MultiCloud.ProjectName = $ProjectName
+                    $appSettings.MultiCloud.ResourceGroup = $ResourceGroup
+                    $appSettings.MultiCloud.CloudProviders = $CloudProviders
+                    
+                    if ($AzureResources) {
+                        $appSettings.MultiCloud.AzureResources = $AzureResources
+                    }
+                    
+                    if ($ConfigurationFiles) {
+                        $appSettings.MultiCloud.ConfigurationFiles = $ConfigurationFiles
+                    }
+                    
+                    $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
+                    Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
                 }
-                
-                $appSettings.MultiCloud.ProjectName = $ProjectName
-                $appSettings.MultiCloud.ResourceGroup = $ResourceGroup
-                $appSettings.MultiCloud.CloudProviders = $CloudProviders
-                
-                if ($AzureResources) {
-                    $appSettings.MultiCloud.AzureResources = $AzureResources
+                catch {
+                    Write-ColorOutput "Error updating appsettings.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update appsettings.json: $($_.Exception.Message)"
                 }
-                
-                if ($ConfigurationFiles) {
-                    $appSettings.MultiCloud.ConfigurationFiles = $ConfigurationFiles
-                }
-                
-                $appSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $appSettingsPath
-                Write-ColorOutput "Updated appsettings.json" -ForegroundColor Green
             }
             
             # Update package.json for Node.js projects
             $packageJsonPath = Join-Path -Path $ProjectPath -ChildPath "package.json"
             if (Test-Path -Path $packageJsonPath) {
                 Write-ColorOutput "Updating package.json..." -ForegroundColor Gray
-                $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
-                
-                if (-not $packageJson.config) {
-                    $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                try {
+                    $packageJson = Get-Content -Path $packageJsonPath | ConvertFrom-Json
+                    
+                    if (-not (Test-PropertyExists -Object $packageJson -PropertyName "config")) {
+                        $packageJson | Add-Member -MemberType NoteProperty -Name "config" -Value @{}
+                    }
+                    
+                    $packageJson.config.multicloudProjectName = $ProjectName
+                    $packageJson.config.multicloudResourceGroup = $ResourceGroup
+                    $packageJson.config.multicloudCloudProviders = $CloudProviders
+                    
+                    if ($AzureResources) {
+                        $packageJson.config.multicloudAzureResources = $AzureResources
+                    }
+                    
+                    if ($ConfigurationFiles) {
+                        $packageJson.config.multicloudConfigurationFiles = $ConfigurationFiles
+                    }
+                    
+                    $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
+                    Write-ColorOutput "Updated package.json" -ForegroundColor Green
                 }
-                
-                $packageJson.config.multicloudProjectName = $ProjectName
-                $packageJson.config.multicloudResourceGroup = $ResourceGroup
-                $packageJson.config.multicloudCloudProviders = $CloudProviders
-                
-                if ($AzureResources) {
-                    $packageJson.config.multicloudAzureResources = $AzureResources
+                catch {
+                    Write-ColorOutput "Error updating package.json: $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to update package.json: $($_.Exception.Message)"
                 }
-                
-                if ($ConfigurationFiles) {
-                    $packageJson.config.multicloudConfigurationFiles = $ConfigurationFiles
-                }
-                
-                $packageJson | ConvertTo-Json -Depth 10 | Set-Content -Path $packageJsonPath
-                Write-ColorOutput "Updated package.json" -ForegroundColor Green
             }
             
             # Create .env file for environment variables
             $envPath = Join-Path -Path $ProjectPath -ChildPath ".env"
             Write-ColorOutput "Creating .env file..." -ForegroundColor Gray
+            
+            # Sanitize input values to prevent command injection
+            $sanitizedProjectName = Get-SanitizedValue -Value $ProjectName
+            $sanitizedResourceGroup = Get-SanitizedValue -Value $ResourceGroup
+            $sanitizedCloudProviders = ($CloudProviders | ForEach-Object { Get-SanitizedValue -Value $_ }) -join ','
+            
             @"
 # Multi-Cloud Configuration
-MULTICLOUD_PROJECT_NAME=$ProjectName
-MULTICLOUD_RESOURCE_GROUP=$ResourceGroup
-MULTICLOUD_CLOUD_PROVIDERS=$($CloudProviders -join ',')
+MULTICLOUD_PROJECT_NAME=$sanitizedProjectName
+MULTICLOUD_RESOURCE_GROUP=$sanitizedResourceGroup
+MULTICLOUD_CLOUD_PROVIDERS=$sanitizedCloudProviders
 "@ | Set-Content -Path $envPath
             Write-ColorOutput "Created .env file" -ForegroundColor Green
         }
@@ -168,21 +206,28 @@ MULTICLOUD_CLOUD_PROVIDERS=$($CloudProviders -join ',')
         # Save connection information to a configuration file
         $configPath = Join-Path -Path $env:USERPROFILE -ChildPath ".homelab\multicloud-connections.json"
         $configDir = Split-Path -Path $configPath -Parent
-        if (-not (Test-Path -Path $configDir)) {
-            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-        }
         
-        $connectionConfig = @{
-            ProjectName        = $ProjectName
-            ResourceGroup      = $ResourceGroup
-            CloudProviders     = $CloudProviders
-            AzureResources     = $AzureResources
-            ConfigurationFiles = $ConfigurationFiles
-            CreatedAt          = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        try {
+            if (-not (Test-Path -Path $configDir)) {
+                New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+            }
+            
+            $connectionConfig = @{
+                ProjectName        = $ProjectName
+                ResourceGroup      = $ResourceGroup
+                CloudProviders     = $CloudProviders
+                AzureResources     = $AzureResources
+                ConfigurationFiles = $ConfigurationFiles
+                CreatedAt          = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            }
+            
+            $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
+            Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
         }
-        
-        $connectionConfig | ConvertTo-Json | Set-Content -Path $configPath
-        Write-ColorOutput "Saved connection configuration to: $configPath" -ForegroundColor Green
+        catch {
+            Write-ColorOutput "Error saving connection configuration: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to save connection configuration: $($_.Exception.Message)"
+        }
         
         Write-ColorOutput "`nMulti-cloud endpoint configuration completed successfully!" -ForegroundColor Green
     }

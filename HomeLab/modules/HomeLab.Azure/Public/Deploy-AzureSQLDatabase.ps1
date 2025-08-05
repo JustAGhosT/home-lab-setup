@@ -97,6 +97,8 @@ function Deploy-AzureSQLDatabase {
         if ($AdminPassword) {
             $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($AdminPassword)
             $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+            # Free the allocated BSTR memory to prevent memory leaks
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
         }
         else {
             $plainPassword = [System.Web.Security.Membership]::GeneratePassword(16, 3)
@@ -173,14 +175,13 @@ function Deploy-AzureSQLDatabase {
         Write-ColorOutput "Admin Username: $AdminUsername" -ForegroundColor Gray
         Write-ColorOutput "Connection String: $connectionString" -ForegroundColor Gray
         
-        # Return deployment info
+        # Return deployment info (excluding sensitive password)
         return @{
-            ResourceGroup    = $ResourceGroup
-            ServerName       = $ServerName
-            DatabaseName     = $DatabaseName
+            ResourceGroup = $ResourceGroup
+            ServerName = $ServerName
+            DatabaseName = $DatabaseName
             ConnectionString = $connectionString
-            AdminUsername    = $AdminUsername
-            AdminPassword    = $AdminPassword
+            AdminUsername = $AdminUsername
         }
     }
     catch {
@@ -203,19 +204,37 @@ function Get-StorageAccountForAuditing {
         [string]$Location
     )
     
-    $storageAccountName = "sqlaudit$(Get-Random -Minimum 1000 -Maximum 9999)"
+    # Generate a unique storage account name with retry logic
+    $maxAttempts = 10
+    $attempt = 0
+    $storageAccountName = $null
     
-    # Check if storage account exists
-    $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
-    if (-not $storageExists) {
-        Write-ColorOutput "Creating storage account for auditing: $storageAccountName" -ForegroundColor Yellow
-        az storage account create `
-            --name $storageAccountName `
-            --resource-group $ResourceGroup `
-            --location $Location `
-            --sku Standard_LRS `
-            --kind StorageV2
+    do {
+        $attempt++
+        $randomSuffix = Get-Random -Minimum 1000 -Maximum 9999
+        $storageAccountName = "sqlaudit$randomSuffix"
+        
+        # Check if storage account exists
+        $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
+        
+        if ($storageExists) {
+            Write-ColorOutput "Storage account $storageAccountName already exists, trying another name..." -ForegroundColor Yellow
+            $storageAccountName = $null
+        }
+    } while (-not $storageAccountName -and $attempt -lt $maxAttempts)
+    
+    if (-not $storageAccountName) {
+        throw "Failed to generate a unique storage account name after $maxAttempts attempts"
     }
+    
+    # Create the storage account if it doesn't exist
+    Write-ColorOutput "Creating storage account for auditing: $storageAccountName" -ForegroundColor Yellow
+    az storage account create `
+        --name $storageAccountName `
+        --resource-group $ResourceGroup `
+        --location $Location `
+        --sku Standard_LRS `
+        --kind StorageV2
     
     return $storageAccountName
 } 

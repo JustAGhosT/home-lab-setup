@@ -112,7 +112,16 @@ function Deploy-AzureCDN {
         }
         
         # Check if CDN endpoint exists
-        $endpointExists = az cdn endpoint show --name $CdnEndpointName --profile-name $CdnProfileName --resource-group $ResourceGroup --output tsv 2>$null
+        try {
+            $endpointExists = az cdn endpoint show --name $CdnEndpointName --profile-name $CdnProfileName --resource-group $ResourceGroup --output tsv 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                $endpointExists = $null
+            }
+        }
+        catch {
+            $endpointExists = $null
+        }
+        
         if (-not $endpointExists) {
             Write-ColorOutput "Creating CDN endpoint: $CdnEndpointName" -ForegroundColor Yellow
             
@@ -126,7 +135,7 @@ function Deploy-AzureCDN {
                 "--origin-path", $OriginPath
             )
             
-            if ($EnableHttps) {
+            if ($EnableCompression) {
                 $createParams += "--enable-compression"
             }
             
@@ -140,17 +149,7 @@ function Deploy-AzureCDN {
                 --name $CdnEndpointName `
                 --profile-name $CdnProfileName `
                 --resource-group $ResourceGroup `
-                --enable-compression
-        }
-        
-        # Configure compression if enabled
-        if ($EnableCompression) {
-            Write-ColorOutput "Configuring compression..." -ForegroundColor Yellow
-            az cdn endpoint update `
-                --name $CdnEndpointName `
-                --profile-name $CdnProfileName `
-                --resource-group $ResourceGroup `
-                --enable-compression
+                --https-only
         }
         
         # Configure query string caching
@@ -167,16 +166,28 @@ function Deploy-AzureCDN {
         if ($CacheRules.Count -gt 0) {
             Write-ColorOutput "Applying cache rules..." -ForegroundColor Yellow
             foreach ($rule in $CacheRules) {
-                az cdn endpoint rule add `
-                    --name $CdnEndpointName `
-                    --profile-name $CdnProfileName `
-                    --resource-group $ResourceGroup `
-                    --rule-name $rule.Name `
-                    --order $rule.Order `
-                    --action-name $rule.Action `
-                    --match-variable $rule.MatchVariable `
-                    --operator $rule.Operator `
-                    --match-values $rule.MatchValues
+                try {
+                    az cdn endpoint rule add `
+                        --name $CdnEndpointName `
+                        --profile-name $CdnProfileName `
+                        --resource-group $ResourceGroup `
+                        --rule-name $rule.Name `
+                        --order $rule.Order `
+                        --action-name $rule.Action `
+                        --match-variable $rule.MatchVariable `
+                        --operator $rule.Operator `
+                        --match-values $rule.MatchValues
+                    
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "Failed to add cache rule '$($rule.Name)'. Exit code: $LASTEXITCODE"
+                    }
+                    
+                    Write-ColorOutput "Successfully added cache rule: $($rule.Name)" -ForegroundColor Green
+                }
+                catch {
+                    Write-ColorOutput "Error adding cache rule '$($rule.Name)': $($_.Exception.Message)" -ForegroundColor Red
+                    throw "Failed to add cache rule '$($rule.Name)': $($_.Exception.Message)"
+                }
             }
         }
         

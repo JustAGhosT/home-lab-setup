@@ -122,11 +122,12 @@ function Deploy-AzureCognitiveServices {
         # Configure network access if enabled
         if ($EnableNetworkAcls -and $AllowedIpRanges.Count -gt 0) {
             Write-ColorOutput "Configuring network access control..." -ForegroundColor Yellow
-            $ipRanges = $AllowedIpRanges -join ","
-            az cognitiveservices account network-rule add `
-                --name $AccountName `
-                --resource-group $ResourceGroup `
-                --ip-address $ipRanges
+            foreach ($ipRange in $AllowedIpRanges) {
+                az cognitiveservices account network-rule add `
+                    --name $AccountName `
+                    --resource-group $ResourceGroup `
+                    --ip-address $ipRange
+            }
         }
         
         # Get account keys
@@ -142,6 +143,18 @@ function Deploy-AzureCognitiveServices {
             --resource-group $ResourceGroup `
             --query "key2" `
             --output tsv
+        
+        # Helper function to mask sensitive keys
+        function Get-MaskedKey {
+            param([string]$Key, [int]$VisibleChars = 4)
+            if ([string]::IsNullOrEmpty($Key)) {
+                return "[NOT SET]"
+            }
+            if ($Key.Length -le $VisibleChars) {
+                return "*" * $Key.Length
+            }
+            return "*" * ($Key.Length - $VisibleChars) + $Key.Substring($Key.Length - $VisibleChars)
+        }
         
         # Get account endpoint
         $endpoint = az cognitiveservices account show `
@@ -163,8 +176,8 @@ function Deploy-AzureCognitiveServices {
         Write-ColorOutput "Service Type: $ServiceType" -ForegroundColor Gray
         Write-ColorOutput "SKU: $Sku" -ForegroundColor Gray
         Write-ColorOutput "Endpoint: $endpoint" -ForegroundColor Gray
-        Write-ColorOutput "Key 1: $key1" -ForegroundColor Gray
-        Write-ColorOutput "Key 2: $key2" -ForegroundColor Gray
+        Write-ColorOutput "Key 1: $(Get-MaskedKey -Key $key1)" -ForegroundColor Gray
+        Write-ColorOutput "Key 2: $(Get-MaskedKey -Key $key2)" -ForegroundColor Gray
         
         if ($EnableCustomSubdomain -and $CustomSubdomainName) {
             Write-ColorOutput "Custom Subdomain: $CustomSubdomainName" -ForegroundColor Gray

@@ -122,40 +122,15 @@ function Deploy-AzureIoTHub {
         # Configure IoT Hub features
         Write-ColorOutput "Configuring IoT Hub features..." -ForegroundColor Yellow
         
-        # Enable file upload if requested
-        if ($EnableFileUpload) {
-            Write-ColorOutput "Enabling file upload notifications..." -ForegroundColor Gray
-            az iot hub update `
-                --name $IoTHubName `
-                --resource-group $ResourceGroup `
-                --fileupload-notifications true
-        }
+        # Note: File upload, cloud-to-device messaging, device twin, and message routing are enabled by default
+        # in Azure IoT Hub and do not require explicit configuration via az iot hub update commands.
+        # These features are automatically available when the IoT Hub is created.
         
-        # Enable cloud-to-device messaging if requested
+        # Configure cloud-to-device messaging settings if requested
         if ($EnableCloudToDeviceMessages) {
-            Write-ColorOutput "Enabling cloud-to-device messaging..." -ForegroundColor Gray
-            az iot hub update `
-                --name $IoTHubName `
-                --resource-group $ResourceGroup `
-                --enable-cloud-to-device-messaging true
-        }
-        
-        # Enable device twin if requested
-        if ($EnableDeviceTwin) {
-            Write-ColorOutput "Enabling device twin functionality..." -ForegroundColor Gray
-            az iot hub update `
-                --name $IoTHubName `
-                --resource-group $ResourceGroup `
-                --enable-device-twin true
-        }
-        
-        # Enable message routing if requested
-        if ($EnableMessageRouting) {
-            Write-ColorOutput "Enabling message routing..." -ForegroundColor Gray
-            az iot hub update `
-                --name $IoTHubName `
-                --resource-group $ResourceGroup `
-                --enable-message-routing true
+            Write-ColorOutput "Configuring cloud-to-device messaging settings..." -ForegroundColor Gray
+            # Note: Cloud-to-device messaging is enabled by default, but we can configure specific settings
+            # such as max delivery count and TTL if needed in the future
         }
         
         # Create endpoints if requested
@@ -176,6 +151,16 @@ function Deploy-AzureIoTHub {
                 --namespace-name $eventHubNamespace `
                 --resource-group $ResourceGroup
             
+            # Get subscription ID and connection string for Event Hub endpoint
+            $subscriptionId = az account show --query id --output tsv
+            $eventHubConnectionString = az eventhubs eventhub authorization-rule keys list `
+                --eventhub-name $eventHubName `
+                --namespace-name $eventHubNamespace `
+                --name RootManageSharedAccessKey `
+                --resource-group $ResourceGroup `
+                --query primaryConnectionString `
+                --output tsv
+            
             # Add Event Hub endpoint to IoT Hub
             az iot hub routing-endpoint create `
                 --hub-name $IoTHubName `
@@ -183,8 +168,8 @@ function Deploy-AzureIoTHub {
                 --endpoint-name "eventhub-endpoint" `
                 --endpoint-type eventhub `
                 --endpoint-resource-group $ResourceGroup `
-                --endpoint-subscription-id (az account show --query id --output tsv) `
-                --endpoint-connection-string (az eventhubs eventhub authorization-rule keys list --eventhub-name $eventHubName --namespace-name $eventHubNamespace --name RootManageSharedAccessKey --resource-group $ResourceGroup --query primaryConnectionString --output tsv)
+                --endpoint-subscription-id $subscriptionId `
+                --endpoint-connection-string $eventHubConnectionString
         }
         
         if ($EnableServiceBusEndpoint) {
@@ -204,6 +189,16 @@ function Deploy-AzureIoTHub {
                 --namespace-name $serviceBusNamespace `
                 --resource-group $ResourceGroup
             
+            # Get subscription ID and connection string for Service Bus endpoint
+            $subscriptionId = az account show --query id --output tsv
+            $serviceBusConnectionString = az servicebus queue authorization-rule keys list `
+                --queue-name $queueName `
+                --namespace-name $serviceBusNamespace `
+                --name RootManageSharedAccessKey `
+                --resource-group $ResourceGroup `
+                --query primaryConnectionString `
+                --output tsv
+            
             # Add Service Bus endpoint to IoT Hub
             az iot hub routing-endpoint create `
                 --hub-name $IoTHubName `
@@ -211,8 +206,8 @@ function Deploy-AzureIoTHub {
                 --endpoint-name "servicebus-endpoint" `
                 --endpoint-type servicebusqueue `
                 --endpoint-resource-group $ResourceGroup `
-                --endpoint-subscription-id (az account show --query id --output tsv) `
-                --endpoint-connection-string (az servicebus queue authorization-rule keys list --queue-name $queueName --namespace-name $serviceBusNamespace --name RootManageSharedAccessKey --resource-group $ResourceGroup --query primaryConnectionString --output tsv)
+                --endpoint-subscription-id $subscriptionId `
+                --endpoint-connection-string $serviceBusConnectionString
         }
         
         if ($EnableStorageEndpoint) {
@@ -238,6 +233,14 @@ function Deploy-AzureIoTHub {
                 --account-name $storageAccountName `
                 --account-key $storageKey
             
+            # Get subscription ID and storage connection string
+            $subscriptionId = az account show --query id --output tsv
+            $storageConnectionString = az storage account show-connection-string `
+                --name $storageAccountName `
+                --resource-group $ResourceGroup `
+                --query connectionString `
+                --output tsv
+            
             # Add Storage endpoint to IoT Hub
             az iot hub routing-endpoint create `
                 --hub-name $IoTHubName `
@@ -245,8 +248,8 @@ function Deploy-AzureIoTHub {
                 --endpoint-name "storage-endpoint" `
                 --endpoint-type azurestoragecontainer `
                 --endpoint-resource-group $ResourceGroup `
-                --endpoint-subscription-id (az account show --query id --output tsv) `
-                --endpoint-connection-string "DefaultEndpointsProtocol=https;AccountName=$storageAccountName;AccountKey=$storageKey;EndpointSuffix=core.windows.net" `
+                --endpoint-subscription-id $subscriptionId `
+                --endpoint-connection-string $storageConnectionString `
                 --endpoint-container-name $containerName
         }
         
@@ -265,7 +268,7 @@ function Deploy-AzureIoTHub {
             az iot dps linked-hub create `
                 --dps-name $dpsName `
                 --resource-group $ResourceGroup `
-                --connection-string (az iot hub connection-string show --name $IoTHubName --resource-group $ResourceGroup --query connectionString --output tsv) `
+                --connection-string $connectionString `
                 --location $Location
         }
         

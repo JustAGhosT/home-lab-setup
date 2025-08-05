@@ -80,6 +80,18 @@ function Deploy-AzureMachineLearningStudio {
     try {
         Write-ColorOutput "Starting Azure Machine Learning Studio deployment..." -ForegroundColor Cyan
         
+        # Validate Azure CLI availability and authentication
+        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+            throw "Azure CLI is not installed or not available in PATH. Please install Azure CLI from https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+        }
+        
+        try {
+            $null = az account show --query id --output tsv 2>$null
+            if ($LASTEXITCODE -ne 0) { throw "You are not logged in to Azure. Please run 'az login' to authenticate." }
+        } catch { 
+            throw "Azure authentication failed. Please run 'az login' to authenticate with Azure." 
+        }
+        
         # Check if resource group exists
         $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
         if ($rgExists -ne "true") {

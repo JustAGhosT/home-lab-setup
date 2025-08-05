@@ -1,4 +1,4 @@
-function Deploy-AzureStreamAnalytics {
+function Deploy-AzureStreamAnalyticsJob {
     <#
     .SYNOPSIS
         Deploys Azure Stream Analytics.
@@ -40,14 +40,15 @@ function Deploy-AzureStreamAnalytics {
     .PARAMETER EnableContentLogging
         Whether to enable content logging.
     
-    .EXAMPLE
-        Deploy-AzureStreamAnalytics -ResourceGroup "my-rg" -Location "southafricanorth" -JobName "my-stream-job"
+         .EXAMPLE
+         Deploy-AzureStreamAnalyticsJob -ResourceGroup "my-rg" -Location "southafricanorth" -JobName "my-stream-job"
     
     .NOTES
         Author: HomeLab Team
         Date: March 2025
     #>
     [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$ResourceGroup,
@@ -85,7 +86,7 @@ function Deploy-AzureStreamAnalytics {
         [Parameter(Mandatory = $false)]
         [bool]$EnableContentLogging = $false
     )
-    
+     
     try {
         Write-ColorOutput "Starting Azure Stream Analytics deployment..." -ForegroundColor Cyan
         
@@ -98,33 +99,41 @@ function Deploy-AzureStreamAnalytics {
         
         # Generate default names if not provided
         if (-not $InputName) {
-            $InputName = "$($JobName.ToLower())input$(Get-Random -Minimum 1000 -Maximum 9999)"
+            $InputName = "$($JobName.ToLower())input$(Get-Random -Minimum 100000 -Maximum 999999)"
         }
         
         if (-not $OutputName) {
-            $OutputName = "$($JobName.ToLower())output$(Get-Random -Minimum 1000 -Maximum 9999)"
+            $OutputName = "$($JobName.ToLower())output$(Get-Random -Minimum 100000 -Maximum 999999)"
         }
         
         # Create Stream Analytics job
         Write-ColorOutput "Creating Stream Analytics job: $JobName" -ForegroundColor Yellow
-        $jobExists = az stream-analytics job show --name $JobName --resource-group $ResourceGroup --output tsv 2>$null
-        if (-not $jobExists) {
+        az stream-analytics job show --name $JobName --resource-group $ResourceGroup --output tsv
+        if ($LASTEXITCODE -ne 0) {
+            Write-ColorOutput "Job does not exist, creating new Stream Analytics job..." -ForegroundColor Yellow
             az stream-analytics job create `
                 --name $JobName `
                 --resource-group $ResourceGroup `
                 --location $Location `
                 --streaming-units $StreamingUnits
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create Stream Analytics job: $JobName"
+            }
+        }
+        else {
+            Write-ColorOutput "Stream Analytics job already exists: $JobName" -ForegroundColor Green
         }
         
         # Create input source
         Write-ColorOutput "Creating input source: $InputName" -ForegroundColor Yellow
-        $inputExists = az stream-analytics input show --name $InputName --job-name $JobName --resource-group $ResourceGroup --output tsv 2>$null
-        if (-not $inputExists) {
+        az stream-analytics input show --name $InputName --job-name $JobName --resource-group $ResourceGroup --output tsv
+        if ($LASTEXITCODE -ne 0) {
             switch ($InputType) {
                 "EventHub" {
                     # Create Event Hub if it doesn't exist
-                    $eventHubNamespace = "$($JobName.ToLower())ehns$(Get-Random -Minimum 1000 -Maximum 9999)"
-                    $eventHubName = "$($JobName.ToLower())eh$(Get-Random -Minimum 1000 -Maximum 9999)"
+                    $eventHubNamespace = "$($JobName.ToLower())ehns$(Get-Random -Minimum 100000 -Maximum 999999)"
+                    $eventHubName = "$($JobName.ToLower())eh$(Get-Random -Minimum 100000 -Maximum 999999)"
                     
                     $ehnsExists = az eventhubs namespace show --name $eventHubNamespace --resource-group $ResourceGroup --output tsv 2>$null
                     if (-not $ehnsExists) {
@@ -157,7 +166,7 @@ function Deploy-AzureStreamAnalytics {
                 
                 "Blob" {
                     # Create storage account if it doesn't exist
-                    $storageAccountName = "$($JobName.ToLower())storage$(Get-Random -Minimum 1000 -Maximum 9999)"
+                    $storageAccountName = Get-ValidStorageAccountName -BaseName "$($JobName.ToLower())storage" -ResourceGroup $ResourceGroup
                     $containerName = "input"
                     
                     $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
@@ -196,29 +205,19 @@ function Deploy-AzureStreamAnalytics {
                 }
                 
                 default {
-                    Write-ColorOutput "Input type $InputType not yet implemented. Creating placeholder input." -ForegroundColor Yellow
-                    # Create a placeholder input
-                    az stream-analytics input create `
-                        --name $InputName `
-                        --job-name $JobName `
-                        --resource-group $ResourceGroup `
-                        --type Stream `
-                        --datasource Microsoft.ServiceBus/EventHub `
-                        --eventhub-namespace "placeholder" `
-                        --eventhub-name "placeholder" `
-                        --shared-access-policy-name RootManageSharedAccessKey
+                    throw "Unsupported input type: $InputType. Supported types are: EventHub, Blob"
                 }
             }
         }
         
         # Create output destination
         Write-ColorOutput "Creating output destination: $OutputName" -ForegroundColor Yellow
-        $outputExists = az stream-analytics output show --name $OutputName --job-name $JobName --resource-group $ResourceGroup --output tsv 2>$null
-        if (-not $outputExists) {
+        az stream-analytics output show --name $OutputName --job-name $JobName --resource-group $ResourceGroup --output tsv
+        if ($LASTEXITCODE -ne 0) {
             switch ($OutputType) {
                 "Blob" {
                     # Use existing storage account or create new one
-                    $storageAccountName = "$($JobName.ToLower())outputstorage$(Get-Random -Minimum 1000 -Maximum 9999)"
+                    $storageAccountName = Get-ValidStorageAccountName -BaseName "$($JobName.ToLower())outputstorage" -ResourceGroup $ResourceGroup
                     $containerName = "output"
                     
                     $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
@@ -257,17 +256,7 @@ function Deploy-AzureStreamAnalytics {
                 }
                 
                 default {
-                    Write-ColorOutput "Output type $OutputType not yet implemented. Creating placeholder output." -ForegroundColor Yellow
-                    # Create a placeholder output
-                    az stream-analytics output create `
-                        --name $OutputName `
-                        --job-name $JobName `
-                        --resource-group $ResourceGroup `
-                        --datasource Microsoft.Storage/Blob `
-                        --storage-accounts name="placeholder" account-key="placeholder" `
-                        --container "placeholder" `
-                        --path-pattern "{date}/{time}" `
-                        --serialization Microsoft.StreamAnalytics/JSON
+                    throw "Unsupported output type: $OutputType. Supported types are: Blob"
                 }
             }
         }
@@ -275,18 +264,40 @@ function Deploy-AzureStreamAnalytics {
         # Set query if provided
         if ($Query) {
             Write-ColorOutput "Setting Stream Analytics query..." -ForegroundColor Yellow
-            az stream-analytics job update `
-                --name $JobName `
-                --resource-group $ResourceGroup `
-                --transformation-query $Query
+            try {
+                az stream-analytics job update `
+                    --name $JobName `
+                    --resource-group $ResourceGroup `
+                    --transformation-query $Query
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to update Stream Analytics job query"
+                }
+            }
+            catch {
+                Write-ColorOutput "Error updating Stream Analytics job query: $_" -ForegroundColor Red
+                throw
+            }
         }
         
         # Start job if requested
         if ($EnableJobStart) {
             Write-ColorOutput "Starting Stream Analytics job..." -ForegroundColor Yellow
-            az stream-analytics job start `
-                --name $JobName `
-                --resource-group $ResourceGroup
+            try {
+                az stream-analytics job start `
+                    --name $JobName `
+                    --resource-group $ResourceGroup
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to start Stream Analytics job"
+                }
+                
+                Write-ColorOutput "Stream Analytics job started successfully" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error starting Stream Analytics job: $_" -ForegroundColor Red
+                throw
+            }
         }
         
         # Get job details
@@ -310,21 +321,94 @@ function Deploy-AzureStreamAnalytics {
         
         # Return deployment info
         return @{
-            ResourceGroup  = $ResourceGroup
-            JobName        = $JobName
+            ResourceGroup = $ResourceGroup
+            JobName = $JobName
             StreamingUnits = $StreamingUnits
-            InputType      = $InputType
-            InputName      = $InputName
-            OutputType     = $OutputType
-            OutputName     = $OutputName
-            Query          = $Query
-            JobStatus      = $jobDetails.properties.jobState
-            JobId          = $jobDetails.id
-            JobDetails     = $jobDetails
+            InputType = $InputType
+            InputName = $InputName
+            OutputType = $OutputType
+            OutputName = $OutputName
+            Query = $Query
+            JobStatus = $jobDetails.properties.jobState
+            JobId = $jobDetails.id
+            JobDetails = $jobDetails
         }
     }
     catch {
         Write-ColorOutput "Error deploying Azure Stream Analytics: $_" -ForegroundColor Red
         throw
     }
+}
+
+function Get-ValidStorageAccountName {
+    <#
+    .SYNOPSIS
+        Generates a valid Azure storage account name that meets Azure naming requirements.
+    
+    .DESCRIPTION
+        Creates a storage account name that is 3-24 characters long, contains only
+        lowercase letters and numbers, and is unique within the resource group.
+    
+    .PARAMETER BaseName
+        The base name to use for the storage account.
+    
+    .PARAMETER ResourceGroup
+        The resource group to check for existing storage accounts.
+    
+    .RETURNS
+        A valid, unique storage account name.
+    
+    .EXAMPLE
+        Get-ValidStorageAccountName -BaseName "mystorage" -ResourceGroup "my-rg"
+    
+    .NOTES
+        Author: HomeLab Team
+        Date: March 2025
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BaseName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceGroup
+    )
+    
+    # Clean the base name to meet Azure requirements
+    $cleanBaseName = $BaseName -replace '[^a-z0-9]', '' -replace '^[0-9]', 'a'
+    
+    # Ensure the base name is not too long (leave room for random suffix)
+    if ($cleanBaseName.Length -gt 15) {
+        $cleanBaseName = $cleanBaseName.Substring(0, 15)
+    }
+    
+    # Generate a unique storage account name with retry logic
+    $maxAttempts = 10
+    $attempt = 0
+    $storageAccountName = $null
+    
+    do {
+        $attempt++
+        $randomSuffix = Get-Random -Minimum 100000 -Maximum 999999
+        $storageAccountName = "$cleanBaseName$randomSuffix"
+        
+        # Ensure the name is within Azure limits (3-24 characters)
+        if ($storageAccountName.Length -gt 24) {
+            $storageAccountName = $storageAccountName.Substring(0, 24)
+        }
+        
+        # Check if storage account exists
+        $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
+        
+        if ($storageExists) {
+            Write-ColorOutput "Storage account $storageAccountName already exists, trying another name..." -ForegroundColor Yellow
+            $storageAccountName = $null
+        }
+    } while (-not $storageAccountName -and $attempt -lt $maxAttempts)
+    
+    if (-not $storageAccountName) {
+        throw "Failed to generate a unique storage account name after $maxAttempts attempts"
+    }
+    
+    return $storageAccountName
 } 
