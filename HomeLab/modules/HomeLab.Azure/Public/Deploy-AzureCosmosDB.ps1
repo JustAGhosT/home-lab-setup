@@ -137,27 +137,63 @@ function Deploy-AzureCosmosDB {
             $createParams += "--enable-automatic-failover"
         }
         
-        az @createParams
+        try {
+            & az @createParams
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create Cosmos DB account '$AccountName'. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully created Cosmos DB account: $AccountName" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error creating Cosmos DB account '$AccountName': $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to create Cosmos DB account '$AccountName': $($_.Exception.Message)"
+        }
         
         # Create database if specified
         if ($DatabaseName) {
             Write-ColorOutput "Creating database: $DatabaseName" -ForegroundColor Yellow
-            az cosmosdb sql database create `
-                --account-name $AccountName `
-                --resource-group $ResourceGroup `
-                --name $DatabaseName
+            try {
+                az cosmosdb sql database create `
+                    --account-name $AccountName `
+                    --resource-group $ResourceGroup `
+                    --name $DatabaseName
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create database '$DatabaseName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully created database: $DatabaseName" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error creating database '$DatabaseName': $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to create database '$DatabaseName': $($_.Exception.Message)"
+            }
         }
         
         # Create container if specified
         if ($ContainerName -and $DatabaseName) {
             Write-ColorOutput "Creating container: $ContainerName" -ForegroundColor Yellow
-            az cosmosdb sql container create `
-                --account-name $AccountName `
-                --resource-group $ResourceGroup `
-                --database-name $DatabaseName `
-                --name $ContainerName `
-                --partition-key-path $PartitionKey `
-                --throughput $Throughput
+            try {
+                az cosmosdb sql container create `
+                    --account-name $AccountName `
+                    --resource-group $ResourceGroup `
+                    --database-name $DatabaseName `
+                    --name $ContainerName `
+                    --partition-key-path $PartitionKey `
+                    --throughput $Throughput
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create container '$ContainerName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully created container: $ContainerName" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error creating container '$ContainerName': $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to create container '$ContainerName': $($_.Exception.Message)"
+            }
         }
         
         # Get connection string
@@ -233,6 +269,15 @@ function Deploy-AzureCosmosDB {
         }
         Write-ColorOutput "Connection String: $(Get-MaskedValue -Value $connectionString)" -ForegroundColor Gray
         Write-ColorOutput "Primary Key: $(Get-MaskedValue -Value $primaryKey)" -ForegroundColor Gray
+        
+        # Security warning for sensitive data
+        Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+        Write-ColorOutput "The returned object contains sensitive Cosmos DB connection strings and keys." -ForegroundColor Yellow
+        Write-ColorOutput "Please ensure this data is:" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not logged or written to files" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not committed to version control" -ForegroundColor Yellow
+        Write-ColorOutput "  • Stored securely in production environments" -ForegroundColor Yellow
+        Write-ColorOutput "  • Considered for Azure Key Vault integration" -ForegroundColor Yellow
         
         # Return deployment info
         return @{

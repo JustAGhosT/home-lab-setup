@@ -143,30 +143,70 @@ function Deploy-AzureBlobStorage {
         # Create containers
         foreach ($containerName in $ContainerNames) {
             Write-ColorOutput "Creating container: $containerName" -ForegroundColor Yellow
-            az storage container create `
-                --account-name $StorageAccountName `
-                --account-key $storageKey `
-                --name $containerName `
-                --public-access $AccessLevel.ToLower()
+            try {
+                az storage container create `
+                    --account-name $StorageAccountName `
+                    --account-key $storageKey `
+                    --name $containerName `
+                    --public-access $AccessLevel.ToLower()
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create container '$containerName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully created container: $containerName" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error creating container '$containerName': $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to create container '$containerName': $($_.Exception.Message)"
+            }
         }
         
         # Enable static website hosting if requested
         if ($EnableStaticWebsite) {
             Write-ColorOutput "Enabling static website hosting..." -ForegroundColor Yellow
-            az storage blob service-properties update `
-                --account-name $StorageAccountName `
-                --account-key $storageKey `
-                --static-website `
-                --index-document $IndexDocument `
-                --404-document $ErrorDocument
+            try {
+                az storage blob service-properties update `
+                    --account-name $StorageAccountName `
+                    --account-key $storageKey `
+                    --static-website `
+                    --index-document $IndexDocument `
+                    --404-document $ErrorDocument
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to enable static website hosting. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully enabled static website hosting" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error enabling static website hosting: $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to enable static website hosting: $($_.Exception.Message)"
+            }
         }
         
         # Get connection string
-        $connectionString = az storage account show-connection-string `
-            --name $StorageAccountName `
-            --resource-group $ResourceGroup `
-            --query "connectionString" `
-            --output tsv
+        try {
+            $connectionString = az storage account show-connection-string `
+                --name $StorageAccountName `
+                --resource-group $ResourceGroup `
+                --query "connectionString" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve connection string. Exit code: $LASTEXITCODE"
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($connectionString)) {
+                throw "Connection string is empty or null. Please check if the storage account exists and you have proper permissions."
+            }
+            
+            Write-ColorOutput "Successfully retrieved connection string" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving connection string: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve connection string for '$StorageAccountName': $($_.Exception.Message)"
+        }
         
         # Get storage account URL
         $storageUrl = "https://$StorageAccountName.blob.core.windows.net"
@@ -190,6 +230,15 @@ function Deploy-AzureBlobStorage {
         if ($EnableStaticWebsite) {
             Write-ColorOutput "Static Website URL: $staticWebsiteUrl" -ForegroundColor Gray
         }
+        
+        # Security warning for sensitive data
+        Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+        Write-ColorOutput "The returned object contains sensitive connection strings and storage keys." -ForegroundColor Yellow
+        Write-ColorOutput "Please ensure this data is:" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not logged or written to files" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not committed to version control" -ForegroundColor Yellow
+        Write-ColorOutput "  • Stored securely in production environments" -ForegroundColor Yellow
+        Write-ColorOutput "  • Considered for Azure Key Vault integration" -ForegroundColor Yellow
         
         # Return deployment info
         return @{

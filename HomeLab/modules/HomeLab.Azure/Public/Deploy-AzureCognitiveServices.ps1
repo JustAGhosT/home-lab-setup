@@ -117,32 +117,72 @@ function Deploy-AzureCognitiveServices {
         
         # Create Cognitive Services account
         Write-ColorOutput "Creating Cognitive Services account: $AccountName" -ForegroundColor Yellow
-        az $createParams
+        try {
+            az $createParams
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create Cognitive Services account '$AccountName'. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully created Cognitive Services account: $AccountName" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error creating Cognitive Services account '$AccountName': $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to create Cognitive Services account '$AccountName': $($_.Exception.Message)"
+        }
         
         # Configure network access if enabled
         if ($EnableNetworkAcls -and $AllowedIpRanges.Count -gt 0) {
             Write-ColorOutput "Configuring network access control..." -ForegroundColor Yellow
-            foreach ($ipRange in $AllowedIpRanges) {
-                az cognitiveservices account network-rule add `
-                    --name $AccountName `
-                    --resource-group $ResourceGroup `
-                    --ip-address $ipRange
+            try {
+                foreach ($ipRange in $AllowedIpRanges) {
+                    Write-ColorOutput "Adding IP range: $ipRange" -ForegroundColor Gray
+                    az cognitiveservices account network-rule add `
+                        --name $AccountName `
+                        --resource-group $ResourceGroup `
+                        --ip-address $ipRange
+                    
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "Failed to add IP range '$ipRange'. Exit code: $LASTEXITCODE"
+                    }
+                }
+                Write-ColorOutput "Successfully configured network access control" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error configuring network access control: $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to configure network access control: $($_.Exception.Message)"
             }
         }
         
         # Get account keys
         Write-ColorOutput "Getting account keys..." -ForegroundColor Yellow
-        $key1 = az cognitiveservices account keys list `
-            --name $AccountName `
-            --resource-group $ResourceGroup `
-            --query "key1" `
-            --output tsv
-        
-        $key2 = az cognitiveservices account keys list `
-            --name $AccountName `
-            --resource-group $ResourceGroup `
-            --query "key2" `
-            --output tsv
+        try {
+            $key1 = az cognitiveservices account keys list `
+                --name $AccountName `
+                --resource-group $ResourceGroup `
+                --query "key1" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve key1. Exit code: $LASTEXITCODE"
+            }
+            
+            $key2 = az cognitiveservices account keys list `
+                --name $AccountName `
+                --resource-group $ResourceGroup `
+                --query "key2" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve key2. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully retrieved account keys" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving account keys: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve account keys for '$AccountName': $($_.Exception.Message)"
+        }
         
         # Helper function to mask sensitive keys
         function Get-MaskedKey {
@@ -157,17 +197,41 @@ function Deploy-AzureCognitiveServices {
         }
         
         # Get account endpoint
-        $endpoint = az cognitiveservices account show `
-            --name $AccountName `
-            --resource-group $ResourceGroup `
-            --query "properties.endpoint" `
-            --output tsv
+        try {
+            $endpoint = az cognitiveservices account show `
+                --name $AccountName `
+                --resource-group $ResourceGroup `
+                --query "properties.endpoint" `
+                --output tsv
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve account endpoint. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully retrieved account endpoint" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving account endpoint: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve account endpoint for '$AccountName': $($_.Exception.Message)"
+        }
         
         # Get account details
-        $accountDetails = az cognitiveservices account show `
-            --name $AccountName `
-            --resource-group $ResourceGroup `
-            --output json | ConvertFrom-Json
+        try {
+            $accountDetails = az cognitiveservices account show `
+                --name $AccountName `
+                --resource-group $ResourceGroup `
+                --output json | ConvertFrom-Json
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve account details. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully retrieved account details" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving account details: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve account details for '$AccountName': $($_.Exception.Message)"
+        }
         
         # Display deployment summary
         Write-ColorOutput "`nAzure Cognitive Services deployment completed successfully!" -ForegroundColor Green
@@ -182,6 +246,15 @@ function Deploy-AzureCognitiveServices {
         if ($EnableCustomSubdomain -and $CustomSubdomainName) {
             Write-ColorOutput "Custom Subdomain: $CustomSubdomainName" -ForegroundColor Gray
         }
+        
+        # Security warning for sensitive data
+        Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+        Write-ColorOutput "The returned object contains sensitive Cognitive Services API keys." -ForegroundColor Yellow
+        Write-ColorOutput "Please ensure this data is:" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not logged or written to files" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not committed to version control" -ForegroundColor Yellow
+        Write-ColorOutput "  • Stored securely in production environments" -ForegroundColor Yellow
+        Write-ColorOutput "  • Considered for Azure Key Vault integration" -ForegroundColor Yellow
         
         # Return deployment info
         return @{

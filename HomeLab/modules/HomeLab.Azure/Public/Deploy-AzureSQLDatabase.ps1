@@ -106,62 +106,153 @@ function Deploy-AzureSQLDatabase {
         }
         
         # Check if resource group exists
-        $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
-        if ($rgExists -ne "true") {
-            Write-ColorOutput "Creating resource group: $ResourceGroup" -ForegroundColor Yellow
-            az group create --name $ResourceGroup --location $Location
+        try {
+            $rgExists = az group exists --name $ResourceGroup --output tsv 2>$null
+            if ($rgExists -ne "true") {
+                Write-ColorOutput "Creating resource group: $ResourceGroup" -ForegroundColor Yellow
+                az group create --name $ResourceGroup --location $Location
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create resource group '$ResourceGroup'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully created resource group: $ResourceGroup" -ForegroundColor Green
+            }
+            else {
+                Write-ColorOutput "Resource group '$ResourceGroup' already exists" -ForegroundColor Green
+            }
+        }
+        catch {
+            Write-ColorOutput "Error with resource group operations: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to handle resource group '$ResourceGroup': $($_.Exception.Message)"
         }
         
         # Check if SQL Server exists
-        $serverExists = az sql server show --name $ServerName --resource-group $ResourceGroup --output tsv 2>$null
-        if (-not $serverExists) {
-            Write-ColorOutput "Creating SQL Server: $ServerName" -ForegroundColor Yellow
-            az sql server create `
-                --name $ServerName `
-                --resource-group $ResourceGroup `
-                --location $Location `
-                --admin-user $AdminUsername `
-                --admin-password $plainPassword
+        try {
+            $serverExists = az sql server show --name $ServerName --resource-group $ResourceGroup --output tsv 2>$null
+            if (-not $serverExists) {
+                Write-ColorOutput "Creating SQL Server: $ServerName" -ForegroundColor Yellow
+                az sql server create `
+                    --name $ServerName `
+                    --resource-group $ResourceGroup `
+                    --location $Location `
+                    --admin-user $AdminUsername `
+                    --admin-password $plainPassword
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create SQL Server '$ServerName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully created SQL Server: $ServerName" -ForegroundColor Green
+            }
+            else {
+                Write-ColorOutput "SQL Server '$ServerName' already exists" -ForegroundColor Green
+            }
+        }
+        catch {
+            Write-ColorOutput "Error with SQL Server operations: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to handle SQL Server '$ServerName': $($_.Exception.Message)"
         }
         
         # Configure SQL Server firewall to allow Azure services
         Write-ColorOutput "Configuring SQL Server firewall..." -ForegroundColor Yellow
-        az sql server firewall-rule create `
-            --resource-group $ResourceGroup `
-            --server $ServerName `
-            --name "AllowAzureServices" `
-            --start-ip-address "0.0.0.0" `
-            --end-ip-address "0.0.0.0"
+        try {
+            az sql server firewall-rule create `
+                --resource-group $ResourceGroup `
+                --server $ServerName `
+                --name "AllowAzureServices" `
+                --start-ip-address "0.0.0.0" `
+                --end-ip-address "0.0.0.0"
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create firewall rule 'AllowAzureServices'. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully configured SQL Server firewall" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error configuring SQL Server firewall: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to configure SQL Server firewall: $($_.Exception.Message)"
+        }
         
         # Create SQL Database
         Write-ColorOutput "Creating SQL Database: $DatabaseName" -ForegroundColor Yellow
-        az sql db create `
-            --resource-group $ResourceGroup `
-            --server $ServerName `
-            --name $DatabaseName `
-            --edition $PricingTier `
-            --capacity $MaxSizeGB `
-            --collation $Collation
+        try {
+            az sql db create `
+                --resource-group $ResourceGroup `
+                --server $ServerName `
+                --name $DatabaseName `
+                --edition $PricingTier `
+                --capacity $MaxSizeGB `
+                --collation $Collation
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create SQL Database '$DatabaseName'. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully created SQL Database: $DatabaseName" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error creating SQL Database '$DatabaseName': $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to create SQL Database '$DatabaseName': $($_.Exception.Message)"
+        }
         
         # Configure auditing if enabled
         if ($EnableAuditing) {
             Write-ColorOutput "Configuring database auditing..." -ForegroundColor Yellow
-            az sql db audit-policy update `
-                --resource-group $ResourceGroup `
-                --server $ServerName `
-                --name $DatabaseName `
-                --state Enabled `
-                --storage-account (Get-StorageAccountForAuditing -ResourceGroup $ResourceGroup -Location $Location)
+            try {
+                $storageAccountName = Get-StorageAccountForAuditing -ResourceGroup $ResourceGroup -Location $Location
+                
+                az sql db audit-policy update `
+                    --resource-group $ResourceGroup `
+                    --server $ServerName `
+                    --name $DatabaseName `
+                    --state Enabled `
+                    --storage-account $storageAccountName
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to configure database auditing. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully configured database auditing" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error configuring database auditing: $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to configure database auditing: $($_.Exception.Message)"
+            }
         }
         
         # Configure threat detection if enabled
         if ($EnableThreatDetection) {
             Write-ColorOutput "Configuring threat detection..." -ForegroundColor Yellow
-            az sql db threat-policy update `
-                --resource-group $ResourceGroup `
-                --server $ServerName `
-                --name $DatabaseName `
-                --state Enabled
+            try {
+                az sql db threat-policy update `
+                    --resource-group $ResourceGroup `
+                    --server $ServerName `
+                    --name $DatabaseName `
+                    --state Enabled
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to configure threat detection. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully configured threat detection" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error configuring threat detection: $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to configure threat detection: $($_.Exception.Message)"
+            }
+        }
+        
+        # Helper function to mask sensitive connection strings
+        function Get-MaskedConnectionString {
+            param([string]$ConnectionString)
+            if ([string]::IsNullOrEmpty($ConnectionString)) {
+                return "[NOT SET]"
+            }
+            # Mask the password portion of the connection string
+            $maskedString = $ConnectionString -replace 'Password=[^;]+', 'Password=***'
+            return $maskedString
         }
         
         # Get connection string
@@ -173,15 +264,25 @@ function Deploy-AzureSQLDatabase {
         Write-ColorOutput "SQL Server: $ServerName.database.windows.net" -ForegroundColor Gray
         Write-ColorOutput "Database: $DatabaseName" -ForegroundColor Gray
         Write-ColorOutput "Admin Username: $AdminUsername" -ForegroundColor Gray
-        Write-ColorOutput "Connection String: $connectionString" -ForegroundColor Gray
+        Write-ColorOutput "Connection String: $(Get-MaskedConnectionString -ConnectionString $connectionString)" -ForegroundColor Gray
         
-        # Return deployment info (excluding sensitive password)
+        # Security warning for sensitive data
+        Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+        Write-ColorOutput "The returned object contains sensitive SQL Database connection strings." -ForegroundColor Yellow
+        Write-ColorOutput "Please ensure this data is:" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not logged or written to files" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not committed to version control" -ForegroundColor Yellow
+        Write-ColorOutput "  • Stored securely in production environments" -ForegroundColor Yellow
+        Write-ColorOutput "  • Considered for Azure Key Vault integration" -ForegroundColor Yellow
+        
+        # Return deployment info (excluding sensitive password and masking connection string)
         return @{
-            ResourceGroup = $ResourceGroup
-            ServerName = $ServerName
-            DatabaseName = $DatabaseName
-            ConnectionString = $connectionString
-            AdminUsername = $AdminUsername
+            ResourceGroup    = $ResourceGroup
+            ServerName       = $ServerName
+            DatabaseName     = $DatabaseName
+            ConnectionString = Get-MaskedConnectionString -ConnectionString $connectionString
+            AdminUsername    = $AdminUsername
+            # Note: AdminPassword is intentionally excluded for security
         }
     }
     catch {
@@ -194,6 +295,26 @@ function Get-StorageAccountForAuditing {
     <#
     .SYNOPSIS
         Gets or creates a storage account for SQL Database auditing.
+    
+    .DESCRIPTION
+        Creates a unique storage account name using robust identifier generation
+        and ensures the account is created successfully with proper error handling.
+    
+    .PARAMETER ResourceGroup
+        The resource group where the storage account will be created.
+    
+    .PARAMETER Location
+        The Azure location for the storage account.
+    
+    .RETURNS
+        The name of the created storage account.
+    
+    .EXAMPLE
+        Get-StorageAccountForAuditing -ResourceGroup "my-rg" -Location "southafricanorth"
+    
+    .NOTES
+        Author: HomeLab Team
+        Date: March 2025
     #>
     [CmdletBinding()]
     param(
@@ -204,37 +325,70 @@ function Get-StorageAccountForAuditing {
         [string]$Location
     )
     
-    # Generate a unique storage account name with retry logic
-    $maxAttempts = 10
+    # Generate a unique storage account name with robust retry logic
+    $maxAttempts = 15
     $attempt = 0
     $storageAccountName = $null
     
     do {
         $attempt++
-        $randomSuffix = Get-Random -Minimum 1000 -Maximum 9999
-        $storageAccountName = "sqlaudit$randomSuffix"
+        
+        # Create a more robust unique identifier using timestamp and GUID
+        $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+        $guidSegment = (New-Guid).ToString().Substring(0, 8)
+        $randomSuffix = Get-Random -Minimum 100000 -Maximum 999999
+        $baseName = "sqlaudit"
+        
+        # Combine elements for uniqueness
+        $storageAccountName = "$baseName$timestamp$guidSegment$randomSuffix"
+        
+        # Ensure storage account name meets Azure requirements (3-24 chars, lowercase, numbers)
+        if ($storageAccountName.Length -gt 24) {
+            $storageAccountName = $storageAccountName.Substring(0, 24)
+        }
         
         # Check if storage account exists
-        $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
-        
-        if ($storageExists) {
-            Write-ColorOutput "Storage account $storageAccountName already exists, trying another name..." -ForegroundColor Yellow
+        try {
+            $storageExists = az storage account show --name $storageAccountName --resource-group $ResourceGroup --output tsv 2>$null
+            
+            if ($storageExists) {
+                Write-ColorOutput "Storage account $storageAccountName already exists, trying another name... (Attempt $attempt/$maxAttempts)" -ForegroundColor Yellow
+                $storageAccountName = $null
+            }
+            else {
+                Write-ColorOutput "Generated unique storage account name: $storageAccountName" -ForegroundColor Green
+            }
+        }
+        catch {
+            Write-ColorOutput "Error checking storage account existence: $($_.Exception.Message)" -ForegroundColor Red
             $storageAccountName = $null
         }
     } while (-not $storageAccountName -and $attempt -lt $maxAttempts)
     
     if (-not $storageAccountName) {
-        throw "Failed to generate a unique storage account name after $maxAttempts attempts"
+        throw "Failed to generate a unique storage account name after $maxAttempts attempts. Please try again or specify a custom storage account name."
     }
     
-    # Create the storage account if it doesn't exist
+    # Create the storage account with error handling
     Write-ColorOutput "Creating storage account for auditing: $storageAccountName" -ForegroundColor Yellow
-    az storage account create `
-        --name $storageAccountName `
-        --resource-group $ResourceGroup `
-        --location $Location `
-        --sku Standard_LRS `
-        --kind StorageV2
+    try {
+        az storage account create `
+            --name $storageAccountName `
+            --resource-group $ResourceGroup `
+            --location $Location `
+            --sku Standard_LRS `
+            --kind StorageV2
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create storage account '$storageAccountName'. Exit code: $LASTEXITCODE"
+        }
+        
+        Write-ColorOutput "Successfully created storage account for auditing: $storageAccountName" -ForegroundColor Green
+    }
+    catch {
+        Write-ColorOutput "Error creating storage account '$storageAccountName': $($_.Exception.Message)" -ForegroundColor Red
+        throw "Failed to create storage account for auditing: $($_.Exception.Message)"
+    }
     
     return $storageAccountName
 } 

@@ -117,6 +117,12 @@ function Deploy-AzureCDN {
             if ($LASTEXITCODE -ne 0) {
                 $endpointExists = $null
             }
+            else {
+                # Verify the endpoint actually exists by checking if we got valid output
+                if ([string]::IsNullOrWhiteSpace($endpointExists)) {
+                    $endpointExists = $null
+                }
+            }
         }
         catch {
             $endpointExists = $null
@@ -139,27 +145,63 @@ function Deploy-AzureCDN {
                 $createParams += "--enable-compression"
             }
             
-            az $createParams
+            try {
+                az $createParams
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to create CDN endpoint '$CdnEndpointName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully created CDN endpoint: $CdnEndpointName" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error creating CDN endpoint '$CdnEndpointName': $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to create CDN endpoint '$CdnEndpointName': $($_.Exception.Message)"
+            }
         }
         
         # Configure HTTPS if enabled
         if ($EnableHttps) {
             Write-ColorOutput "Configuring HTTPS..." -ForegroundColor Yellow
-            az cdn endpoint update `
-                --name $CdnEndpointName `
-                --profile-name $CdnProfileName `
-                --resource-group $ResourceGroup `
-                --https-only
+            try {
+                az cdn endpoint update `
+                    --name $CdnEndpointName `
+                    --profile-name $CdnProfileName `
+                    --resource-group $ResourceGroup `
+                    --https-only
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to configure HTTPS for CDN endpoint '$CdnEndpointName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully configured HTTPS for CDN endpoint" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error configuring HTTPS for CDN endpoint '$CdnEndpointName': $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to configure HTTPS for CDN endpoint '$CdnEndpointName': $($_.Exception.Message)"
+            }
         }
         
         # Configure query string caching
         if ($EnableQueryStringCaching) {
             Write-ColorOutput "Configuring query string caching..." -ForegroundColor Yellow
-            az cdn endpoint update `
-                --name $CdnEndpointName `
-                --profile-name $CdnProfileName `
-                --resource-group $ResourceGroup `
-                --query-string-caching "UseQueryString"
+            try {
+                az cdn endpoint update `
+                    --name $CdnEndpointName `
+                    --profile-name $CdnProfileName `
+                    --resource-group $ResourceGroup `
+                    --query-string-caching "UseQueryString"
+                
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to configure query string caching for CDN endpoint '$CdnEndpointName'. Exit code: $LASTEXITCODE"
+                }
+                
+                Write-ColorOutput "Successfully configured query string caching for CDN endpoint" -ForegroundColor Green
+            }
+            catch {
+                Write-ColorOutput "Error configuring query string caching for CDN endpoint '$CdnEndpointName': $($_.Exception.Message)" -ForegroundColor Red
+                throw "Failed to configure query string caching for CDN endpoint '$CdnEndpointName': $($_.Exception.Message)"
+            }
         }
         
         # Apply cache rules if specified
@@ -195,11 +237,23 @@ function Deploy-AzureCDN {
         $cdnUrl = "https://$CdnEndpointName.azureedge.net"
         
         # Get CDN endpoint details
-        $endpointDetails = az cdn endpoint show `
-            --name $CdnEndpointName `
-            --profile-name $CdnProfileName `
-            --resource-group $ResourceGroup `
-            --output json | ConvertFrom-Json
+        try {
+            $endpointDetails = az cdn endpoint show `
+                --name $CdnEndpointName `
+                --profile-name $CdnProfileName `
+                --resource-group $ResourceGroup `
+                --output json | ConvertFrom-Json
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to retrieve CDN endpoint details. Exit code: $LASTEXITCODE"
+            }
+            
+            Write-ColorOutput "Successfully retrieved CDN endpoint details" -ForegroundColor Green
+        }
+        catch {
+            Write-ColorOutput "Error retrieving CDN endpoint details: $($_.Exception.Message)" -ForegroundColor Red
+            throw "Failed to retrieve CDN endpoint details for '$CdnEndpointName': $($_.Exception.Message)"
+        }
         
         # Display deployment summary
         Write-ColorOutput "`nAzure CDN deployment completed successfully!" -ForegroundColor Green

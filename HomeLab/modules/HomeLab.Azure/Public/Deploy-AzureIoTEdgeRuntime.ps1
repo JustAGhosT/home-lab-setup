@@ -380,11 +380,53 @@ sudo apt-get update
 echo "Installing IoT Edge runtime..."
 sudo apt-get install -y iotedge
 
-# Configure IoT Edge with connection string
-echo "Configuring IoT Edge..."
-# Note: Replace CONNECTION_STRING_PLACEHOLDER with actual connection string
-# For security, this should be provided securely during deployment
-sudo iotedge config mp --connection-string "CONNECTION_STRING_PLACEHOLDER"
+# Configure IoT Edge with connection string securely
+echo "Configuring IoT Edge with secure connection string..."
+
+# Function to retrieve connection string securely
+get_connection_string() {
+    # Try to get from environment variable first
+    if [ ! -z "\$CONNECTION_STRING" ]; then
+        echo "\$CONNECTION_STRING"
+        return 0
+    fi
+    
+    # Try to get from Azure Key Vault if available
+    if command -v az &> /dev/null; then
+        if [ ! -z "\$KEY_VAULT_NAME" ] && [ ! -z "\$SECRET_NAME" ]; then
+            echo "Retrieving connection string from Azure Key Vault..."
+            az keyvault secret show --vault-name "\$KEY_VAULT_NAME" --name "\$SECRET_NAME" --query value --output tsv
+            return \$?
+        fi
+    fi
+    
+    # Try to get from local secure file
+    if [ -f "/etc/iotedge/connection-string" ]; then
+        echo "Retrieving connection string from local secure file..."
+        cat /etc/iotedge/connection-string
+        return 0
+    fi
+    
+    echo "ERROR: No secure connection string source found" >&2
+    echo "Please set one of the following:" >&2
+    echo "  - CONNECTION_STRING environment variable" >&2
+    echo "  - KEY_VAULT_NAME and SECRET_NAME environment variables" >&2
+    echo "  - Place connection string in /etc/iotedge/connection-string" >&2
+    return 1
+}
+
+# Get connection string securely
+CONNECTION_STRING_SECURE=\$(get_connection_string)
+if [ \$? -ne 0 ]; then
+    echo "Failed to retrieve connection string securely"
+    exit 1
+fi
+
+# Configure IoT Edge with the secure connection string
+sudo iotedge config mp --connection-string "\$CONNECTION_STRING_SECURE"
+
+# Clear the connection string from memory
+unset CONNECTION_STRING_SECURE
 
 # Start IoT Edge
 echo "Starting IoT Edge service..."
@@ -397,8 +439,25 @@ sleep 10
 sudo iotedge list
 
 echo "IoT Edge Runtime installed and configured successfully!"
-echo "IMPORTANT: Replace CONNECTION_STRING_PLACEHOLDER with your actual device connection string"
-echo "You can retrieve it securely from Azure Key Vault or your deployment system"
+echo ""
+echo "SECURITY SETUP REQUIRED:"
+echo "Before running this script, set up one of the following secure connection string sources:"
+echo ""
+echo "Option 1 - Environment Variable:"
+echo "  export CONNECTION_STRING='your-device-connection-string'"
+echo ""
+echo "Option 2 - Azure Key Vault (recommended):"
+echo "  export KEY_VAULT_NAME='your-key-vault-name'"
+echo "  export SECRET_NAME='your-secret-name'"
+echo "  az login  # Ensure you're authenticated"
+echo ""
+echo "Option 3 - Local Secure File:"
+echo "  sudo mkdir -p /etc/iotedge"
+echo "  sudo chmod 700 /etc/iotedge"
+echo "  echo 'your-device-connection-string' | sudo tee /etc/iotedge/connection-string"
+echo "  sudo chmod 600 /etc/iotedge/connection-string"
+echo ""
+echo "The script will automatically retrieve the connection string from the configured source."
 "@
                 
                 $linuxScriptPath = Join-Path -Path $env:TEMP -ChildPath "install-iotedge-linux.sh"
@@ -430,11 +489,65 @@ Write-Host "Installing IoT Edge runtime..." -ForegroundColor Yellow
 Invoke-WebRequest -Uri "https://aka.ms/iotedge-win" -OutFile "iotedge-install.ps1"
 .\iotedge-install.ps1 -ContainerOs Windows
 
-# Configure IoT Edge
-Write-Host "Configuring IoT Edge..." -ForegroundColor Yellow
-# Note: Replace CONNECTION_STRING_PLACEHOLDER with actual connection string
-# For security, this should be provided securely during deployment
-iotedge config mp --connection-string "CONNECTION_STRING_PLACEHOLDER"
+# Configure IoT Edge with secure connection string
+Write-Host "Configuring IoT Edge with secure connection string..." -ForegroundColor Yellow
+
+# Function to retrieve connection string securely
+function Get-SecureConnectionString {
+    # Try to get from environment variable first
+    if ($env:CONNECTION_STRING) {
+        return $env:CONNECTION_STRING
+    }
+    
+    # Try to get from Azure Key Vault if available
+    if (Get-Command az -ErrorAction SilentlyContinue) {
+        if ($env:KEY_VAULT_NAME -and $env:SECRET_NAME) {
+            Write-Host "Retrieving connection string from Azure Key Vault..." -ForegroundColor Gray
+            try {
+                $connectionString = az keyvault secret show --vault-name $env:KEY_VAULT_NAME --name $env:SECRET_NAME --query value --output tsv
+                if ($LASTEXITCODE -eq 0) {
+                    return $connectionString
+                }
+            }
+            catch {
+                Write-Host "Failed to retrieve from Key Vault: $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    # Try to get from local secure file
+    $secureFilePath = "C:\ProgramData\iotedge\connection-string"
+    if (Test-Path $secureFilePath) {
+        Write-Host "Retrieving connection string from local secure file..." -ForegroundColor Gray
+        try {
+            return Get-Content $secureFilePath -Raw -ErrorAction Stop
+        }
+        catch {
+            Write-Host "Failed to read local file: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+    
+    Write-Error "No secure connection string source found"
+    Write-Host "Please set one of the following:" -ForegroundColor Yellow
+    Write-Host "  - CONNECTION_STRING environment variable" -ForegroundColor Yellow
+    Write-Host "  - KEY_VAULT_NAME and SECRET_NAME environment variables" -ForegroundColor Yellow
+    Write-Host "  - Place connection string in C:\ProgramData\iotedge\connection-string" -ForegroundColor Yellow
+    return $null
+}
+
+# Get connection string securely
+$connectionStringSecure = Get-SecureConnectionString
+if (-not $connectionStringSecure) {
+    Write-Error "Failed to retrieve connection string securely"
+    exit 1
+}
+
+# Configure IoT Edge with the secure connection string
+iotedge config mp --connection-string $connectionStringSecure
+
+# Clear the connection string from memory
+$connectionStringSecure = $null
+[System.GC]::Collect()
 
 # Start IoT Edge service
 Write-Host "Starting IoT Edge service..." -ForegroundColor Yellow
@@ -446,8 +559,24 @@ Start-Sleep -Seconds 10
 iotedge list
 
 Write-Host "IoT Edge Runtime installed and configured successfully!" -ForegroundColor Green
-Write-Host "IMPORTANT: Replace CONNECTION_STRING_PLACEHOLDER with your actual device connection string" -ForegroundColor Yellow
-Write-Host "You can retrieve it securely from Azure Key Vault or your deployment system" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "SECURITY SETUP REQUIRED:" -ForegroundColor Yellow
+Write-Host "Before running this script, set up one of the following secure connection string sources:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Option 1 - Environment Variable:" -ForegroundColor Gray
+Write-Host "  `$env:CONNECTION_STRING = 'your-device-connection-string'" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Option 2 - Azure Key Vault (recommended):" -ForegroundColor Gray
+Write-Host "  `$env:KEY_VAULT_NAME = 'your-key-vault-name'" -ForegroundColor Gray
+Write-Host "  `$env:SECRET_NAME = 'your-secret-name'" -ForegroundColor Gray
+Write-Host "  az login  # Ensure you're authenticated" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Option 3 - Local Secure File:" -ForegroundColor Gray
+Write-Host "  New-Item -ItemType Directory -Path 'C:\ProgramData\iotedge' -Force" -ForegroundColor Gray
+Write-Host "  'your-device-connection-string' | Out-File -FilePath 'C:\ProgramData\iotedge\connection-string' -Encoding UTF8" -ForegroundColor Gray
+Write-Host "  icacls 'C:\ProgramData\iotedge\connection-string' /inheritance:r /grant:r 'SYSTEM:(R)' /grant:r 'Administrators:(R)'" -ForegroundColor Gray
+Write-Host ""
+Write-Host "The script will automatically retrieve the connection string from the configured source." -ForegroundColor Yellow
 "@
                 
                 $windowsScriptPath = Join-Path -Path $env:TEMP -ChildPath "install-iotedge-windows.ps1"
@@ -517,6 +646,16 @@ Write-Host "You can retrieve it securely from Azure Key Vault or your deployment
         if ($EnableMonitoring) {
             Write-ColorOutput "Log Analytics Workspace: $workspaceName" -ForegroundColor Gray
         }
+        
+        # Security warning for sensitive data
+        Write-ColorOutput "`n⚠️  SECURITY WARNING ⚠️" -ForegroundColor Red
+        Write-ColorOutput "The returned object contains sensitive IoT Edge device connection strings." -ForegroundColor Yellow
+        Write-ColorOutput "Please ensure this data is:" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not logged or written to files" -ForegroundColor Yellow
+        Write-ColorOutput "  • Not committed to version control" -ForegroundColor Yellow
+        Write-ColorOutput "  • Stored securely in production environments" -ForegroundColor Yellow
+        Write-ColorOutput "  • Considered for Azure Key Vault integration" -ForegroundColor Yellow
+        Write-ColorOutput "  • Use secure connection string retrieval in installation scripts" -ForegroundColor Yellow
         
         # Return deployment info
         return @{
