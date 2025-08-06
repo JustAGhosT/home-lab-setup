@@ -56,14 +56,13 @@ function Get-DockerfileContent {
     
     switch ($ProjectType) {
         "Node.js" {
-            $portValue = $Port
             return @"
 FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-EXPOSE $portValue
+EXPOSE ${Port}
 CMD ["npm", "start"]
 "@
         }
@@ -75,7 +74,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE $Port
+EXPOSE ${Port}
 CMD ["python", "app.py"]
 "@
         }
@@ -84,7 +83,7 @@ CMD ["python", "app.py"]
             return @"
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
 WORKDIR /app
-EXPOSE $Port
+EXPOSE ${Port}
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 COPY ["*.csproj", "./"]
@@ -452,7 +451,7 @@ function Deploy-AWSECS {
         $ecrLoginToken | docker login --username AWS --password-stdin $ecrRegistry
         
         # Build and tag image
-        $fullImageName = "$ecrRegistry/$EcrRepositoryName:$ImageTag"
+        $fullImageName = "$ecrRegistry/$EcrRepositoryName" + ":" + $ImageTag
         Write-Host "Building container image: $fullImageName" -ForegroundColor White
         try {
             Push-Location -Path $ProjectPath
@@ -492,8 +491,10 @@ function Deploy-AWSECS {
         aws ec2 attach-internet-gateway --vpc-id $VpcId --internet-gateway-id $igwId --region $AwsRegion | Out-Null
         
         # Create subnets
-        $subnet1Result = aws ec2 create-subnet --vpc-id $VpcId --cidr-block "10.0.1.0/24" --availability-zone "${AwsRegion}a" --region $AwsRegion --output json | ConvertFrom-Json
-        $subnet2Result = aws ec2 create-subnet --vpc-id $VpcId --cidr-block "10.0.2.0/24" --availability-zone "${AwsRegion}b" --region $AwsRegion --output json | ConvertFrom-Json
+        $az1 = "${AwsRegion}a"
+        $az2 = "${AwsRegion}b"
+        $subnet1Result = aws ec2 create-subnet --vpc-id $VpcId --cidr-block "10.0.1.0/24" --availability-zone $az1 --region $AwsRegion --output json | ConvertFrom-Json
+        $subnet2Result = aws ec2 create-subnet --vpc-id $VpcId --cidr-block "10.0.2.0/24" --availability-zone $az2 --region $AwsRegion --output json | ConvertFrom-Json
         $SubnetIds = @($subnet1Result.Subnet.SubnetId, $subnet2Result.Subnet.SubnetId)
         
         # Create route table
@@ -551,7 +552,7 @@ function Deploy-AWSECS {
         containerDefinitions    = @(
             @{
                 name             = $AppName
-                image            = if ($BuildImage) { "$ecrRegistry/$EcrRepositoryName:$ImageTag" } else { "$ImageName:$ImageTag" }
+                image            = if ($BuildImage) { "$ecrRegistry/$EcrRepositoryName" + ":" + $ImageTag } else { "$ImageName" + ":" + $ImageTag }
                 portMappings     = @(
                     @{
                         containerPort = $Port
@@ -586,9 +587,11 @@ function Deploy-AWSECS {
     if ($Secrets.Count -gt 0) {
         $taskDefinitionJson.containerDefinitions[0].secrets = @()
         foreach ($key in $Secrets.Keys) {
+            $accountId = $callerIdentity.Account
+            $secretArn = "arn:aws:secretsmanager:${AwsRegion}:${accountId}:secret:$key"
             $taskDefinitionJson.containerDefinitions[0].secrets += @{
                 name      = $key
-                valueFrom = "arn:aws:secretsmanager:${AwsRegion}:$($callerIdentity.Account):secret:$key"
+                valueFrom = $secretArn
             }
         }
     }

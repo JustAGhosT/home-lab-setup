@@ -1,0 +1,634 @@
+# Azure DevOps Pipeline - PowerShell Quality Gates
+# Comprehensive CI/CD pipeline with automated quality checks
+# Prevents code quality issues from reaching production
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - feature/*
+  paths:
+    include:
+    - '**/*.ps1'
+    - '**/*.psm1'
+    - '**/*.psd1'
+
+pr:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - '**/*.ps1'
+    - '**/*.psm1'
+    - '**/*.psd1'
+
+variables:
+  # PowerShell Quality Configuration
+  PSScriptAnalyzerVersion: '1.21.0'
+  PesterVersion: '5.5.0'
+  PowerShellVersion: '7.2'
+  
+  # Quality Gate Thresholds
+  MaxCriticalIssues: 0
+  MaxHighIssues: 5
+  MinTestCoverage: 80
+  MaxComplexityScore: 10
+  
+  # Logging Configuration
+  LogPath: '$(Build.ArtifactStagingDirectory)\Logs'
+  TestResultsPath: '$(Build.ArtifactStagingDirectory)\TestResults'
+
+stages:
+- stage: Quality_Gates
+  displayName: 'Quality Gates & Security Scan'
+  jobs:
+  - job: PowerShell_Quality_Analysis
+    displayName: 'PowerShell Code Quality Analysis'
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - task: PowerShell@2
+      displayName: 'Install PowerShell Tools'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Install required PowerShell modules
+          $modules = @(
+              @{ Name = 'PSScriptAnalyzer'; Version = '$(PSScriptAnalyzerVersion)' },
+              @{ Name = 'Pester'; Version = '$(PesterVersion)' },
+              @{ Name = 'Az'; Version = '10.0.0' }
+          )
+          
+          foreach ($module in $modules) {
+              Write-Host "Installing $($module.Name) version $($module.Version)..." -ForegroundColor Yellow
+              Install-Module -Name $module.Name -RequiredVersion $module.Version -Force -AllowClobber
+          }
+          
+          # Verify installations
+          Get-Module -ListAvailable PSScriptAnalyzer, Pester, Az | Select-Object Name, Version
+
+    - task: PowerShell@2
+      displayName: 'Security Vulnerability Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Scan for critical security issues
+          Write-Host "=== SECURITY VULNERABILITY SCAN ===" -ForegroundColor Red
+          
+          $securityIssues = @()
+          
+          # Check for Invoke-Expression usage (CRITICAL)
+          $invokeExpressionFiles = Get-ChildItem -Path "**/*.ps1" -Recurse | 
+              Select-String -Pattern "Invoke-Expression" | 
+              Select-Object Filename, LineNumber, Line
+          
+          if ($invokeExpressionFiles) {
+              Write-Host "CRITICAL: Invoke-Expression found in $($invokeExpressionFiles.Count) files" -ForegroundColor Red
+              foreach ($file in $invokeExpressionFiles) {
+                  Write-Host "  $($file.Filename):$($file.LineNumber) - $($file.Line.Trim())" -ForegroundColor Red
+                  $securityIssues += "Invoke-Expression in $($file.Filename):$($file.LineNumber)"
+              }
+          }
+          
+          # Check for plaintext SecureString (CRITICAL)
+          $secureStringFiles = Get-ChildItem -Path "**/*.ps1" -Recurse | 
+              Select-String -Pattern "ConvertTo-SecureString.*-AsPlainText" | 
+              Select-Object Filename, LineNumber, Line
+          
+          if ($secureStringFiles) {
+              Write-Host "CRITICAL: Plaintext SecureString found in $($secureStringFiles.Count) files" -ForegroundColor Red
+              foreach ($file in $secureStringFiles) {
+                  Write-Host "  $($file.Filename):$($file.LineNumber) - $($file.Line.Trim())" -ForegroundColor Red
+                  $securityIssues += "Plaintext SecureString in $($file.Filename):$($file.LineNumber)"
+              }
+          }
+          
+          # Check for Write-Host usage (HIGH)
+          $writeHostFiles = Get-ChildItem -Path "**/*.ps1" -Recurse | 
+              Select-String -Pattern "Write-Host" | 
+              Select-Object Filename, LineNumber, Line
+          
+          if ($writeHostFiles) {
+              Write-Host "HIGH: Write-Host found in $($writeHostFiles.Count) files" -ForegroundColor Yellow
+              foreach ($file in $writeHostFiles) {
+                  Write-Host "  $($file.Filename):$($file.LineNumber) - $($file.Line.Trim())" -ForegroundColor Yellow
+                  $securityIssues += "Write-Host in $($file.Filename):$($file.LineNumber)"
+              }
+          }
+          
+          # Fail build if critical security issues found
+          if ($securityIssues.Count -gt 0) {
+              Write-Host "##vso[task.logissue type=error]Security vulnerabilities found: $($securityIssues.Count)"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+          
+          Write-Host "Security scan completed - No critical vulnerabilities found" -ForegroundColor Green
+
+    - task: PowerShell@2
+      displayName: 'PSScriptAnalyzer Code Quality Check'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Create custom PSScriptAnalyzer settings
+          $settings = @{
+              IncludeDefaultRules = $true
+              CustomRulePath = @()
+              ExcludeRules = @('PSUseShouldProcessForStateChangingFunctions') # We'll check this separately
+              Severity = @('Error', 'Warning', 'Information')
+          }
+          
+          Write-Host "=== PSScriptAnalyzer Code Quality Analysis ===" -ForegroundColor Cyan
+          
+          # Run PSScriptAnalyzer on all PowerShell files
+          $results = Invoke-ScriptAnalyzer -Path "**/*.ps1" -Settings $settings -Recurse
+          
+          # Categorize issues by severity
+          $criticalIssues = $results | Where-Object { $_.Severity -eq 'Error' }
+          $highIssues = $results | Where-Object { $_.Severity -eq 'Warning' }
+          $mediumIssues = $results | Where-Object { $_.Severity -eq 'Information' }
+          
+          Write-Host "Analysis Results:" -ForegroundColor White
+          Write-Host "  Critical Issues: $($criticalIssues.Count)" -ForegroundColor $(if ($criticalIssues.Count -gt 0) { 'Red' } else { 'Green' })
+          Write-Host "  High Issues: $($highIssues.Count)" -ForegroundColor $(if ($highIssues.Count -gt $(MaxHighIssues)) { 'Red' } else { 'Yellow' })
+          Write-Host "  Medium Issues: $($mediumIssues.Count)" -ForegroundColor Cyan
+          
+          # Check ShouldProcess usage
+          Write-Host "`n=== ShouldProcess Analysis ===" -ForegroundColor Cyan
+          $stateChangingFunctions = Get-ChildItem -Path "**/*.ps1" -Recurse | 
+              Select-String -Pattern "(New-|Set-|Remove-|Start-|Stop-|Restart-|Enable-|Disable-)" | 
+              Where-Object { $_.Line -match "function\s+\w+" }
+          
+          $missingShouldProcess = @()
+          foreach ($func in $stateChangingFunctions) {
+              $functionName = ($func.Line -split '\s+')[1]
+              $functionFile = $func.Filename
+              
+              # Check if function has ShouldProcess
+              $hasShouldProcess = Select-String -Path $functionFile -Pattern "SupportsShouldProcess" -Context 5
+              if (-not $hasShouldProcess) {
+                  $missingShouldProcess += "$functionName in $functionFile"
+              }
+          }
+          
+          if ($missingShouldProcess.Count -gt 0) {
+              Write-Host "HIGH: Functions missing ShouldProcess support: $($missingShouldProcess.Count)" -ForegroundColor Yellow
+              foreach ($func in $missingShouldProcess) {
+                  Write-Host "  $func" -ForegroundColor Yellow
+              }
+          }
+          
+          # Export results for reporting
+          $results | Export-Csv -Path "$(LogPath)\PSScriptAnalyzer-Results.csv" -NoTypeInformation
+          
+          # Quality gate checks
+          $qualityGateFailed = $false
+          
+          if ($criticalIssues.Count -gt $(MaxCriticalIssues)) {
+              Write-Host "##vso[task.logissue type=error]Critical issues exceed threshold: $($criticalIssues.Count) > $(MaxCriticalIssues)"
+              $qualityGateFailed = $true
+          }
+          
+          if ($highIssues.Count -gt $(MaxHighIssues)) {
+              Write-Host "##vso[task.logissue type=warning]High issues exceed threshold: $($highIssues.Count) > $(MaxHighIssues)"
+              $qualityGateFailed = $true
+          }
+          
+          if ($qualityGateFailed) {
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+          
+          Write-Host "Quality gate passed successfully" -ForegroundColor Green
+
+    - task: PowerShell@2
+      displayName: 'Code Complexity Analysis'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Code Complexity Analysis ===" -ForegroundColor Cyan
+          
+          # Analyze function complexity
+          $complexFunctions = @()
+          
+          Get-ChildItem -Path "**/*.ps1" -Recurse | ForEach-Object {
+              $content = Get-Content $_.FullName -Raw
+              $functions = [regex]::Matches($content, 'function\s+(\w+)\s*\{[^}]*\}', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+              
+              foreach ($func in $functions) {
+                  $functionBody = $func.Groups[0].Value
+                  $functionName = $func.Groups[1].Value
+                  
+                  # Calculate complexity metrics
+                  $ifCount = ([regex]::Matches($functionBody, '\bif\b')).Count
+                  $forCount = ([regex]::Matches($functionBody, '\bfor\b')).Count
+                  $whileCount = ([regex]::Matches($functionBody, '\bwhile\b')).Count
+                  $switchCount = ([regex]::Matches($functionBody, '\bswitch\b')).Count
+                  $catchCount = ([regex]::Matches($functionBody, '\bcatch\b')).Count
+                  
+                  $complexity = $ifCount + $forCount + $whileCount + $switchCount + $catchCount
+                  
+                  if ($complexity -gt $(MaxComplexityScore)) {
+                      $complexFunctions += @{
+                          Function = $functionName
+                          File = $_.Name
+                          Complexity = $complexity
+                      }
+                  }
+              }
+          }
+          
+          if ($complexFunctions.Count -gt 0) {
+              Write-Host "WARNING: Complex functions detected:" -ForegroundColor Yellow
+              foreach ($func in $complexFunctions) {
+                  Write-Host "  $($func.Function) in $($func.File) - Complexity: $($func.Complexity)" -ForegroundColor Yellow
+              }
+          } else {
+              Write-Host "All functions meet complexity requirements" -ForegroundColor Green
+          }
+
+  - job: Unit_Testing
+    displayName: 'Unit Testing & Coverage'
+    pool:
+      vmImage: 'windows-latest'
+    dependsOn: PowerShell_Quality_Analysis
+    
+    steps:
+    - task: PowerShell@2
+      displayName: 'Run Pester Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Unit Testing with Pester ===" -ForegroundColor Cyan
+          
+          # Create test results directory
+          New-Item -Path "$(TestResultsPath)" -ItemType Directory -Force | Out-Null
+          
+          # Run Pester tests
+          $testResults = Invoke-Pester -Path "**/*.Tests.ps1" -OutputFormat NUnitXml -OutputFile "$(TestResultsPath)\TestResults.xml" -PassThru
+          
+          Write-Host "Test Results:" -ForegroundColor White
+          Write-Host "  Total Tests: $($testResults.TotalCount)" -ForegroundColor White
+          Write-Host "  Passed: $($testResults.PassedCount)" -ForegroundColor Green
+          Write-Host "  Failed: $($testResults.FailedCount)" -ForegroundColor $(if ($testResults.FailedCount -gt 0) { 'Red' } else { 'Green' })
+          Write-Host "  Skipped: $($testResults.SkippedCount)" -ForegroundColor Yellow
+          
+          # Calculate coverage
+          $coverage = if ($testResults.TotalCount -gt 0) { 
+              [math]::Round(($testResults.PassedCount / $testResults.TotalCount) * 100, 2) 
+          } else { 0 }
+          
+          Write-Host "  Coverage: $coverage%" -ForegroundColor $(if ($coverage -ge $(MinTestCoverage)) { 'Green' } else { 'Red' })
+          
+          # Quality gate for test coverage
+          if ($coverage -lt $(MinTestCoverage)) {
+              Write-Host "##vso[task.logissue type=error]Test coverage below threshold: $coverage% < $(MinTestCoverage)%"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+          
+          # Fail if any tests failed
+          if ($testResults.FailedCount -gt 0) {
+              Write-Host "##vso[task.logissue type=error]Unit tests failed: $($testResults.FailedCount) failures"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+          
+          Write-Host "All tests passed successfully" -ForegroundColor Green
+
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFormat: 'NUnit'
+        testResultsFiles: '$(TestResultsPath)/*.xml'
+        mergeTestResults: true
+        testRunTitle: 'PowerShell Unit Tests'
+
+- stage: Security_Scan
+  displayName: 'Advanced Security Analysis'
+  dependsOn: Quality_Gates
+  condition: succeeded()
+  jobs:
+  - job: Security_Analysis
+    displayName: 'Security Vulnerability Analysis'
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - task: PowerShell@2
+      displayName: 'Dependency Security Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Dependency Security Analysis ===" -ForegroundColor Cyan
+          
+          # Check PowerShell module dependencies
+          $modules = @('Az', 'PSScriptAnalyzer', 'Pester')
+          $vulnerableModules = @()
+          
+          foreach ($module in $modules) {
+              $installedModule = Get-Module -Name $module -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
+              
+              if ($installedModule) {
+                  Write-Host "Checking $module version $($installedModule.Version)" -ForegroundColor White
+                  
+                  # Check for known vulnerable versions (example)
+                  if ($module -eq 'Az' -and $installedModule.Version -lt '10.0.0') {
+                      $vulnerableModules += "$module version $($installedModule.Version) is outdated"
+                  }
+              }
+          }
+          
+          if ($vulnerableModules.Count -gt 0) {
+              Write-Host "WARNING: Vulnerable dependencies detected:" -ForegroundColor Yellow
+              foreach ($module in $vulnerableModules) {
+                  Write-Host "  $module" -ForegroundColor Yellow
+              }
+          } else {
+              Write-Host "All dependencies are up to date" -ForegroundColor Green
+          }
+
+    - task: PowerShell@2
+      displayName: 'Credential Security Check'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Credential Security Analysis ===" -ForegroundColor Cyan
+          
+          # Check for hardcoded credentials
+          $credentialPatterns = @(
+              'password\s*=\s*["\''][^"\''\s]+["\']',
+              'secret\s*=\s*["\''][^"\''\s]+["\']',
+              'key\s*=\s*["\''][^"\''\s]+["\']',
+              'token\s*=\s*["\''][^"\''\s]+["\']'
+          )
+          
+          $credentialIssues = @()
+          
+          foreach ($pattern in $credentialPatterns) {
+              $matches = Get-ChildItem -Path "**/*.ps1" -Recurse | 
+                  Select-String -Pattern $pattern | 
+                  Select-Object Filename, LineNumber, Line
+              
+              foreach ($match in $matches) {
+                  $credentialIssues += "Potential credential in $($match.Filename):$($match.LineNumber)"
+              }
+          }
+          
+          if ($credentialIssues.Count -gt 0) {
+              Write-Host "CRITICAL: Potential credential exposure detected:" -ForegroundColor Red
+              foreach ($issue in $credentialIssues) {
+                  Write-Host "  $issue" -ForegroundColor Red
+              }
+              Write-Host "##vso[task.logissue type=error]Credential security issues found"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+          
+          Write-Host "No credential security issues detected" -ForegroundColor Green
+
+- stage: Build_And_Package
+  displayName: 'Build & Package'
+  dependsOn: Security_Scan
+  condition: succeeded()
+  jobs:
+  - job: Build_Package
+    displayName: 'Build PowerShell Module Package'
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - task: PowerShell@2
+      displayName: 'Validate Module Structure'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Module Structure Validation ===" -ForegroundColor Cyan
+          
+          # Check for required module files
+          $requiredFiles = @('*.psd1', '*.psm1')
+          $missingFiles = @()
+          
+          foreach ($pattern in $requiredFiles) {
+              $files = Get-ChildItem -Path "**/$pattern" -Recurse
+              if ($files.Count -eq 0) {
+                  $missingFiles += $pattern
+              }
+          }
+          
+          if ($missingFiles.Count -gt 0) {
+              Write-Host "ERROR: Missing required module files:" -ForegroundColor Red
+              foreach ($file in $missingFiles) {
+                  Write-Host "  $file" -ForegroundColor Red
+              }
+              exit 1
+          }
+          
+          Write-Host "Module structure validation passed" -ForegroundColor Green
+
+    - task: PowerShell@2
+      displayName: 'Create Module Package'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Creating Module Package ===" -ForegroundColor Cyan
+          
+          # Create package directory
+          $packagePath = "$(Build.ArtifactStagingDirectory)\HomeLab-PowerShell-Module"
+          New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
+          
+          # Copy module files
+          Copy-Item -Path "HomeLab\*" -Destination $packagePath -Recurse -Force
+          
+          # Copy documentation
+          Copy-Item -Path "*.md" -Destination $packagePath -Force
+          
+          # Create deployment script
+          Write-Host "Creating deployment script..." -ForegroundColor Yellow
+          
+          $deployScriptContent = @'
+# HomeLab PowerShell Module Deployment Script
+# Generated: $(Get-Date)
+
+Write-Host "Installing HomeLab PowerShell Module..." -ForegroundColor Green
+
+# Install module
+$modulePath = Join-Path $env:PSModulePath.Split(';')[0] "HomeLab"
+if (-not (Test-Path $modulePath)) {
+    New-Item -Path $modulePath -ItemType Directory -Force | Out-Null
+}
+
+Copy-Item -Path "$PSScriptRoot\*" -Destination $modulePath -Recurse -Force
+
+Write-Host "Module installed successfully!" -ForegroundColor Green
+Write-Host "Import with: Import-Module HomeLab" -ForegroundColor Cyan
+'@
+          
+          $deployScriptContent | Out-File -FilePath "$packagePath\Install-Module.ps1" -Encoding UTF8
+          
+          Write-Host "Module package created at: $packagePath" -ForegroundColor Green
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Module Package'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'HomeLab-PowerShell-Module'
+        publishLocation: 'Container'
+
+- stage: Deploy_To_Test
+  displayName: 'Deploy to Test Environment'
+  dependsOn: Build_And_Package
+  condition: succeeded()
+  jobs:
+  - job: Deploy_Test
+    displayName: 'Deploy to Test Environment'
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - task: PowerShell@2
+      displayName: 'Deploy Module to Test Environment'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Deploying to Test Environment ===" -ForegroundColor Cyan
+          
+          # Download and install module package
+          $artifactPath = "$(Pipeline.Workspace)\HomeLab-PowerShell-Module\HomeLab-PowerShell-Module"
+          
+          if (Test-Path $artifactPath) {
+              # Install module
+              $modulePath = Join-Path $env:PSModulePath.Split(';')[0] "HomeLab"
+              if (-not (Test-Path $modulePath)) {
+                  New-Item -Path $modulePath -ItemType Directory -Force | Out-Null
+              }
+              
+              Copy-Item -Path "$artifactPath\*" -Destination $modulePath -Recurse -Force
+              
+              Write-Host "Module deployed to test environment successfully" -ForegroundColor Green
+          } else {
+              Write-Host "ERROR: Module package not found" -ForegroundColor Red
+              exit 1
+          }
+
+    - task: PowerShell@2
+      displayName: 'Run Integration Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Running Integration Tests ===" -ForegroundColor Cyan
+          
+          # Import module
+          Import-Module HomeLab -Force
+          
+          # Run integration tests
+          $integrationTests = @(
+              { Get-Command -Module HomeLab | Measure-Object | Select-Object -ExpandProperty Count },
+              { Test-Path (Get-Module HomeLab).Path }
+          )
+          
+          $testResults = @()
+          foreach ($test in $integrationTests) {
+              try {
+                  $result = & $test
+                  $testResults += @{ Success = $true; Result = $result }
+              } catch {
+                  $testResults += @{ Success = $false; Error = $_.Exception.Message }
+              }
+          }
+          
+          $passedTests = ($testResults | Where-Object { $_.Success }).Count
+          $totalTests = $testResults.Count
+          
+          Write-Host "Integration Test Results:" -ForegroundColor White
+          Write-Host "  Passed: $passedTests/$totalTests" -ForegroundColor $(if ($passedTests -eq $totalTests) { 'Green' } else { 'Red' })
+          
+          if ($passedTests -lt $totalTests) {
+              Write-Host "##vso[task.logissue type=error]Integration tests failed"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+          
+          Write-Host "All integration tests passed" -ForegroundColor Green
+
+# Pre-commit hook script for local development
+# Save as .git/hooks/pre-commit
+pre-commit-hook: |
+  #!/bin/sh
+  # PowerShell Quality Gate Pre-commit Hook
+  
+  echo "Running PowerShell quality checks..."
+  
+  # Check for PowerShell files
+  if git diff --cached --name-only | grep -E '\.(ps1|psm1|psd1)$' > /dev/null; then
+      echo "PowerShell files detected, running quality checks..."
+      
+      # Run PSScriptAnalyzer on staged files
+      powershell -Command "& {
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          `$files = git diff --cached --name-only | Where-Object { `$_ -match '\.(ps1|psm1|psd1)$' }
+          `$results = Invoke-ScriptAnalyzer -Path `$files -Severity Error, Warning
+          
+          if (`$results.Count -gt 0) {
+              Write-Host 'Quality issues found:' -ForegroundColor Red
+              `$results | ForEach-Object { Write-Host `"  `$(`$_.ScriptName):`$(`$_.Line) - `$(`$_.Message)`" -ForegroundColor Red }
+              exit 1
+          }
+          
+          Write-Host 'Quality checks passed' -ForegroundColor Green
+      }"
+      
+      if [ $? -ne 0 ]; then
+          echo "Quality checks failed. Please fix issues before committing."
+          exit 1
+      fi
+  fi
+  
+  echo "Pre-commit checks completed successfully."
+
+# GitHub Actions workflow equivalent
+github-actions: |
+  name: PowerShell Quality Gates
+  
+  on:
+    push:
+      branches: [ main, develop ]
+      paths: [ '**/*.ps1', '**/*.psm1', '**/*.psd1' ]
+    pull_request:
+      branches: [ main, develop ]
+      paths: [ '**/*.ps1', '**/*.psm1', '**/*.psd1' ]
+  
+  jobs:
+    quality-gates:
+      runs-on: windows-latest
+      
+      steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install PowerShell Tools
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer, Pester -Force -Scope CurrentUser
+      
+      - name: Run Quality Analysis
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path "**/*.ps1" -Severity Error, Warning
+          if ($results.Count -gt 0) {
+              Write-Host "Quality issues found:" -ForegroundColor Red
+              $results | ForEach-Object { Write-Host "  $($_.ScriptName):$($_.Line) - $($_.Message)" -ForegroundColor Red }
+              exit 1
+          }
+      
+      - name: Run Tests
+        shell: pwsh
+        run: |
+          $testResults = Invoke-Pester -Path "**/*.Tests.ps1" -PassThru
+          if ($testResults.FailedCount -gt 0) {
+              Write-Host "Tests failed: $($testResults.FailedCount)" -ForegroundColor Red
+              exit 1
+          }

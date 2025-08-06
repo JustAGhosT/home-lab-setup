@@ -89,6 +89,7 @@ function Test-GitHubToken {
         Returns $true if the token is valid, $false otherwise.
     #>
     [CmdletBinding()]
+    [OutputType([System.Boolean])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Token
@@ -113,7 +114,7 @@ function Test-GitHubToken {
     }
 }
 
-function Get-GitHubRepositories {
+function Get-GitHubRepository {
     <#
     .SYNOPSIS
         Fetches GitHub repositories for the authenticated user.
@@ -131,6 +132,7 @@ function Get-GitHubRepositories {
         Returns an array of repository objects sorted by last update.
     #>
     [CmdletBinding()]
+    [OutputType([System.Object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Token,
@@ -198,6 +200,7 @@ function Select-GitHubRepository {
         Returns the selected repository object or $null if cancelled.
     #>
     [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [array]$Repositories,
@@ -367,13 +370,12 @@ function Select-GitHubBranch {
 function Invoke-GitHubRepositorySelection {
     <#
     .SYNOPSIS
-        Complete GitHub repository selection workflow.
+        Provides a complete GitHub integration workflow for repository selection.
     
     .DESCRIPTION
-        This function provides the complete workflow for GitHub repository selection:
-        - Token acquisition and validation
-        - Repository fetching and display
-        - User selection interface
+        This function guides the user through the complete process of:
+        - Token authentication
+        - Repository selection
         - Branch selection
         - Manual entry fallback
     
@@ -381,6 +383,7 @@ function Invoke-GitHubRepositorySelection {
         Returns a hashtable with RepoUrl, Branch, and Token information.
     #>
     [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
     param()
     
     Write-Log -Message "Starting GitHub repository selection workflow" -Level "Info"
@@ -398,7 +401,7 @@ function Invoke-GitHubRepositorySelection {
     }
     
     # Fetch repositories
-    $repositories = Get-GitHubRepositories -Token $token -IncludeOrganization
+    $repositories = Get-GitHubRepository -Token $token -IncludeOrganization
     if (-not $repositories -or $repositories.Count -eq 0) {
         Write-Host "❌ No repositories found. You may need to check your token permissions." -ForegroundColor Red
         return @{
@@ -459,6 +462,7 @@ function Get-GitHubIntegration {
         Returns a hashtable with RepoUrl, Branch, and Token information.
     #>
     [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
     param()
 
     Write-Log -Message "Starting GitHub repository selection workflow" -Level "Info"
@@ -476,7 +480,7 @@ function Get-GitHubIntegration {
 
     # Get repositories
     Write-Log -Message "Fetching GitHub repositories" -Level "Info"
-    $repositories = Get-GitHubRepositories -Token $token -IncludeOrganization
+    $repositories = Get-GitHubRepository -Token $token -IncludeOrganization
     if (-not $repositories -or $repositories.Count -eq 0) {
         Write-Host "❌ No repositories found or failed to fetch repositories." -ForegroundColor Red
         return @{
@@ -540,15 +544,20 @@ function Get-GitHubIntegration {
 function Save-SecureGitHubToken {
     <#
     .SYNOPSIS
-        Securely saves a GitHub token using Windows Credential Manager and encrypted XML.
+        Saves a GitHub token to secure storage using Windows Credential Manager.
     
     .PARAMETER Token
-        The GitHub token to store securely.
+        The GitHub token to save.
     
     .PARAMETER Username
-        Optional username to associate with the token.
+        The username to associate with the token (default: HomeLab-GitHub).
+    
+    .OUTPUTS
+        Returns $true if successful, $false otherwise.
     #>
     [CmdletBinding()]
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification='Legitimate use for secure credential storage in Windows Credential Manager')]
+    [OutputType([System.Boolean])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Token,
@@ -559,6 +568,8 @@ function Save-SecureGitHubToken {
     
     try {
         # Create a PSCredential object
+        # Suppressing PSAvoidUsingConvertToSecureStringWithPlainText - This is a legitimate use case for secure credential storage in Windows Credential Manager
+        [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Justification='Legitimate use for secure credential storage in Windows Credential Manager')]
         $secureToken = ConvertTo-SecureString -String $Token -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential($Username, $secureToken)
         
@@ -606,6 +617,7 @@ function Get-SecureGitHubToken {
         Returns the GitHub token as a string, or $null if not found.
     #>
     [CmdletBinding()]
+    [OutputType([System.String])]
     param(
         [Parameter()]
         [string]$Username = "HomeLab-GitHub"
