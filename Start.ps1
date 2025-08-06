@@ -40,6 +40,151 @@ param (
     [switch]$Help
 )
 
+# Reusable function to get deployment parameters
+function Get-DeploymentParameters {
+    <#
+    .SYNOPSIS
+        Gets deployment parameters from user input with validation.
+    
+    .PARAMETER DeploymentType
+        Type of deployment (static, appservice, auto)
+    
+    .PARAMETER Title
+        Title to display for the deployment type
+    
+    .OUTPUTS
+        Returns a hashtable with deployment parameters or $null on failure
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DeploymentType,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Title
+    )
+    
+    Clear-Host
+    Write-Host "=== $Title ===" -ForegroundColor Cyan
+    
+    # Display description based on deployment type
+    switch ($DeploymentType) {
+        "static" {
+            Write-Host "Perfect for: HTML, React, Vue, Angular, etc." -ForegroundColor Yellow
+        }
+        "appservice" {
+            Write-Host "Perfect for: Node.js, Python, .NET, PHP apps" -ForegroundColor Yellow
+        }
+        "auto" {
+            Write-Host "Analyzes your project and chooses the best deployment type" -ForegroundColor Yellow
+        }
+    }
+    Write-Host ""
+    
+    # Get Resource Group
+    $resourceGroup = Read-Host "Resource Group name (e.g., rg-mywebsite)"
+    if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+        Write-Host "Resource Group name is required" -ForegroundColor Red
+        return $null
+    }
+    
+    # Get App Name
+    $appName = Read-Host "App Name (e.g., mywebsite-prod)"
+    if ([string]::IsNullOrWhiteSpace($appName)) {
+        Write-Host "App Name is required" -ForegroundColor Red
+        return $null
+    }
+    
+    # Get Azure subscription
+    try {
+        $context = Get-AzContext -ErrorAction Stop
+        if ($context) {
+            $subscriptions = Get-AzSubscription -ErrorAction Stop
+            
+            if ($subscriptions.Count -eq 1) {
+                $subscriptionId = $subscriptions[0].Id
+                Write-Host "Using subscription: $($subscriptions[0].Name) ($subscriptionId)" -ForegroundColor Green
+            }
+            else {
+                Write-Host "Available subscriptions:" -ForegroundColor Yellow
+                for ($i = 0; $i -lt $subscriptions.Count; $i++) {
+                    Write-Host "  $($i+1). $($subscriptions[$i].Name) ($($subscriptions[$i].Id))" -ForegroundColor White
+                }
+                
+                $subChoice = Read-Host "Select subscription number (1-$($subscriptions.Count))"
+                $subIndex = [int]$subChoice - 1
+                
+                if ($subIndex -ge 0 -and $subIndex -lt $subscriptions.Count) {
+                    $subscriptionId = $subscriptions[$subIndex].Id
+                }
+                else {
+                    $subscriptionId = Read-Host "Enter Subscription ID manually"
+                }
+            }
+        }
+        else {
+            $subscriptionId = Read-Host "Enter Subscription ID"
+        }
+    }
+    catch {
+        Write-Host "Could not get Azure subscriptions: $($_.Exception.Message)" -ForegroundColor Yellow
+        $subscriptionId = Read-Host "Enter Subscription ID"
+    }
+    
+    if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
+        Write-Host "Subscription ID is required" -ForegroundColor Red
+        return $null
+    }
+    
+    # Ask for custom domain
+    $useDomain = Read-Host "Configure custom domain? (y/n)"
+    $customDomain = $null
+    $subdomain = $null
+    
+    if ($useDomain -eq "y") {
+        $customDomain = Read-Host "Enter domain (e.g., example.com)"
+        $subdomain = Read-Host "Enter subdomain (e.g., www)"
+    }
+    
+    # Confirm deployment
+    Write-Host ""
+    Write-Host "Ready to deploy:" -ForegroundColor Cyan
+    Write-Host "  Type: $Title" -ForegroundColor White
+    Write-Host "  Resource Group: $resourceGroup" -ForegroundColor White
+    Write-Host "  App Name: $appName" -ForegroundColor White
+    Write-Host "  Subscription: $subscriptionId" -ForegroundColor White
+    
+    if ($customDomain) {
+        Write-Host "  Domain: $subdomain.$customDomain" -ForegroundColor White
+    }
+    
+    Write-Host ""
+    $confirm = Read-Host "Proceed with deployment? (y/n)"
+    
+    if ($confirm -ne "y") {
+        Write-Host "Deployment cancelled." -ForegroundColor Yellow
+        return $null
+    }
+    
+    # Build and return parameters
+    $params = @{
+        DeploymentType = $DeploymentType
+        ResourceGroup  = $resourceGroup
+        AppName        = $appName
+        SubscriptionId = $subscriptionId
+    }
+    
+    if ($customDomain) {
+        $params.CustomDomain = $customDomain
+    }
+    
+    if ($subdomain) {
+        $params.Subdomain = $subdomain
+    }
+    
+    return $params
+}
+
 # Function to display the quick start menu
 function Show-QuickStartMenu {
     Clear-Host
@@ -245,107 +390,10 @@ do {
                 
                 switch ($choice) {
                     "1" {
-                        # Static website
-                        Clear-Host
-                        Write-Host "=== STATIC WEBSITE DEPLOYMENT ===" -ForegroundColor Cyan
-                        Write-Host "Perfect for: HTML, React, Vue, Angular, etc." -ForegroundColor Yellow
-                        Write-Host ""
+                        # Static website deployment
+                        $params = Get-DeploymentParameters -DeploymentType "static" -Title "STATIC WEBSITE DEPLOYMENT"
                         
-                        $resourceGroup = Read-Host "Resource Group name (e.g., rg-mywebsite)"
-                        if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-                            Write-Host "Resource Group name is required" -ForegroundColor Red
-                            break
-                        }
-                        
-                        $appName = Read-Host "App Name (e.g., mywebsite-prod)"
-                        if ([string]::IsNullOrWhiteSpace($appName)) {
-                            Write-Host "App Name is required" -ForegroundColor Red
-                            break
-                        }
-                        
-                        # Get Azure subscription
-                        try {
-                            $context = Get-AzContext -ErrorAction Stop
-                            if ($context) {
-                                $subscriptions = Get-AzSubscription -ErrorAction Stop
-                                
-                                if ($subscriptions.Count -eq 1) {
-                                    $subscriptionId = $subscriptions[0].Id
-                                    Write-Host "Using subscription: $($subscriptions[0].Name) ($subscriptionId)" -ForegroundColor Green
-                                }
-                                else {
-                                    Write-Host "Available subscriptions:" -ForegroundColor Yellow
-                                    for ($i = 0; $i -lt $subscriptions.Count; $i++) {
-                                        Write-Host "  $($i+1). $($subscriptions[$i].Name) ($($subscriptions[$i].Id))" -ForegroundColor White
-                                    }
-                                    
-                                    $subChoice = Read-Host "Select subscription number (1-$($subscriptions.Count))"
-                                    $subIndex = [int]$subChoice - 1
-                                    
-                                    if ($subIndex -ge 0 -and $subIndex -lt $subscriptions.Count) {
-                                        $subscriptionId = $subscriptions[$subIndex].Id
-                                    }
-                                    else {
-                                        $subscriptionId = Read-Host "Enter Subscription ID manually"
-                                    }
-                                }
-                            }
-                            else {
-                                $subscriptionId = Read-Host "Enter Subscription ID"
-                            }
-                        }
-                        catch {
-                            Write-Host "Could not get Azure subscriptions: $($_.Exception.Message)" -ForegroundColor Yellow
-                            $subscriptionId = Read-Host "Enter Subscription ID"
-                        }
-                        
-                        if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
-                            Write-Host "Subscription ID is required" -ForegroundColor Red
-                            break
-                        }
-                        
-                        # Ask for custom domain
-                        $useDomain = Read-Host "Configure custom domain? (y/n)"
-                        $customDomain = $null
-                        $subdomain = $null
-                        
-                        if ($useDomain -eq "y") {
-                            $customDomain = Read-Host "Enter domain (e.g., example.com)"
-                            $subdomain = Read-Host "Enter subdomain (e.g., www)"
-                        }
-                        
-                        # Confirm deployment
-                        Write-Host ""
-                        Write-Host "Ready to deploy:" -ForegroundColor Cyan
-                        Write-Host "  Type: Static Website" -ForegroundColor White
-                        Write-Host "  Resource Group: $resourceGroup" -ForegroundColor White
-                        Write-Host "  App Name: $appName" -ForegroundColor White
-                        Write-Host "  Subscription: $subscriptionId" -ForegroundColor White
-                        
-                        if ($customDomain) {
-                            Write-Host "  Domain: $subdomain.$customDomain" -ForegroundColor White
-                        }
-                        
-                        Write-Host ""
-                        $confirm = Read-Host "Proceed with deployment? (y/n)"
-                        
-                        if ($confirm -eq "y") {
-                            # Build params
-                            $params = @{
-                                DeploymentType = "static"
-                                ResourceGroup  = $resourceGroup
-                                AppName        = $appName
-                                SubscriptionId = $subscriptionId
-                            }
-                            
-                            if ($customDomain) {
-                                $params.CustomDomain = $customDomain
-                            }
-                            
-                            if ($subdomain) {
-                                $params.Subdomain = $subdomain
-                            }
-                            
+                        if ($params) {
                             # Perform deployment
                             try {
                                 Write-Host "Starting deployment..." -ForegroundColor Yellow
@@ -360,113 +408,13 @@ do {
                                     Write-Host "Details: $($_.Exception.InnerException.Message)" -ForegroundColor Red
                                 }
                             }
-                        }
-                        else {
-                            Write-Host "Deployment cancelled." -ForegroundColor Yellow
                         }
                     }
                     "2" {
-                        # App Service
-                        Clear-Host
-                        Write-Host "=== APP SERVICE DEPLOYMENT ===" -ForegroundColor Cyan
-                        Write-Host "Perfect for: Node.js, Python, .NET, PHP apps" -ForegroundColor Yellow
-                        Write-Host ""
+                        # App Service deployment
+                        $params = Get-DeploymentParameters -DeploymentType "appservice" -Title "APP SERVICE DEPLOYMENT"
                         
-                        $resourceGroup = Read-Host "Resource Group name (e.g., rg-myapi)"
-                        if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-                            Write-Host "Resource Group name is required" -ForegroundColor Red
-                            break
-                        }
-                        
-                        $appName = Read-Host "App Name (e.g., myapi-prod)"
-                        if ([string]::IsNullOrWhiteSpace($appName)) {
-                            Write-Host "App Name is required" -ForegroundColor Red
-                            break
-                        }
-                        
-                        # Get Azure subscription
-                        try {
-                            $context = Get-AzContext -ErrorAction Stop
-                            if ($context) {
-                                $subscriptions = Get-AzSubscription -ErrorAction Stop
-                                
-                                if ($subscriptions.Count -eq 1) {
-                                    $subscriptionId = $subscriptions[0].Id
-                                    Write-Host "Using subscription: $($subscriptions[0].Name) ($subscriptionId)" -ForegroundColor Green
-                                }
-                                else {
-                                    Write-Host "Available subscriptions:" -ForegroundColor Yellow
-                                    for ($i = 0; $i -lt $subscriptions.Count; $i++) {
-                                        Write-Host "  $($i+1). $($subscriptions[$i].Name) ($($subscriptions[$i].Id))" -ForegroundColor White
-                                    }
-                                    
-                                    $subChoice = Read-Host "Select subscription number (1-$($subscriptions.Count))"
-                                    $subIndex = [int]$subChoice - 1
-                                    
-                                    if ($subIndex -ge 0 -and $subIndex -lt $subscriptions.Count) {
-                                        $subscriptionId = $subscriptions[$subIndex].Id
-                                    }
-                                    else {
-                                        $subscriptionId = Read-Host "Enter Subscription ID manually"
-                                    }
-                                }
-                            }
-                            else {
-                                $subscriptionId = Read-Host "Enter Subscription ID"
-                            }
-                        }
-                        catch {
-                            Write-Host "Could not get Azure subscriptions: $($_.Exception.Message)" -ForegroundColor Yellow
-                            $subscriptionId = Read-Host "Enter Subscription ID"
-                        }
-                        
-                        if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
-                            Write-Host "Subscription ID is required" -ForegroundColor Red
-                            break
-                        }
-                        
-                        # Ask for custom domain
-                        $useDomain = Read-Host "Configure custom domain? (y/n)"
-                        $customDomain = $null
-                        $subdomain = $null
-                        
-                        if ($useDomain -eq "y") {
-                            $customDomain = Read-Host "Enter domain (e.g., example.com)"
-                            $subdomain = Read-Host "Enter subdomain (e.g., api)"
-                        }
-                        
-                        # Confirm deployment
-                        Write-Host ""
-                        Write-Host "Ready to deploy:" -ForegroundColor Cyan
-                        Write-Host "  Type: App Service" -ForegroundColor White
-                        Write-Host "  Resource Group: $resourceGroup" -ForegroundColor White
-                        Write-Host "  App Name: $appName" -ForegroundColor White
-                        Write-Host "  Subscription: $subscriptionId" -ForegroundColor White
-                        
-                        if ($customDomain) {
-                            Write-Host "  Domain: $subdomain.$customDomain" -ForegroundColor White
-                        }
-                        
-                        Write-Host ""
-                        $confirm = Read-Host "Proceed with deployment? (y/n)"
-                        
-                        if ($confirm -eq "y") {
-                            # Build params
-                            $params = @{
-                                DeploymentType = "appservice"
-                                ResourceGroup  = $resourceGroup
-                                AppName        = $appName
-                                SubscriptionId = $subscriptionId
-                            }
-                            
-                            if ($customDomain) {
-                                $params.CustomDomain = $customDomain
-                            }
-                            
-                            if ($subdomain) {
-                                $params.Subdomain = $subdomain
-                            }
-                            
+                        if ($params) {
                             # Perform deployment
                             try {
                                 Write-Host "Starting deployment..." -ForegroundColor Yellow
@@ -481,9 +429,6 @@ do {
                                     Write-Host "Details: $($_.Exception.InnerException.Message)" -ForegroundColor Red
                                 }
                             }
-                        }
-                        else {
-                            Write-Host "Deployment cancelled." -ForegroundColor Yellow
                         }
                     }
                     "3" {
@@ -638,7 +583,8 @@ do {
                                                 
                                                 # Save to environment variables (both process and user level)
                                                 $env:GITHUB_TOKEN = $plainToken
-                                                [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $plainToken, "User")
+                                                # Removed persistent environment variable setting for security
+                                                # Token is now only stored in session memory
                                                 Write-Host "GitHub token saved to environment variables" -ForegroundColor Green
                                                 
                                                 return $plainToken

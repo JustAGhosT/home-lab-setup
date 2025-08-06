@@ -72,11 +72,32 @@ function Deploy-Vercel {
     if (-not $vercelCli) {
         Write-Host "Vercel CLI not found. Installing..." -ForegroundColor Yellow
         try {
-            npm install -g vercel
-            Write-Host "Vercel CLI installed successfully." -ForegroundColor Green
+            $npmOutput = npm install -g vercel 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Vercel CLI installed successfully." -ForegroundColor Green
+            }
+            else {
+                throw "npm install failed with exit code $LASTEXITCODE"
+            }
         }
         catch {
-            throw "Failed to install Vercel CLI. Please install it manually: npm install -g vercel"
+            $errorDetails = $_.Exception.Message
+            $npmError = if ($npmOutput) { $npmOutput | Select-Object -Last 5 } else { "No additional error details available" }
+            
+            Write-Error "Failed to install Vercel CLI: $errorDetails"
+            Write-Host "`nTroubleshooting Steps:" -ForegroundColor Yellow
+            Write-Host "1. Check your internet connection" -ForegroundColor White
+            Write-Host "2. Verify you have sufficient permissions (try running as administrator)" -ForegroundColor White
+            Write-Host "3. Check if npm is properly installed: npm --version" -ForegroundColor White
+            Write-Host "4. Try clearing npm cache: npm cache clean --force" -ForegroundColor White
+            Write-Host "5. Install manually: npm install -g vercel" -ForegroundColor White
+            
+            if ($npmError) {
+                Write-Host "`nLast npm output:" -ForegroundColor Red
+                Write-Host $npmError -ForegroundColor Gray
+            }
+            
+            throw "Vercel CLI installation failed. Please resolve the issues above and try again."
         }
     }
     else {
@@ -85,9 +106,14 @@ function Deploy-Vercel {
     
     # Step 3: Authenticate with Vercel
     Write-Host "Step 2/5: Authenticating with Vercel..." -ForegroundColor Cyan
+    $tokenWasSet = $false
+    
     if ($VercelToken) {
         Write-Host "Using provided Vercel token..." -ForegroundColor White
+        # Store token temporarily for this session only
         $env:VERCEL_TOKEN = $VercelToken
+        $tokenWasSet = $true
+        Write-Host "Token set for this deployment session." -ForegroundColor Green
     }
     else {
         Write-Host "Please authenticate with Vercel..." -ForegroundColor Yellow
@@ -139,8 +165,37 @@ function Deploy-Vercel {
             Write-Host "Deployment output:" -ForegroundColor White
             Write-Host $deployOutput -ForegroundColor Gray
             
-            # Extract deployment URL from output
-            $deploymentUrl = $deployOutput | Select-String -Pattern "https://.*\.vercel\.app" | ForEach-Object { $_.Matches[0].Value }
+            # Extract deployment URL from output with comprehensive regex pattern
+            $deploymentUrl = $null
+            
+            # Comprehensive regex pattern for Vercel URLs
+            $vercelUrlPatterns = @(
+                "https?://[a-zA-Z0-9\-_]+\.vercel\.app",           # Standard Vercel app URLs
+                "https?://[a-zA-Z0-9\-_]+\.vercel\.app/",          # With trailing slash
+                "https?://[a-zA-Z0-9\-_]+\.vercel\.app\s",         # With whitespace
+                "https?://[a-zA-Z0-9\-_]+\.vercel\.app$",          # End of line
+                "https?://[a-zA-Z0-9\-_]+\.vercel\.app[^\w\-_/]",  # With non-alphanumeric delimiter
+                "https?://[a-zA-Z0-9\-_]+\.vercel\.app\b"          # Word boundary
+            )
+            
+            foreach ($pattern in $vercelUrlPatterns) {
+                $match = $deployOutput | Select-String -Pattern $pattern | Select-Object -First 1
+                if ($match) {
+                    $deploymentUrl = $match.Matches[0].Value.Trim()
+                    Write-Host "Deployment URL extracted using pattern: $pattern" -ForegroundColor Green
+                    break
+                }
+            }
+            
+            # Fallback: Look for any URL-like pattern in the output
+            if (-not $deploymentUrl) {
+                $fallbackPattern = "https?://[^\s]+\.vercel\.app[^\s]*"
+                $fallbackMatch = $deployOutput | Select-String -Pattern $fallbackPattern | Select-Object -First 1
+                if ($fallbackMatch) {
+                    $deploymentUrl = $fallbackMatch.Matches[0].Value.Trim()
+                    Write-Host "Deployment URL extracted using fallback pattern" -ForegroundColor Yellow
+                }
+            }
             
             if ($deploymentUrl) {
                 Write-Host "Step 5/5: Deployment completed successfully!" -ForegroundColor Green
@@ -169,14 +224,41 @@ function Deploy-Vercel {
                 }
             }
             else {
-                throw "Deployment completed but could not extract deployment URL"
+                Write-Error "Deployment completed but could not extract deployment URL from output"
+                Write-Host "`nTroubleshooting Steps:" -ForegroundColor Yellow
+                Write-Host "1. Check the deployment output above for any error messages" -ForegroundColor White
+                Write-Host "2. Verify the deployment was successful in your Vercel dashboard" -ForegroundColor White
+                Write-Host "3. Try running 'vercel ls' to see your recent deployments" -ForegroundColor White
+                Write-Host "4. Check if the deployment URL format has changed" -ForegroundColor White
+                
+                Write-Host "`nDeployment output for debugging:" -ForegroundColor Cyan
+                Write-Host $deployOutput -ForegroundColor Gray
+                
+                throw "Failed to extract deployment URL. Please check the Vercel dashboard for the deployment status."
             }
         }
         catch {
-            throw "Failed to deploy to Vercel: $($_.Exception.Message)"
+            Write-Error "Failed to deploy to Vercel: $($_.Exception.Message)"
+            Write-Host "`nTroubleshooting Steps:" -ForegroundColor Yellow
+            Write-Host "1. Check your Vercel authentication: vercel whoami" -ForegroundColor White
+            Write-Host "2. Verify your project is properly linked: vercel link" -ForegroundColor White
+            Write-Host "3. Check for any build errors in the output above" -ForegroundColor White
+            Write-Host "4. Ensure your project has the necessary configuration files" -ForegroundColor White
+            
+            throw "Vercel deployment failed. Please resolve the issues above and try again."
         }
     }
     finally {
+        # Clean up sensitive token data
+        if ($tokenWasSet) {
+            Write-Host "Cleaning up sensitive token data..." -ForegroundColor Cyan
+            Remove-Item Env:VERCEL_TOKEN -ErrorAction SilentlyContinue
+            $env:VERCEL_TOKEN = $null
+            Write-Host "Token data cleared from environment." -ForegroundColor Green
+        }
+        
+        # Restore original directory
         Pop-Location
+        Write-Host "Restored original directory location." -ForegroundColor Green
     }
 } 

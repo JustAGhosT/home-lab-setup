@@ -59,7 +59,14 @@ function Deploy-GoogleCloud {
         
         [Parameter()]
         [ValidateSet("cloudrun", "appengine")]
-        [string]$DeploymentType = "cloudrun"
+        [string]$DeploymentType = "cloudrun",
+    
+        [Parameter()]
+        [ValidateSet("auto", "nodejs", "python", "go", "dotnet", "java", "php", "ruby")]
+        [string]$Runtime = "auto",
+    
+        [Parameter()]
+        [switch]$AllowUnauthenticated = $true
     )
     
     Write-Host "=== Deploying to Google Cloud ===" -ForegroundColor Red
@@ -67,7 +74,188 @@ function Deploy-GoogleCloud {
     Write-Host "Path: $ProjectPath" -ForegroundColor White
     Write-Host "Region: $Location" -ForegroundColor White
     Write-Host "Deployment Type: $DeploymentType" -ForegroundColor White
+    Write-Host "Runtime: $Runtime" -ForegroundColor White
+    Write-Host "Allow Unauthenticated: $AllowUnauthenticated" -ForegroundColor White
     Write-Host ""
+    
+    # Helper function to detect project type
+    function Get-ProjectType {
+        param (
+            [string]$Path
+        )
+        
+        # Check for Node.js
+        if (Test-Path -Path (Join-Path $Path "package.json")) {
+            return "nodejs"
+        }
+        
+        # Check for Python
+        if ((Test-Path -Path (Join-Path $Path "requirements.txt")) -or 
+            (Test-Path -Path (Join-Path $Path "Pipfile")) -or 
+            (Test-Path -Path (Join-Path $Path "setup.py")) -or
+            (Test-Path -Path (Join-Path $Path "pyproject.toml"))) {
+            return "python"
+        }
+        
+        # Check for Go
+        if ((Test-Path -Path (Join-Path $Path "go.mod")) -or 
+            (Test-Path -Path (Join-Path $Path "main.go"))) {
+            return "go"
+        }
+        
+        # Check for .NET
+        if ((Get-ChildItem -Path $Path -Filter "*.csproj" -Recurse) -or 
+            (Test-Path -Path (Join-Path $Path "Program.cs")) -or 
+            (Test-Path -Path (Join-Path $Path "Startup.cs"))) {
+            return "dotnet"
+        }
+        
+        # Check for Java
+        if ((Test-Path -Path (Join-Path $Path "pom.xml")) -or 
+            (Test-Path -Path (Join-Path $Path "build.gradle")) -or
+            (Get-ChildItem -Path $Path -Filter "*.java" -Recurse)) {
+            return "java"
+        }
+        
+        # Check for PHP
+        if ((Test-Path -Path (Join-Path $Path "composer.json")) -or 
+            (Get-ChildItem -Path $Path -Filter "*.php" -Recurse)) {
+            return "php"
+        }
+        
+        # Check for Ruby
+        if ((Test-Path -Path (Join-Path $Path "Gemfile")) -or 
+            (Get-ChildItem -Path $Path -Filter "*.rb" -Recurse)) {
+            return "ruby"
+        }
+        
+        # Default to Node.js if no clear indicators
+        return "nodejs"
+    }
+    
+    # Helper function to generate Dockerfile content based on runtime
+    function Get-DockerfileContent {
+        param (
+            [string]$Runtime,
+            [int]$Port = 8080
+        )
+        
+        switch ($Runtime) {
+            "nodejs" {
+                return @"
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE $Port
+CMD ["npm", "start"]
+"@
+            }
+            "python" {
+                return @"
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE $Port
+CMD ["python", "app.py"]
+"@
+            }
+            "go" {
+                return @"
+FROM golang:1.21-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o main .
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/main .
+EXPOSE $Port
+CMD ["./main"]
+"@
+            }
+            "dotnet" {
+                return @"
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+WORKDIR /app
+COPY *.csproj ./
+RUN dotnet restore
+COPY . .
+RUN dotnet publish -c Release -o out
+
+FROM mcr.microsoft.com/dotnet/aspnet:7.0
+WORKDIR /app
+COPY --from=build /app/out .
+EXPOSE $Port
+CMD ["dotnet", "app.dll"]
+"@
+            }
+            "java" {
+                return @"
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE $Port
+CMD ["java", "-jar", "app.jar"]
+"@
+            }
+            "php" {
+                return @"
+FROM php:8.2-apache
+WORKDIR /var/www/html
+COPY . .
+RUN chown -R www-data:www-data /var/www/html
+EXPOSE $Port
+"@
+            }
+            "ruby" {
+                return @"
+FROM ruby:3.2-slim
+WORKDIR /app
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+COPY . .
+EXPOSE $Port
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]
+"@
+            }
+            default {
+                return @"
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE $Port
+CMD ["npm", "start"]
+"@
+            }
+        }
+    }
+    
+    # Helper function to get App Engine runtime
+    function Get-AppEngineRuntime {
+        param (
+            [string]$Runtime
+        )
+        
+        switch ($Runtime) {
+            "nodejs" { return "nodejs18" }
+            "python" { return "python311" }
+            "go" { return "go119" }
+            "java" { return "java17" }
+            "php" { return "php82" }
+            "ruby" { return "ruby32" }
+            default { return "nodejs18" }
+        }
+    }
     
     # Step 1: Validate project path
     if (-not (Test-Path -Path $ProjectPath)) {
@@ -124,7 +312,20 @@ function Deploy-GoogleCloud {
     
     # Step 5: Navigate to project directory
     Write-Host "Step 4/6: Preparing project for deployment..." -ForegroundColor Cyan
-    Push-Location -Path $ProjectPath
+    
+    # Detect project type if auto is selected
+    $detectedRuntime = if ($Runtime -eq "auto") { Get-ProjectType -Path $ProjectPath } else { $Runtime }
+    Write-Host "Detected/Selected Runtime: $detectedRuntime" -ForegroundColor Green
+    
+    $pushLocationSuccess = $false
+    try {
+        Push-Location -Path $ProjectPath -ErrorAction Stop
+        $pushLocationSuccess = $true
+        Write-Host "Successfully navigated to project directory: $ProjectPath" -ForegroundColor Green
+    }
+    catch {
+        throw "Failed to navigate to project directory: $($_.Exception.Message)"
+    }
     
     try {
         # Step 6: Deploy based on type
@@ -134,30 +335,34 @@ function Deploy-GoogleCloud {
                 # Check for Dockerfile
                 $dockerfile = Test-Path -Path "Dockerfile"
                 if (-not $dockerfile) {
-                    Write-Host "Creating Dockerfile for Cloud Run..." -ForegroundColor White
-                    # Create a basic Dockerfile for Node.js
-                    $dockerfileContent = @"
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 8080
-CMD ["npm", "start"]
-"@
+                    Write-Host "Creating Dockerfile for $detectedRuntime runtime..." -ForegroundColor White
+                    $dockerfileContent = Get-DockerfileContent -Runtime $detectedRuntime -Port 8080
                     $dockerfileContent | Out-File -FilePath "Dockerfile" -Encoding UTF8
-                    Write-Host "Dockerfile created." -ForegroundColor Green
+                    Write-Host "Dockerfile created for $detectedRuntime runtime." -ForegroundColor Green
+                }
+                
+                # Build deployment command
+                $deployCmd = "gcloud run deploy $AppName --source . --region $Location --format=json"
+                if ($AllowUnauthenticated) {
+                    $deployCmd += " --allow-unauthenticated"
                 }
                 
                 # Deploy to Cloud Run
                 Write-Host "Deploying to Cloud Run..." -ForegroundColor White
-                $deployOutput = gcloud run deploy $AppName --source . --region $Location --allow-unauthenticated 2>&1
+                $deployOutput = Invoke-Expression $deployCmd 2>&1
                 Write-Host "Deployment output:" -ForegroundColor White
                 Write-Host $deployOutput -ForegroundColor Gray
                 
-                # Extract service URL
-                $serviceUrl = $deployOutput | Select-String -Pattern "https://.*\.run\.app" | ForEach-Object { $_.Matches[0].Value }
+                # Parse JSON output to extract service URL
+                try {
+                    $deployJson = $deployOutput | ConvertFrom-Json
+                    $serviceUrl = $deployJson.status.url
+                    Write-Host "Service URL extracted from JSON output: $serviceUrl" -ForegroundColor Green
+                }
+                catch {
+                    Write-Warning "Failed to parse JSON output, falling back to regex extraction"
+                    $serviceUrl = $deployOutput | Select-String -Pattern "https://.*\.run\.app" | ForEach-Object { $_.Matches[0].Value }
+                }
                 
                 if ($serviceUrl) {
                     Write-Host "Step 6/6: Cloud Run deployment completed successfully!" -ForegroundColor Green
@@ -189,10 +394,10 @@ CMD ["npm", "start"]
                 # Check for app.yaml
                 $appYaml = Test-Path -Path "app.yaml"
                 if (-not $appYaml) {
-                    Write-Host "Creating app.yaml for App Engine..." -ForegroundColor White
-                    # Create a basic app.yaml for Node.js
+                    Write-Host "Creating app.yaml for $detectedRuntime runtime..." -ForegroundColor White
+                    $appEngineRuntime = Get-AppEngineRuntime -Runtime $detectedRuntime
                     $appYamlContent = @"
-runtime: nodejs18
+runtime: $appEngineRuntime
 service: default
 env: standard
 automatic_scaling:
@@ -201,7 +406,7 @@ automatic_scaling:
   max_instances: 10
 "@
                     $appYamlContent | Out-File -FilePath "app.yaml" -Encoding UTF8
-                    Write-Host "app.yaml created." -ForegroundColor Green
+                    Write-Host "app.yaml created for $detectedRuntime runtime ($appEngineRuntime)." -ForegroundColor Green
                 }
                 
                 # Deploy to App Engine
@@ -237,6 +442,9 @@ automatic_scaling:
         }
     }
     finally {
-        Pop-Location
+        if ($pushLocationSuccess) {
+            Pop-Location
+            Write-Host "Restored original directory location." -ForegroundColor Green
+        }
     }
 } 

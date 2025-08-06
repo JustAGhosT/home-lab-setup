@@ -89,10 +89,29 @@ function Deploy-Azure {
     
     # Step 1: Check Azure PowerShell prerequisites
     Write-Host "Step 1/6: Checking Azure PowerShell prerequisites..." -ForegroundColor Cyan
+    
+    # Check if Az.Accounts module is available
     if (-not (Get-Module -ListAvailable -Name Az.Accounts)) {
         Write-Error "Error: Azure PowerShell is not installed"
         Write-Host "Please install Azure PowerShell: Install-Module -Name Az -AllowClobber -Force" -ForegroundColor Yellow
         throw "Azure PowerShell module not found"
+    }
+    
+    # Check if Az.Accounts module is imported, if not import it
+    if (-not (Get-Module -Name Az.Accounts)) {
+        Write-Host "Importing Az.Accounts module..." -ForegroundColor White
+        try {
+            Import-Module -Name Az.Accounts -ErrorAction Stop
+            Write-Host "Az.Accounts module imported successfully." -ForegroundColor Green
+        }
+        catch {
+            Write-Error "Error: Failed to import Az.Accounts module"
+            Write-Host "Please ensure Azure PowerShell is properly installed." -ForegroundColor Yellow
+            throw "Failed to import Az.Accounts module"
+        }
+    }
+    else {
+        Write-Host "Az.Accounts module is already imported." -ForegroundColor Green
     }
 
     try {
@@ -217,10 +236,10 @@ function Get-DeploymentType {
     )
     
     # Check for backend indicators
-    if (Test-Path -Path "$Path\package.json") {
+    if (Test-Path -Path (Join-Path $Path "package.json")) {
         try {
-            Write-Verbose "Reading package.json from: $Path\package.json"
-            $packageJsonContent = Get-Content -Path "$Path\package.json" -Raw -ErrorAction Stop
+            Write-Verbose "Reading package.json from: $(Join-Path $Path "package.json")"
+            $packageJsonContent = Get-Content -Path (Join-Path $Path "package.json") -Raw -ErrorAction Stop
             $packageJson = ConvertFrom-Json $packageJsonContent -ErrorAction Stop
 
             if ($packageJson.dependencies -and
@@ -246,26 +265,26 @@ function Get-DeploymentType {
         }
     }
     
-    if ((Test-Path -Path "$Path\requirements.txt") -or 
-        (Test-Path -Path "$Path\Pipfile") -or 
-        (Test-Path -Path "$Path\setup.py")) {
-        if ((Test-Path -Path "$Path\wsgi.py") -or 
-            (Test-Path -Path "$Path\asgi.py") -or 
-            (Test-Path -Path "$Path\manage.py")) {
+    if ((Test-Path -Path (Join-Path $Path "requirements.txt")) -or 
+        (Test-Path -Path (Join-Path $Path "Pipfile")) -or 
+        (Test-Path -Path (Join-Path $Path "setup.py"))) {
+        if ((Test-Path -Path (Join-Path $Path "wsgi.py")) -or 
+            (Test-Path -Path (Join-Path $Path "asgi.py")) -or 
+            (Test-Path -Path (Join-Path $Path "manage.py"))) {
             return "appservice"
         }
     }
     
     if ((Get-ChildItem -Path $Path -Filter "*.csproj" -Recurse) -or 
-        (Test-Path -Path "$Path\Program.cs") -or 
-        (Test-Path -Path "$Path\Startup.cs")) {
+        (Test-Path -Path (Join-Path $Path "Program.cs")) -or 
+        (Test-Path -Path (Join-Path $Path "Startup.cs"))) {
         return "appservice"
     }
     
     # Check for static site indicators
-    if ((Test-Path -Path "$Path\index.html") -or 
-        (Test-Path -Path "$Path\build\index.html") -or 
-        (Test-Path -Path "$Path\dist\index.html")) {
+    if ((Test-Path -Path (Join-Path $Path "index.html")) -or 
+        (Test-Path -Path (Join-Path $Path "build\index.html")) -or 
+        (Test-Path -Path (Join-Path $Path "dist\index.html"))) {
         return "static"
     }
     
@@ -297,11 +316,19 @@ function Deploy-StaticWebApp {
         }
         
         if ($RepoUrl) {
-            $staticWebAppParams.Source = $RepoUrl
+            $staticWebAppParams.RepositoryUrl = $RepoUrl
             $staticWebAppParams.Branch = $Branch
             if ($GitHubToken) {
-                $staticWebAppParams.Token = $GitHubToken
+                $staticWebAppParams.RepositoryToken = $GitHubToken
             }
+            
+            # Add optional parameters for better deployment configuration
+            $staticWebAppParams.AppLocation = "/"  # Root of the repository
+            $staticWebAppParams.OutputLocation = "build"  # Common build output directory
+            $staticWebAppParams.ApiLocation = "api"  # API functions location
+            $staticWebAppParams.ApiBuildCommand = "npm run build"  # API build command
+            $staticWebAppParams.SkuName = "Free"  # Free tier for cost optimization
+            $staticWebAppParams.IdentityType = "SystemAssigned"  # Managed identity for security
         }
         
         $staticWebApp = New-AzStaticWebApp @staticWebAppParams -ErrorAction Stop

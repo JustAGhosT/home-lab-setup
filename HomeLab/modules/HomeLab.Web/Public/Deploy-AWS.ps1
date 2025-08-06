@@ -94,7 +94,25 @@ function Deploy-AWS {
     
     # Step 4: Create S3 bucket
     Write-Host "Step 3/6: Creating S3 bucket..." -ForegroundColor Cyan
-    $bucketName = "$AppName-$AwsRegion".ToLower() -replace '[^a-z0-9-]', '-'
+    
+    # Generate unique bucket name with timestamp and random suffix
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $randomSuffix = Get-Random -Minimum 1000 -Maximum 9999
+    $baseBucketName = "$AppName-$AwsRegion".ToLower() -replace '[^a-z0-9-]', '-'
+    
+    # Clean up the bucket name to meet S3 requirements
+    $bucketName = $baseBucketName -replace '^-+|-+$', ''  # Remove leading/trailing hyphens
+    $bucketName = $bucketName -replace '-+', '-'  # Replace consecutive hyphens with single hyphen
+    $bucketName = "$bucketName-$timestamp-$randomSuffix"
+    
+    # Ensure bucket name meets S3 requirements (3-63 characters)
+    if ($bucketName.Length -gt 63) {
+        $maxLength = 63 - ($timestamp.Length + $randomSuffix.ToString().Length + 2)  # 2 for hyphens
+        $bucketName = $baseBucketName.Substring(0, [Math]::Min($maxLength, $baseBucketName.Length)) -replace '^-+|-+$', ''
+        $bucketName = "$bucketName-$timestamp-$randomSuffix"
+    }
+    
+    Write-Host "Generated bucket name: $bucketName" -ForegroundColor White
     
     try {
         # Check if bucket already exists
@@ -104,7 +122,19 @@ function Deploy-AWS {
         }
         else {
             Write-Host "Creating S3 bucket: $bucketName" -ForegroundColor White
-            aws s3api create-bucket --bucket $bucketName --region $AwsRegion
+            
+            # Create bucket with proper location constraint for non-us-east-1 regions
+            if ($AwsRegion -eq "us-east-1") {
+                aws s3api create-bucket --bucket $bucketName --region $AwsRegion
+            }
+            else {
+                $locationConfig = @{
+                    LocationConstraint = $AwsRegion
+                } | ConvertTo-Json
+                
+                aws s3api create-bucket --bucket $bucketName --region $AwsRegion --create-bucket-configuration $locationConfig
+            }
+            
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to create S3 bucket"
             }
@@ -129,6 +159,27 @@ function Deploy-AWS {
             throw "Failed to configure S3 bucket for website hosting"
         }
         Write-Host "S3 bucket configured for static website hosting." -ForegroundColor Green
+        
+        # Add bucket policy for public read access
+        Write-Host "Adding public read access policy..." -ForegroundColor White
+        $bucketPolicy = @{
+            Version   = "2012-10-17"
+            Statement = @(
+                @{
+                    Sid       = "PublicReadGetObject"
+                    Effect    = "Allow"
+                    Principal = "*"
+                    Action    = "s3:GetObject"
+                    Resource  = "arn:aws:s3:::$bucketName/*"
+                }
+            )
+        } | ConvertTo-Json -Depth 10
+        
+        aws s3api put-bucket-policy --bucket $bucketName --policy $bucketPolicy
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to add public read access policy to S3 bucket"
+        }
+        Write-Host "Public read access policy added successfully." -ForegroundColor Green
     }
     catch {
         throw "Failed to configure S3 bucket: $($_.Exception.Message)"
@@ -177,7 +228,7 @@ function Deploy-AWS {
     try {
         # Get S3 website endpoint
         $s3Endpoint = aws s3api get-bucket-website --bucket $bucketName | ConvertFrom-Json
-        $s3WebsiteUrl = $s3Endpoint.Endpoint
+        $s3WebsiteUrl = $s3Endpoint.WebsiteEndpoint
         
         Write-Host "S3 website URL: http://$s3WebsiteUrl" -ForegroundColor Green
         

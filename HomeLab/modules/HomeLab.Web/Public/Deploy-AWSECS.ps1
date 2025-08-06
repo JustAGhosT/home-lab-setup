@@ -1,3 +1,167 @@
+# Helper function to detect project type
+function Get-ProjectType {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+    
+    # Check for Node.js project
+    if (Test-Path -Path "$ProjectPath\package.json") {
+        return "Node.js"
+    }
+    
+    # Check for Python project
+    if (Test-Path -Path "$ProjectPath\requirements.txt" -or Test-Path -Path "$ProjectPath\pyproject.toml" -or Test-Path -Path "$ProjectPath\setup.py") {
+        return "Python"
+    }
+    
+    # Check for .NET project
+    if (Test-Path -Path "$ProjectPath\*.csproj" -or Test-Path -Path "$ProjectPath\*.vbproj" -or Test-Path -Path "$ProjectPath\*.fsproj") {
+        return ".NET"
+    }
+    
+    # Check for Java project
+    if (Test-Path -Path "$ProjectPath\pom.xml" -or Test-Path -Path "$ProjectPath\build.gradle") {
+        return "Java"
+    }
+    
+    # Check for Go project
+    if (Test-Path -Path "$ProjectPath\go.mod") {
+        return "Go"
+    }
+    
+    # Check for PHP project
+    if (Test-Path -Path "$ProjectPath\composer.json") {
+        return "PHP"
+    }
+    
+    # Check for Ruby project
+    if (Test-Path -Path "$ProjectPath\Gemfile") {
+        return "Ruby"
+    }
+    
+    # Default to Node.js if no specific project type is detected
+    return "Node.js"
+}
+
+# Helper function to generate Dockerfile content based on project type
+function Get-DockerfileContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectType,
+        
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+    
+    switch ($ProjectType) {
+        "Node.js" {
+            $portValue = $Port
+            return @"
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE $portValue
+CMD ["npm", "start"]
+"@
+        }
+        
+        "Python" {
+            return @"
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE $Port
+CMD ["python", "app.py"]
+"@
+        }
+        
+        ".NET" {
+            return @"
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+WORKDIR /app
+EXPOSE $Port
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+WORKDIR /src
+COPY ["*.csproj", "./"]
+RUN dotnet restore
+COPY . .
+RUN dotnet build -c Release -o /app/build
+FROM build AS publish
+RUN dotnet publish -c Release -o /app/publish
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "*.dll"]
+"@
+        }
+        
+        "Java" {
+            return @"
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE $Port
+CMD ["java", "-jar", "app.jar"]
+"@
+        }
+        
+        "Go" {
+            return @"
+FROM golang:1.21-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o main .
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/main .
+EXPOSE $Port
+CMD ["./main"]
+"@
+        }
+        
+        "PHP" {
+            return @"
+FROM php:8.2-apache
+WORKDIR /var/www/html
+COPY . .
+RUN chown -R www-data:www-data /var/www/html
+EXPOSE $Port
+"@
+        }
+        
+        "Ruby" {
+            return @"
+FROM ruby:3.2-slim
+WORKDIR /app
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+COPY . .
+EXPOSE $Port
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]
+"@
+        }
+        
+        default {
+            return @"
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE $Port
+CMD ["npm", "start"]
+"@
+        }
+    }
+}
+
 function Deploy-AWSECS {
     <#
     .SYNOPSIS
@@ -256,18 +420,16 @@ function Deploy-AWSECS {
     Write-Host "Step 3/10: Building and pushing container image..." -ForegroundColor Cyan
     if ($BuildImage) {
         if (-not (Test-Path -Path "$ProjectPath\Dockerfile")) {
-            Write-Host "No Dockerfile found. Creating a basic Dockerfile..." -ForegroundColor Yellow
-            $dockerfileContent = @"
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE $Port
-CMD ["npm", "start"]
-"@
+            Write-Host "No Dockerfile found. Detecting project type and creating appropriate Dockerfile..." -ForegroundColor Yellow
+            
+            # Detect project type
+            $projectType = Get-ProjectType -ProjectPath $ProjectPath
+            Write-Host "Detected project type: $projectType" -ForegroundColor White
+            
+            # Generate appropriate Dockerfile based on project type
+            $dockerfileContent = Get-DockerfileContent -ProjectType $projectType -Port $Port
             Set-Content -Path "$ProjectPath\Dockerfile" -Value $dockerfileContent
-            Write-Host "Created basic Dockerfile." -ForegroundColor Green
+            Write-Host "Created $projectType Dockerfile." -ForegroundColor Green
         }
         
         # Create ECR repository if it doesn't exist
@@ -287,7 +449,7 @@ CMD ["npm", "start"]
         
         # Login to ECR
         Write-Host "Logging in to ECR..." -ForegroundColor White
-        echo $ecrLoginToken | docker login --username AWS --password-stdin $ecrRegistry
+        $ecrLoginToken | docker login --username AWS --password-stdin $ecrRegistry
         
         # Build and tag image
         $fullImageName = "$ecrRegistry/$EcrRepositoryName:$ImageTag"
@@ -516,10 +678,13 @@ CMD ["npm", "start"]
             $serviceFile = "$env:TEMP\service-definition.json"
             $serviceParams | ConvertTo-Json -Depth 10 | Set-Content -Path $serviceFile
             
-            aws ecs create-service --cli-input-json file://$serviceFile --region $AwsRegion --output json | Out-Null
-            Write-Host "ECS service created successfully!" -ForegroundColor Green
-            
-            Remove-Item -Path $serviceFile -ErrorAction SilentlyContinue
+            try {
+                aws ecs create-service --cli-input-json file://$serviceFile --region $AwsRegion --output json | Out-Null
+                Write-Host "ECS service created successfully!" -ForegroundColor Green
+            }
+            finally {
+                Remove-Item -Path $serviceFile -ErrorAction SilentlyContinue
+            }
         }
         else {
             Write-Host "ECS service '$ServiceName' already exists." -ForegroundColor Green

@@ -1,17 +1,16 @@
 # Emergency direct replacement for website menu to bypass all the complex logic
 
+<#
+.SYNOPSIS
+    Displays a simplified website deployment menu with direct deployment options.
+.DESCRIPTION
+    Provides a streamlined interface for website deployment without complex handlers.
+#>
 function Show-WebsiteMenuDirect {
     [CmdletBinding()]
     param()
     
-    # Guaranteed to work hashtable-based menu
-    $menuItems = @{
-        "1" = "Deploy Static Website"
-        "2" = "Deploy App Service Website" 
-        "3" = "Auto-Detect and Deploy Website"
-        "4" = "Configure Custom Domain"
-        "5" = "Return to Main Menu"
-    }
+    # Menu options for deployment
     
     do {
         # Clear host for clean display
@@ -48,7 +47,7 @@ function Show-WebsiteMenuDirect {
                     Deploy-SimpleAutoDetectWebsite
                 }
                 "4" {
-                    Configure-SimpleCustomDomain
+                    Set-SimpleCustomDomain
                 }
                 "5" {
                     # Return to main menu
@@ -68,6 +67,12 @@ function Show-WebsiteMenuDirect {
 
 # Simple deployment functions that don't rely on complex handlers
 
+<#
+.SYNOPSIS
+    Deploys a static website with simplified parameter collection.
+.DESCRIPTION
+    Collects deployment parameters and deploys a static website without complex handlers.
+#>
 function Deploy-SimpleStaticWebsite {
     Clear-Host
     Write-Host "=== Deploy Static Website ===" -ForegroundColor Cyan
@@ -180,6 +185,12 @@ function Deploy-SimpleStaticWebsite {
     }
 }
 
+<#
+.SYNOPSIS
+    Deploys an App Service website with simplified parameter collection.
+.DESCRIPTION
+    Collects deployment parameters and deploys an App Service website without complex handlers.
+#>
 function Deploy-SimpleAppServiceWebsite {
     Clear-Host
     Write-Host "=== Deploy App Service Website ===" -ForegroundColor Cyan
@@ -292,6 +303,12 @@ function Deploy-SimpleAppServiceWebsite {
     }
 }
 
+<#
+.SYNOPSIS
+    Auto-detects project type and deploys website with simplified parameter collection.
+.DESCRIPTION
+    Automatically detects the project type and deploys the website without complex handlers.
+#>
 function Deploy-SimpleAutoDetectWebsite {
     Clear-Host
     Write-Host "=== Auto-Detect and Deploy Website ===" -ForegroundColor Cyan
@@ -403,9 +420,14 @@ if ($confirm -eq "y") {
 else {
     Write-Host "Deployment cancelled." -ForegroundColor Yellow
 }
-}
 
-function Configure-SimpleCustomDomain {
+<#
+.SYNOPSIS
+    Configures custom domain for website deployment.
+.DESCRIPTION
+    Sets up custom domain configuration for static or app service websites.
+#>
+function Set-SimpleCustomDomain {
     Clear-Host
     Write-Host "=== Configure Custom Domain ===" -ForegroundColor Cyan
     Write-Host ""

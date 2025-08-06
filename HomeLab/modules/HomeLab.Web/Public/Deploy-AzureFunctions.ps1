@@ -211,6 +211,39 @@ function Deploy-AzureFunctions {
         $StorageAccount = "$($AppName.ToLower())storage"
     }
     
+    # Validate and correct storage account name to meet Azure requirements
+    Write-Host "Validating storage account name: $StorageAccount" -ForegroundColor White
+    
+    # Azure storage account naming rules: 3-24 characters, lowercase letters and numbers only
+    $originalName = $StorageAccount
+    $StorageAccount = $StorageAccount.ToLower() -replace '[^a-z0-9]', ''
+    
+    # Ensure minimum length of 3 characters
+    if ($StorageAccount.Length -lt 3) {
+        $StorageAccount = "st" + $StorageAccount
+    }
+    
+    # Ensure maximum length of 24 characters
+    if ($StorageAccount.Length -gt 24) {
+        $StorageAccount = $StorageAccount.Substring(0, 24)
+    }
+    
+    # Ensure it doesn't start with a number
+    if ($StorageAccount -match '^[0-9]') {
+        $StorageAccount = "st" + $StorageAccount
+        # Re-check length after prefix
+        if ($StorageAccount.Length -gt 24) {
+            $StorageAccount = $StorageAccount.Substring(0, 24)
+        }
+    }
+    
+    if ($originalName -ne $StorageAccount) {
+        Write-Host "Storage account name corrected from '$originalName' to '$StorageAccount' to meet Azure requirements." -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "Storage account name '$StorageAccount' meets Azure requirements." -ForegroundColor Green
+    }
+    
     try {
         $existingStorage = Get-AzStorageAccount -Name $StorageAccount -ResourceGroupName $ResourceGroup -ErrorAction SilentlyContinue
         if (-not $existingStorage) {
@@ -257,7 +290,7 @@ function Deploy-AzureFunctions {
             if (-not $existingPlan) {
                 Write-Host "Creating App Service Plan: $planName" -ForegroundColor White
                 $sku = if ($PlanType -eq "Premium") { "P1v2" } else { "B1" }
-                $appServicePlan = New-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Location $Location -Tier $PlanType -WorkerSize $sku -ErrorAction Stop
+                $appServicePlan = New-AzAppServicePlan -Name $planName -ResourceGroupName $ResourceGroup -Location $Location -SkuName $sku -ErrorAction Stop
                 Write-Host "App Service Plan created successfully." -ForegroundColor Green
             }
             else {
@@ -352,8 +385,16 @@ function Deploy-AzureFunctions {
             }
             
             if ($SourceControlToken) {
-                $plainTextToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SourceControlToken))
+                # Securely convert SecureString to plain text
+                $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SourceControlToken)
+                $plainTextToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
                 $deploymentParams.RepositoryToken = $plainTextToken
+                
+                # Securely clear sensitive data from memory
+                [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+                $plainTextToken = $null
+                [System.GC]::Collect()
+                [System.GC]::WaitForPendingFinalizers()
             }
             
             Set-AzFunctionAppSourceControl @deploymentParams -ErrorAction Stop

@@ -1,92 +1,78 @@
-function Get-GitHubTokenFromUser {
+function Get-GitHubToken {
     <#
     .SYNOPSIS
-        Manages GitHub token acquisition, validation, and storage.
+        Gets a GitHub token from secure storage or prompts user to enter one.
     
     .DESCRIPTION
-        This function provides a comprehensive GitHub token management system that:
-        - Checks for existing tokens in environment variables
-        - Guides users to create new tokens
-        - Validates tokens against GitHub API
-        - Stores tokens securely in user environment variables
+        This function first checks for a saved GitHub token in secure storage.
+        If not found, it prompts the user to enter a token and validates it.
+        The token is then saved securely for future use.
+    
+    .PARAMETER ForceNew
+        Forces the user to enter a new token, even if one is already saved.
     
     .OUTPUTS
-        Returns the GitHub token as a plain string if successful, null otherwise.
-    
-    .EXAMPLE
-        $token = Get-GitHubTokenFromUser
-        if ($token) {
-            # Use token for GitHub API calls
-        }
+        Returns the GitHub token as a string, or $null if the user cancels.
     #>
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter()]
+        [switch]$ForceNew
+    )
     
-    Write-Log -Message "Checking for GitHub token" -Level "Info"
-    
-    # Check environment variables first
-    $token = $env:GITHUB_TOKEN
-    
-    if ($token) {
-        Write-Log -Message "Found existing GitHub token" -Level "Success"
-        # Validate existing token
-        if (Test-GitHubToken -Token $token) {
-            return $token
-        }
-        else {
-            Write-Log -Message "Existing token is invalid" -Level "Warning"
-            $token = $null
+    # Check for existing token in secure storage
+    if (-not $ForceNew) {
+        $existingToken = Get-SecureGitHubToken
+        if ($existingToken) {
+            Write-Log -Message "Using existing GitHub token from secure storage" -Level "Info"
+            Write-Host "✅ Using saved GitHub token" -ForegroundColor Green
+            return $existingToken
         }
     }
     
-    # No valid token found, prompt user
-    Write-Host ""
-    Write-Host "┌─────────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
-    Write-Host "│                    GitHub Token Required                        │" -ForegroundColor Cyan
-    Write-Host "├─────────────────────────────────────────────────────────────────┤" -ForegroundColor Cyan
-    Write-Host "│ A Personal Access Token is needed to access your repositories  │" -ForegroundColor White
-    Write-Host "│                                                                 │" -ForegroundColor White
-    Write-Host "│ To create a token:                                             │" -ForegroundColor White
-    Write-Host "│ 1. Go to: https://github.com/settings/tokens                  │" -ForegroundColor Yellow
-    Write-Host "│ 2. Click 'Generate new token (classic)'                       │" -ForegroundColor Yellow
-    Write-Host "│ 3. Give it a name like 'HomeLab Deployment'                   │" -ForegroundColor Yellow
-    Write-Host "│ 4. Select scopes: 'repo' and 'workflow'                       │" -ForegroundColor Yellow
-    Write-Host "│ 5. Click 'Generate token'                                     │" -ForegroundColor Yellow
-    Write-Host "│ 6. Copy the token (you won't see it again!)                   │" -ForegroundColor Yellow
-    Write-Host "└─────────────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host "🔑 GitHub Token Required" -ForegroundColor Cyan
+    Write-Host "Please provide your GitHub Personal Access Token." -ForegroundColor White
+    Write-Host "You can create one at: https://github.com/settings/tokens" -ForegroundColor Yellow
+    Write-Host "Required scopes: repo, workflow, admin:org (for organization repos)" -ForegroundColor Yellow
     Write-Host ""
     
-    $getTokenChoice = Read-Host "Enter GitHub token now? (y/n)"
-    if ($getTokenChoice -eq "y") {
-        do {
-            $newToken = Read-Host "Paste your GitHub Personal Access Token" -AsSecureString
-            $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($newToken)
-            try {
-                $plainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                
-                if (Test-GitHubToken -Token $plainToken) {
-                    # Save to environment variables
-                    $env:GITHUB_TOKEN = $plainToken
-                    [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $plainToken, "User")
-                    
-                    Write-Log -Message "GitHub token validated and saved successfully" -Level "Success"
-                    Write-Host "✅ Token validated and saved to environment variables!" -ForegroundColor Green
-                    
+    do {
+        $token = Read-Host "Enter your GitHub token" -AsSecureString
+        
+        if ($token.Length -eq 0) {
+            Write-Host "❌ Token cannot be empty. Please try again." -ForegroundColor Red
+            continue
+        }
+        
+        # Convert to plain text for validation
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
+        try {
+            $plainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+            
+            if (Test-GitHubToken -Token $plainToken) {
+                # Save token securely
+                if (Save-SecureGitHubToken -Token $plainToken) {
+                    Write-Log -Message "GitHub token validated and saved securely" -Level "Success"
+                    Write-Host "✅ Token validated and saved securely!" -ForegroundColor Green
                     return $plainToken
                 }
                 else {
-                    Write-Host "❌ Invalid token. Please check and try again." -ForegroundColor Red
-                    $retry = Read-Host "Try again? (y/n)"
-                    if ($retry -ne "y") {
-                        break
-                    }
+                    Write-Host "⚠️  Token validated but could not be saved securely. Continuing without saving." -ForegroundColor Yellow
+                    return $plainToken
                 }
             }
-            finally {
-                [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+            else {
+                Write-Host "❌ Invalid token. Please check and try again." -ForegroundColor Red
+                $retry = Read-Host "Try again? (y/n)"
+                if ($retry -ne "y") {
+                    break
+                }
             }
-        } while ($true)
-    }
+        }
+        finally {
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+        }
+    } while ($true)
     
     return $null
 }
@@ -192,7 +178,7 @@ function Get-GitHubRepositories {
     }
     catch {
         Write-Log -Message "Failed to fetch GitHub repositories: $($_.Exception.Message)" -Level "Error"
-        Write-Host "❌ Failed to fetch repositories: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "X Failed to fetch repositories: $($_.Exception.Message)" -ForegroundColor Red
         return @()
     }
 }
@@ -400,7 +386,7 @@ function Invoke-GitHubRepositorySelection {
     Write-Log -Message "Starting GitHub repository selection workflow" -Level "Info"
     
     # Get GitHub token
-    $token = Get-GitHubTokenFromUser
+    $token = Get-GitHubToken
     if (-not $token) {
         Write-Host "⚠️  Proceeding without GitHub integration." -ForegroundColor Yellow
         return @{
@@ -455,4 +441,254 @@ function Invoke-GitHubRepositorySelection {
         Token = $token
         Repository = $selectedRepo
     }
+}
+
+function Get-GitHubIntegration {
+    <#
+    .SYNOPSIS
+        Provides a complete GitHub integration workflow for repository selection.
+    
+    .DESCRIPTION
+        This function guides the user through the complete process of:
+        1. Authenticating with GitHub
+        2. Selecting a repository
+        3. Choosing a branch
+        4. Returning the integration details
+    
+    .OUTPUTS
+        Returns a hashtable with RepoUrl, Branch, and Token information.
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-Log -Message "Starting GitHub repository selection workflow" -Level "Info"
+
+    # Get GitHub token
+    $token = Get-GitHubToken
+    if (-not $token) {
+        Write-Host "⚠️  Proceeding without GitHub integration." -ForegroundColor Yellow
+        return @{
+            RepoUrl = $null
+            Branch = $null
+            Token = $null
+        }
+    }
+
+    # Get repositories
+    Write-Log -Message "Fetching GitHub repositories" -Level "Info"
+    $repositories = Get-GitHubRepositories -Token $token -IncludeOrganization
+    if (-not $repositories -or $repositories.Count -eq 0) {
+        Write-Host "❌ No repositories found or failed to fetch repositories." -ForegroundColor Red
+        return @{
+            RepoUrl = $null
+            Branch = $null
+            Token = $null
+        }
+    }
+
+    # Select repository
+    $selectedRepo = Select-GitHubRepository -Repositories $repositories
+    if (-not $selectedRepo) {
+        Write-Log -Message "Repository selection cancelled" -Level "Info"
+        return @{
+            RepoUrl = $null
+            Branch = $null
+            Token = $null
+        }
+    }
+
+    # Handle manual repository entry
+    if ($selectedRepo.Manual) {
+        $repoUrl = Read-Host "Enter repository URL (e.g., https://github.com/username/repo)"
+        if (-not $repoUrl) {
+            Write-Log -Message "Manual repository entry cancelled" -Level "Info"
+            return @{
+                RepoUrl = $null
+                Branch = $null
+                Token = $null
+            }
+        }
+    }
+    else {
+        $repoUrl = $selectedRepo.clone_url
+    }
+
+    # Select branch
+    $branch = Select-GitHubBranch -Token $token -RepoUrl $repoUrl
+    if (-not $branch) {
+        Write-Log -Message "Branch selection cancelled" -Level "Info"
+        return @{
+            RepoUrl = $null
+            Branch = $null
+            Token = $null
+        }
+    }
+
+    Write-Log -Message "GitHub integration completed successfully" -Level "Success"
+    Write-Host "✅ GitHub integration configured successfully!" -ForegroundColor Green
+    Write-Host "Repository: $repoUrl" -ForegroundColor Cyan
+    Write-Host "Branch: $branch" -ForegroundColor Cyan
+
+    return @{
+        RepoUrl = $repoUrl
+        Branch = $branch
+        Token = $token
+    }
+}
+
+# Secure token storage functions
+function Save-SecureGitHubToken {
+    <#
+    .SYNOPSIS
+        Securely saves a GitHub token using Windows Credential Manager and encrypted XML.
+    
+    .PARAMETER Token
+        The GitHub token to store securely.
+    
+    .PARAMETER Username
+        Optional username to associate with the token.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Token,
+        
+        [Parameter()]
+        [string]$Username = "HomeLab-GitHub"
+    )
+    
+    try {
+        # Create a PSCredential object
+        $secureToken = ConvertTo-SecureString -String $Token -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential($Username, $secureToken)
+        
+        # Save to Windows Credential Manager
+        $credentialPath = Join-Path $env:USERPROFILE ".homelab\credentials"
+        if (-not (Test-Path $credentialPath)) {
+            New-Item -Path $credentialPath -ItemType Directory -Force | Out-Null
+        }
+        
+        $credentialFile = Join-Path $credentialPath "github-token.xml"
+        $credential | Export-Clixml -Path $credentialFile -Force
+        
+        # Set restricted access permissions (Windows only)
+        if ($IsWindows -or $env:OS -eq "Windows_NT") {
+            try {
+                $acl = Get-Acl -Path $credentialFile
+                $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($currentUser, "FullControl", "Allow")
+                $acl.SetAccessRule($accessRule)
+                $acl | Set-Acl -Path $credentialFile
+            }
+            catch {
+                Write-Warning "Could not set restricted permissions on credential file: $($_.Exception.Message)"
+            }
+        }
+        
+        Write-Log -Message "GitHub token saved securely to: $credentialFile" -Level "Success"
+        return $true
+    }
+    catch {
+        Write-Log -Message "Failed to save GitHub token securely: $($_.Exception.Message)" -Level "Error"
+        return $false
+    }
+}
+
+function Get-SecureGitHubToken {
+    <#
+    .SYNOPSIS
+        Retrieves a GitHub token from secure storage.
+    
+    .PARAMETER Username
+        The username associated with the token.
+    
+    .OUTPUTS
+        Returns the GitHub token as a string, or $null if not found.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [string]$Username = "HomeLab-GitHub"
+    )
+    
+    try {
+        $credentialPath = Join-Path $env:USERPROFILE ".homelab\credentials"
+        $credentialFile = Join-Path $credentialPath "github-token.xml"
+        
+        if (-not (Test-Path $credentialFile)) {
+            Write-Log -Message "No saved GitHub token found" -Level "Info"
+            return $null
+        }
+        
+        # Import the credential
+        $credential = Import-Clixml -Path $credentialFile
+        
+        # Convert back to plain text
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($credential.Password)
+        try {
+            $token = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+            Write-Log -Message "GitHub token retrieved from secure storage" -Level "Success"
+            return $token
+        }
+        finally {
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+        }
+    }
+    catch {
+        Write-Log -Message "Failed to retrieve GitHub token from secure storage: $($_.Exception.Message)" -Level "Error"
+        return $null
+    }
+}
+
+function Remove-SecureGitHubToken {
+    <#
+    .SYNOPSIS
+        Removes a GitHub token from secure storage.
+    
+    .PARAMETER Username
+        The username associated with the token.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [string]$Username = "HomeLab-GitHub"
+    )
+    
+    try {
+        $credentialPath = Join-Path $env:USERPROFILE ".homelab\credentials"
+        $credentialFile = Join-Path $credentialPath "github-token.xml"
+        
+        if (Test-Path $credentialFile) {
+            Remove-Item -Path $credentialFile -Force
+            Write-Log -Message "GitHub token removed from secure storage" -Level "Success"
+            return $true
+        }
+        else {
+            Write-Log -Message "No GitHub token found in secure storage" -Level "Info"
+            return $false
+        }
+    }
+    catch {
+        Write-Log -Message "Failed to remove GitHub token from secure storage: $($_.Exception.Message)" -Level "Error"
+        return $false
+    }
+}
+
+function Test-SecureGitHubToken {
+    <#
+    .SYNOPSIS
+        Tests if a GitHub token exists in secure storage and is valid.
+    
+    .OUTPUTS
+        Returns $true if token exists and is valid, $false otherwise.
+    #>
+    [CmdletBinding()]
+    param()
+    
+    $token = Get-SecureGitHubToken
+    if (-not $token) {
+        return $false
+    }
+    
+    return Test-GitHubToken -Token $token
 }

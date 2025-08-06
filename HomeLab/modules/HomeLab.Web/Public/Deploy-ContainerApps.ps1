@@ -232,6 +232,49 @@ CMD ["npm", "start"]
         if (-not $ContainerRegistry) {
             # Use Azure Container Registry
             $acrName = "$($AppName.ToLower())acr"
+            
+            # Validate and correct ACR name to meet Azure requirements
+            Write-Host "Validating Azure Container Registry name: $acrName" -ForegroundColor White
+            
+            # Azure Container Registry naming rules: 5-50 characters, lowercase alphanumeric only
+            $originalAcrName = $acrName
+            $acrName = $acrName.ToLower() -replace '[^a-z0-9]', ''
+            
+            # Ensure minimum length of 5 characters
+            if ($acrName.Length -lt 5) {
+                $acrName = "acr" + $acrName
+            }
+            
+            # Ensure maximum length of 50 characters
+            if ($acrName.Length -gt 50) {
+                $acrName = $acrName.Substring(0, 50)
+            }
+            
+            # Ensure it doesn't start with a number
+            if ($acrName -match '^[0-9]') {
+                $acrName = "acr" + $acrName
+                # Re-check length after prefix
+                if ($acrName.Length -gt 50) {
+                    $acrName = $acrName.Substring(0, 50)
+                }
+            }
+            
+            # Add timestamp suffix for global uniqueness
+            $timestamp = Get-Date -Format "yyyyMMddHHmm"
+            $acrName = "$acrName$timestamp"
+            
+            # Final length check after timestamp addition
+            if ($acrName.Length -gt 50) {
+                $acrName = $acrName.Substring(0, 50)
+            }
+            
+            if ($originalAcrName -ne $acrName) {
+                Write-Host "ACR name corrected from '$originalAcrName' to '$acrName' to meet Azure requirements." -ForegroundColor Yellow
+            }
+            else {
+                Write-Host "ACR name '$acrName' meets Azure requirements." -ForegroundColor Green
+            }
+            
             Write-Host "Creating Azure Container Registry: $acrName" -ForegroundColor White
             try {
                 $acr = New-AzContainerRegistry -Name $acrName -ResourceGroupName $ResourceGroup -Location $Location -Sku Basic -ErrorAction Stop
@@ -296,13 +339,21 @@ CMD ["npm", "start"]
     Write-Host "Step 6/8: Configuring container registry credentials..." -ForegroundColor Cyan
     if ($ContainerRegistry -and $RegistryUsername -and $RegistryPassword) {
         try {
-            $plainTextPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($RegistryPassword))
+            # Securely convert SecureString to plain text
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($RegistryPassword)
+            $plainTextPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
             
             $registryCredential = @{
                 Server   = $ContainerRegistry
                 Username = $RegistryUsername
                 Password = $plainTextPassword
             }
+            
+            # Securely clear sensitive data from memory
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+            $plainTextPassword = $null
+            [System.GC]::Collect()
+            [System.GC]::WaitForPendingFinalizers()
             
             Write-Host "Container registry credentials configured." -ForegroundColor Green
         }
@@ -405,7 +456,14 @@ CMD ["npm", "start"]
     }
     
     # Return deployment information
-    $deploymentUrl = if ($Ingress -ne "disabled") { "https://$AppName.$($containerApp.Properties.Configuration.Ingress.Fqdn)" } else { "N/A" }
+    $deploymentUrl = "N/A"
+    if ($Ingress -ne "disabled" -and $containerApp -and $containerApp.Properties -and $containerApp.Properties.Configuration -and $containerApp.Properties.Configuration.Ingress -and $containerApp.Properties.Configuration.Ingress.Fqdn) {
+        $deploymentUrl = "https://$AppName.$($containerApp.Properties.Configuration.Ingress.Fqdn)"
+    }
+    elseif ($Ingress -ne "disabled") {
+        Write-Warning "Unable to construct deployment URL - Container App properties may not be fully populated."
+        Write-Host "Please check the Azure portal for the Container App URL." -ForegroundColor Yellow
+    }
     
     return @{
         Success       = $true

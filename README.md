@@ -47,7 +47,9 @@ Key requirements include:
 - PowerShell 7.2 or higher
 - Az PowerShell Module installed (`Install-Module -Name Az -AllowClobber -Force`)
 - Azure CLI installed and configured
-- Administrator access on your local machine## Getting Started
+- Administrator access on your local machine
+
+## Getting Started
 
 ### 1. Clone the Repository
 
