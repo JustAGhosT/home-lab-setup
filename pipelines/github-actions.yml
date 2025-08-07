@@ -1,4 +1,4 @@
-name: Deploy to Azure with Custom Domain
+﻿name: Deploy to Azure with Custom Domain
 
 on:
   workflow_dispatch:
@@ -332,3 +332,4 @@ jobs:
             echo "Custom URL: ${{ steps.get-url.outputs.custom_url }}"
             echo "Note: It may take some time for DNS changes to propagate."
           fi
+

@@ -1,4 +1,4 @@
-# Azure DevOps Pipeline - PowerShell Quality Gates
+﻿# Azure DevOps Pipeline - PowerShell Quality Gates
 # Comprehensive CI/CD pipeline with automated quality checks
 # Prevents code quality issues from reaching production
 
@@ -442,7 +442,7 @@ stages:
           New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
           
           # Copy module files
-          Copy-Item -Path "HomeLab\*" -Destination $packagePath -Recurse -Force
+          Copy-Item -Path "src\HomeLab\*" -Destination $packagePath -Recurse -Force
           
           # Copy documentation
           Copy-Item -Path "*.md" -Destination $packagePath -Force
@@ -450,25 +450,25 @@ stages:
           # Create deployment script
           Write-Host "Creating deployment script..." -ForegroundColor Yellow
           
-          $deployScriptContent = @'
-# HomeLab PowerShell Module Deployment Script
-# Generated: $(Get-Date)
-
-Write-Host "Installing HomeLab PowerShell Module..." -ForegroundColor Green
-
-# Install module
-$modulePath = Join-Path $env:PSModulePath.Split(';')[0] "HomeLab"
-if (-not (Test-Path $modulePath)) {
-    New-Item -Path $modulePath -ItemType Directory -Force | Out-Null
-}
-
-Copy-Item -Path "$PSScriptRoot\*" -Destination $modulePath -Recurse -Force
-
-Write-Host "Module installed successfully!" -ForegroundColor Green
-Write-Host "Import with: Import-Module HomeLab" -ForegroundColor Cyan
-'@
+          $deployScriptLines = @(
+              "# HomeLab PowerShell Module Deployment Script",
+              "# Generated: $(Get-Date)",
+              "",
+              "Write-Host 'Installing HomeLab PowerShell Module...' -ForegroundColor Green",
+              "",
+              "# Install module",
+              "`$modulePath = Join-Path `$env:PSModulePath.Split(';')[0] 'HomeLab'",
+              "if (-not (Test-Path `$modulePath)) {",
+              "    New-Item -Path `$modulePath -ItemType Directory -Force | Out-Null",
+              "}",
+              "",
+              "Copy-Item -Path '`$PSScriptRoot\*' -Destination `$modulePath -Recurse -Force",
+              "",
+              "Write-Host 'Module installed successfully!' -ForegroundColor Green",
+              "Write-Host 'Import with: Import-Module HomeLab' -ForegroundColor Cyan"
+          )
           
-          $deployScriptContent | Out-File -FilePath "$packagePath\Install-Module.ps1" -Encoding UTF8
+          $deployScriptLines -join "`n" | Out-File -FilePath "$packagePath\Install-Module.ps1" -Encoding UTF8
           
           Write-Host "Module package created at: $packagePath" -ForegroundColor Green
 
@@ -555,80 +555,7 @@ Write-Host "Import with: Import-Module HomeLab" -ForegroundColor Cyan
           
           Write-Host "All integration tests passed" -ForegroundColor Green
 
-# Pre-commit hook script for local development
-# Save as .git/hooks/pre-commit
-pre-commit-hook: |
-  #!/bin/sh
-  # PowerShell Quality Gate Pre-commit Hook
-  
-  echo "Running PowerShell quality checks..."
-  
-  # Check for PowerShell files
-  if git diff --cached --name-only | grep -E '\.(ps1|psm1|psd1)$' > /dev/null; then
-      echo "PowerShell files detected, running quality checks..."
-      
-      # Run PSScriptAnalyzer on staged files
-      powershell -Command "& {
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          `$files = git diff --cached --name-only | Where-Object { `$_ -match '\.(ps1|psm1|psd1)$' }
-          `$results = Invoke-ScriptAnalyzer -Path `$files -Severity Error, Warning
-          
-          if (`$results.Count -gt 0) {
-              Write-Host 'Quality issues found:' -ForegroundColor Red
-              `$results | ForEach-Object { Write-Host `"  `$(`$_.ScriptName):`$(`$_.Line) - `$(`$_.Message)`" -ForegroundColor Red }
-              exit 1
-          }
-          
-          Write-Host 'Quality checks passed' -ForegroundColor Green
-      }"
-      
-      if [ $? -ne 0 ]; then
-          echo "Quality checks failed. Please fix issues before committing."
-          exit 1
-      fi
-  fi
-  
-  echo "Pre-commit checks completed successfully."
+# PowerShell Quality Gates - Azure DevOps Pipeline
+# This pipeline provides comprehensive quality checks for PowerShell code
+# including PSScriptAnalyzer, Pester tests, and security scanning
 
-# GitHub Actions workflow equivalent
-github-actions: |
-  name: PowerShell Quality Gates
-  
-  on:
-    push:
-      branches: [ main, develop ]
-      paths: [ '**/*.ps1', '**/*.psm1', '**/*.psd1' ]
-    pull_request:
-      branches: [ main, develop ]
-      paths: [ '**/*.ps1', '**/*.psm1', '**/*.psd1' ]
-  
-  jobs:
-    quality-gates:
-      runs-on: windows-latest
-      
-      steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install PowerShell Tools
-        shell: pwsh
-        run: |
-          Install-Module -Name PSScriptAnalyzer, Pester -Force -Scope CurrentUser
-      
-      - name: Run Quality Analysis
-        shell: pwsh
-        run: |
-          $results = Invoke-ScriptAnalyzer -Path "**/*.ps1" -Severity Error, Warning
-          if ($results.Count -gt 0) {
-              Write-Host "Quality issues found:" -ForegroundColor Red
-              $results | ForEach-Object { Write-Host "  $($_.ScriptName):$($_.Line) - $($_.Message)" -ForegroundColor Red }
-              exit 1
-          }
-      
-      - name: Run Tests
-        shell: pwsh
-        run: |
-          $testResults = Invoke-Pester -Path "**/*.Tests.ps1" -PassThru
-          if ($testResults.FailedCount -gt 0) {
-              Write-Host "Tests failed: $($testResults.FailedCount)" -ForegroundColor Red
-              exit 1
-          }

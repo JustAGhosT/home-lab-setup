@@ -64,6 +64,7 @@ function Deploy-HybridCloudBridge {
         Date: March 2025
     #>
     [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$ResourceGroup,
