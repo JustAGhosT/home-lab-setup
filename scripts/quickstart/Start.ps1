@@ -320,7 +320,8 @@ function Show-DocumentationMenu {
 # Function to import HomeLab module
 function Import-HomeLabModule {
     try {
-        $moduleBasePath = Join-Path -Path $PSScriptRoot -ChildPath "HomeLab"
+        # Updated path after repository restructuring
+        $moduleBasePath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\src\HomeLab\HomeLab"
         $modulePath = Join-Path -Path $moduleBasePath -ChildPath "HomeLab.psd1"
         
         if (Test-Path $modulePath) {

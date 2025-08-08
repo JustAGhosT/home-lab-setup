@@ -1,11 +1,12 @@
 # Import the core modules
-$modulePath = Join-Path $PSScriptRoot "..\HomeLab\modules"
+$modulePath = Join-Path $PSScriptRoot "..\src\HomeLab\HomeLab\modules"
 try {
     # Import required modules
     Import-Module "$modulePath\HomeLab.Core" -Force -ErrorAction Stop
     Import-Module "$modulePath\HomeLab.Azure" -Force -ErrorAction Stop
     Import-Module "$modulePath\HomeLab.Web" -Force -ErrorAction Stop
-} catch {
+}
+catch {
     Write-Warning "Failed to import one or more required modules: $_"
 }
 

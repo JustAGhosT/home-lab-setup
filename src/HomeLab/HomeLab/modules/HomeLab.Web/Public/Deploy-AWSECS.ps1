@@ -161,7 +161,7 @@ CMD ["npm", "start"]
     }
 }
 
-function Deploy-AWSECS {
+function Start-AWSECSDeployment {
     <#
     .SYNOPSIS
         Deploys applications to AWS ECS (Elastic Container Service) with Fargate.
@@ -270,9 +270,9 @@ function Deploy-AWSECS {
         Unhealthy threshold count (default: 2).
     
     .EXAMPLE
-        Deploy-AWSECS -AppName "my-api" -ProjectPath "C:\Projects\my-api" -AwsRegion "us-east-1"
+        Start-AWSECSDeployment -AppName "my-api" -ProjectPath "C:\Projects\my-api" -AwsRegion "us-east-1"
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param (
         [Parameter(Mandatory = $true)]
         [string]$AppName,
@@ -433,7 +433,7 @@ function Deploy-AWSECS {
         
         # Create ECR repository if it doesn't exist
         try {
-            $ecrRepo = aws ecr describe-repositories --repository-names $EcrRepositoryName --region $AwsRegion --output json 2>$null | ConvertFrom-Json
+            $null = aws ecr describe-repositories --repository-names $EcrRepositoryName --region $AwsRegion --output json 2>$null | ConvertFrom-Json
             Write-Host "ECR repository '$EcrRepositoryName' already exists." -ForegroundColor Green
         }
         catch {
@@ -451,7 +451,7 @@ function Deploy-AWSECS {
         $ecrLoginToken | docker login --username AWS --password-stdin $ecrRegistry
         
         # Build and tag image
-        $fullImageName = "$ecrRegistry/$EcrRepositoryName" + ":" + $ImageTag
+        $fullImageName = "${ecrRegistry}/${EcrRepositoryName}:${ImageTag}"
         Write-Host "Building container image: $fullImageName" -ForegroundColor White
         try {
             Push-Location -Path $ProjectPath
@@ -552,7 +552,7 @@ function Deploy-AWSECS {
         containerDefinitions    = @(
             @{
                 name             = $AppName
-                image            = if ($BuildImage) { "$ecrRegistry/$EcrRepositoryName" + ":" + $ImageTag } else { "$ImageName" + ":" + $ImageTag }
+                image            = if ($BuildImage) { "${ecrRegistry}/${EcrRepositoryName}:${ImageTag}" } else { "${ImageName}:${ImageTag}" }
                 portMappings     = @(
                     @{
                         containerPort = $Port
@@ -588,7 +588,7 @@ function Deploy-AWSECS {
         $taskDefinitionJson.containerDefinitions[0].secrets = @()
         foreach ($key in $Secrets.Keys) {
             $accountId = $callerIdentity.Account
-            $secretArn = "arn:aws:secretsmanager:${AwsRegion}:${accountId}:secret:$key"
+            $secretArn = "arn:aws:secretsmanager:${AwsRegion}:${accountId}:secret:${key}"
             $taskDefinitionJson.containerDefinitions[0].secrets += @{
                 name      = $key
                 valueFrom = $secretArn
@@ -601,7 +601,7 @@ function Deploy-AWSECS {
     
     try {
         Write-Host "Creating ECS task definition: $TaskDefinitionName" -ForegroundColor White
-        $taskDefResult = aws ecs register-task-definition --cli-input-json file://$taskDefinitionFile --region $AwsRegion --output json | ConvertFrom-Json
+        $null = aws ecs register-task-definition --cli-input-json file://$taskDefinitionFile --region $AwsRegion --output json | ConvertFrom-Json
         Write-Host "ECS task definition created successfully." -ForegroundColor Green
     }
     catch {
@@ -624,7 +624,7 @@ function Deploy-AWSECS {
             Write-Host "Application Load Balancer '$LoadBalancerName' already exists." -ForegroundColor Green
         }
         
-        $albArn = $albResult.LoadBalancers[0].LoadBalancerArn
+        $null = $albResult.LoadBalancers[0].LoadBalancerArn
         $albDnsName = $albResult.LoadBalancers[0].DNSName
     }
     catch {

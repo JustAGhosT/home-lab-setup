@@ -264,4 +264,6 @@ Copy-Item -Path "." -Destination $backupPath -Recurse -Exclude ".git", "node_mod
 
 This improved structure will transform your repository into a professional, enterprise-grade PowerShell module that follows industry best practices and provides an excellent development experience.
 
-*Context improved by Giga AI - Used repository analysis and PowerShell module best practices to create comprehensive structure improvement plan*
+## Context
+
+Context improved by Giga AI - Used repository analysis and PowerShell module best practices to create comprehensive structure improvement plan

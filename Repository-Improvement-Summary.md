@@ -231,4 +231,6 @@ The automated migration script makes this transformation safe, reversible, and e
 
 **Ready to begin?** Start with the WhatIf preview to see the transformation in action!
 
-*Context improved by Giga AI - Used comprehensive repository analysis to create detailed improvement plan with automated migration tools*
+## Context
+
+Context improved by Giga AI - Used comprehensive repository analysis to create detailed improvement plan with automated migration tools

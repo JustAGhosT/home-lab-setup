@@ -1,6 +1,6 @@
 BeforeAll {
     # Import required modules
-    $modulePath = Join-Path $PSScriptRoot "..\..\HomeLab\modules\HomeLab.DNS\HomeLab.DNS.psm1"
+    $modulePath = Join-Path $PSScriptRoot "..\..\src\HomeLab\HomeLab\modules\HomeLab.DNS\HomeLab.DNS.psm1"
     if (Test-Path $modulePath) {
         Import-Module $modulePath -Force
     }
@@ -19,9 +19,9 @@ BeforeAll {
         )
         
         return @{
-            Name = $DomainName
+            Name              = $DomainName
             ResourceGroupName = $ResourceGroup
-            NameServers = @(
+            NameServers       = @(
                 "ns1-01.azure-dns.com.",
                 "ns2-01.azure-dns.net.",
                 "ns3-01.azure-dns.org.",
@@ -56,13 +56,13 @@ BeforeAll {
         )
         
         return @{
-            Success = $true
-            ZoneName = $ZoneName
-            RecordName = $RecordName
-            RecordType = $RecordType
-            Value = $Value
-            TTL = $TTL
-            ResourceGroup = $ResourceGroup
+            Success        = $true
+            ZoneName       = $ZoneName
+            RecordName     = $RecordName
+            RecordType     = $RecordType
+            Value          = $Value
+            TTL            = $TTL
+            ResourceGroup  = $ResourceGroup
             SubscriptionId = $SubscriptionId
         }
     }
@@ -87,16 +87,16 @@ BeforeAll {
         if ($ZoneName -eq "example.com") {
             return @(
                 @{
-                    Name = "www"
-                    Type = "A"
+                    Name  = "www"
+                    Type  = "A"
                     Value = "10.0.0.1"
-                    TTL = 3600
+                    TTL   = 3600
                 },
                 @{
-                    Name = "mail"
-                    Type = "CNAME"
+                    Name  = "mail"
+                    Type  = "CNAME"
                     Value = "mail.example.com"
-                    TTL = 3600
+                    TTL   = 3600
                 }
             )
         }

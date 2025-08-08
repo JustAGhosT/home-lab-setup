@@ -131,8 +131,8 @@ function Ensure-AzureLogin {
 # Function to import the HomeLab module
 function Import-HomeLabModule {
     try {
-        # Try to import the HomeLab module
-        $moduleBasePath = Join-Path -Path $PSScriptRoot -ChildPath "HomeLab"
+        # Try to import the HomeLab module (updated path after restructuring)
+        $moduleBasePath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\src\HomeLab\HomeLab"
         $modulePath = Join-Path -Path $moduleBasePath -ChildPath "HomeLab.psd1"
         
         if (Test-Path $modulePath) {
