@@ -3,11 +3,11 @@
 Describe "HomeLab.Azure Module Tests" {
     BeforeAll {
         # Import required dependencies first
-        Import-Module "$PSScriptRoot\..\..\HomeLab\modules\HomeLab.Logging" -Force -ErrorAction SilentlyContinue
-        Import-Module "$PSScriptRoot\..\..\HomeLab\modules\HomeLab.Core" -Force -ErrorAction SilentlyContinue
+        Import-Module "$PSScriptRoot\..\..\src\HomeLab\HomeLab\modules\HomeLab.Logging" -Force -ErrorAction SilentlyContinue
+        Import-Module "$PSScriptRoot\..\..\src\HomeLab\HomeLab\modules\HomeLab.Core" -Force -ErrorAction SilentlyContinue
 
         # Import the actual HomeLab.Azure module
-        Import-Module "$PSScriptRoot\..\..\HomeLab\modules\HomeLab.Azure" -Force
+        Import-Module "$PSScriptRoot\..\..\src\HomeLab\HomeLab\modules\HomeLab.Azure" -Force
 
         # Import the mock module for Azure cmdlets
         $mockPath = "$PSScriptRoot\HomeLab.Azure.Mock.ps1"

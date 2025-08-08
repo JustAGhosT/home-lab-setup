@@ -1,6 +1,6 @@
 BeforeAll {
-    # Path to the workflow file
-    $workflowPath = Join-Path -Path $PSScriptRoot -ChildPath "..\deploy-azure.yml"
+    # Path to the workflow file (moved during restructuring)
+    $workflowPath = Join-Path -Path $PSScriptRoot -ChildPath "..\pipelines\github-actions.yml"
     
     # Ensure PowerShell-Yaml module is available
     if (-not (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue)) {

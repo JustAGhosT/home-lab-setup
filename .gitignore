@@ -140,3 +140,27 @@ wheels/
 MANIFEST
 
 # Ignore any other files you don't want to track
+
+# Build artifacts
+artifacts/
+logs/
+TestResults/
+
+# PowerShell
+*.ps1.log
+*.psm1.log
+*.psd1.log
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup

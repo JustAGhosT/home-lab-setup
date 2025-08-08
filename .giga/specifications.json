@@ -1,0 +1,18 @@
+[
+  {
+    "fileName": "docs/index.md",
+    "description": "Complete overview of the entire system, its architecture, and key components"
+  },
+  {
+    "fileName": "docs/WEBSITE-DEPLOYMENT.md",
+    "description": "Documentation of the frontend components, state management, and UI patterns"
+  },
+  {
+    "fileName": "docs/API-REFERENCE.md",
+    "description": "Documentation of the API endpoints, request/response formats, and authentication"
+  },
+  {
+    "fileName": "docs/DEVELOPMENT.md",
+    "description": "Documentation of the data models, database schema, and entity relationships"
+  }
+]

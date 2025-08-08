@@ -87,11 +87,11 @@ if ($Coverage) {
     Write-Host "Enabling code coverage..." -ForegroundColor Cyan
     $config.CodeCoverage.Enabled = $true
     $config.CodeCoverage.Path = @(
-        Join-Path $PSScriptRoot "..\HomeLab\modules\HomeLab.Core\*.ps1"
-        Join-Path $PSScriptRoot "..\HomeLab\modules\HomeLab.Azure\*.ps1"
-        Join-Path $PSScriptRoot "..\HomeLab\modules\HomeLab.Security\*.ps1"
-        Join-Path $PSScriptRoot "..\HomeLab\modules\HomeLab.Web\*.ps1"
-        Join-Path $PSScriptRoot "..\HomeLab\modules\HomeLab.DNS\*.ps1"
+        Join-Path $PSScriptRoot "..\src\HomeLab\HomeLab\modules\HomeLab.Core\*.ps1"
+        Join-Path $PSScriptRoot "..\src\HomeLab\HomeLab\modules\HomeLab.Azure\*.ps1"
+        Join-Path $PSScriptRoot "..\src\HomeLab\HomeLab\modules\HomeLab.Security\*.ps1"
+        Join-Path $PSScriptRoot "..\src\HomeLab\HomeLab\modules\HomeLab.Web\*.ps1"
+        Join-Path $PSScriptRoot "..\src\HomeLab\HomeLab\modules\HomeLab.DNS\*.ps1"
     )
     $config.CodeCoverage.OutputPath = Join-Path $PSScriptRoot "coverage.xml"
 }

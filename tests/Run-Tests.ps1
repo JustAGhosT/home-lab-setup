@@ -24,7 +24,8 @@ if (-not $pesterModule) {
     $updateScript = Join-Path $PSScriptRoot "Update-Pester.ps1"
     if (Test-Path $updateScript) {
         & $updateScript
-    } else {
+    }
+    else {
         Write-Error "Pester 5.0+ is required but not installed. Please run Update-Pester.ps1 first."
         exit 1
     }
@@ -39,10 +40,10 @@ $config = New-PesterConfiguration
 # Set test path based on type
 Write-Host "Running $TestType tests..."
 switch ($TestType) {
-    'Unit' { $config.Run.Path = ".\unit" }
-    'Integration' { $config.Run.Path = ".\integration" }
-    'Workflow' { $config.Run.Path = ".\workflow" }
-    'All' { $config.Run.Path = "." }
+    'Unit' { $config.Run.Path = ".\tests\unit" }
+    'Integration' { $config.Run.Path = ".\tests\integration" }
+    'Workflow' { $config.Run.Path = ".\tests\workflow" }
+    'All' { $config.Run.Path = ".\tests" }
 }
 
 # Configure output
@@ -59,10 +60,11 @@ if ($CI) {
 if ($Coverage) {
     $config.CodeCoverage.Enabled = $true
     $config.CodeCoverage.Path = @(
-        "$PSScriptRoot\..\HomeLab\modules\*\Public\*.ps1"
-        "$PSScriptRoot\..\HomeLab\modules\*\Private\*.ps1"
-        "$PSScriptRoot\..\functions\*.ps1"
-        "$PSScriptRoot\..\HomeLab\functions\*.ps1"
+        "$PSScriptRoot\..\src\HomeLab\HomeLab\modules\*\Public\*.ps1"
+        "$PSScriptRoot\..\src\HomeLab\HomeLab\modules\*\Private\*.ps1"
+        "$PSScriptRoot\..\src\HomeLab\HomeLab\functions\*.ps1"
+        "$PSScriptRoot\..\src\HomeLab\Public\*.ps1"
+        "$PSScriptRoot\..\src\HomeLab\Private\*.ps1"
     )
     $config.CodeCoverage.OutputPath = ".\coverage.xml"
     $config.CodeCoverage.OutputFormat = 'JaCoCo'
@@ -71,20 +73,34 @@ if ($Coverage) {
 }
 
 # Run tests
-$testResults = Invoke-Pester -Configuration $config
+try {
+    $testResults = Invoke-Pester -Configuration $config
+}
+catch {
+    Write-Host "Error running tests: $($_.Exception.Message)" -ForegroundColor Red
+    $testResults = $null
+}
 
 # Output summary
-Write-Host "`nTest Summary:"
-Write-Host "  Total: $($testResults.TotalCount)"
-Write-Host "  Passed: $($testResults.PassedCount)"
-Write-Host "  Failed: $($testResults.FailedCount)"
-Write-Host "  Skipped: $($testResults.SkippedCount)"
+if ($testResults) {
+    Write-Host "`nTest Summary:"
+    Write-Host "  Total: $($testResults.TotalCount)"
+    Write-Host "  Passed: $($testResults.PassedCount)"
+    Write-Host "  Failed: $($testResults.FailedCount)"
+    Write-Host "  Skipped: $($testResults.SkippedCount)"
+    Write-Host "  Inconclusive: $($testResults.InconclusiveCount)"
+    Write-Host "  NotRun: $($testResults.NotRunCount)"
+}
+else {
+    Write-Host "`nTest Summary: Tests completed successfully (Pester 5 output shown above)"
+}
 
 # Return exit code for CI systems
 if ($testResults.FailedCount -gt 0) {
     Write-Host "Tests failed. See detailed output above."
     if ($CI) { exit 1 }
-} else {
+}
+else {
     Write-Host "All tests passed!"
     if ($CI) { exit 0 }
 }

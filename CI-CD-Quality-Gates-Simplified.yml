@@ -1,0 +1,319 @@
+# Azure DevOps Pipeline - PowerShell Quality Gates (Simplified)
+# File: azure-pipelines.yml
+
+trigger:
+  - main
+  - develop
+
+pr:
+  - main
+  - develop
+
+variables:
+  PSScriptAnalyzerVersion: '1.21.0'
+  PesterVersion: '5.5.0'
+  PowerShellVersion: '7.2'
+  MaxCriticalIssues: 0
+  MaxHighIssues: 5
+  MinTestCoverage: 80
+  MaxComplexityScore: 10
+
+stages:
+- stage: Quality_Gates
+  displayName: 'Quality Gates'
+  jobs:
+  - job: PowerShell_Quality_Analysis
+    displayName: 'PowerShell Quality Analysis'
+    pool:
+      vmImage: 'windows-latest'
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Install PowerShell Modules'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          Install-Module -Name Pester -Force -Scope CurrentUser
+          Install-Module -Name PSCodeHealth -Force -Scope CurrentUser
+
+    - task: PowerShell@2
+      displayName: 'Security Vulnerability Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Security Vulnerability Scan ===" -ForegroundColor Cyan
+
+          $criticalIssues = 0
+          $highIssues = 0
+
+          # Check for Invoke-Expression usage
+          $invokeExpressionFiles = Get-ChildItem -Path . -Recurse -Include "*.ps1" |
+            Select-String -Pattern "Invoke-Expression" |
+            Select-Object -ExpandProperty Filename |
+            Sort-Object -Unique
+
+          if ($invokeExpressionFiles) {
+              Write-Host "CRITICAL: Found Invoke-Expression usage in:" -ForegroundColor Red
+              $invokeExpressionFiles | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+              $criticalIssues += $invokeExpressionFiles.Count
+          }
+
+          # Check for ConvertTo-SecureString with plaintext
+          $secureStringFiles = Get-ChildItem -Path . -Recurse -Include "*.ps1" |
+            Select-String -Pattern "ConvertTo-SecureString.*-AsPlainText" |
+            Select-Object -ExpandProperty Filename |
+            Sort-Object -Unique
+
+          if ($secureStringFiles) {
+              Write-Host "CRITICAL: Found ConvertTo-SecureString with plaintext in:" -ForegroundColor Red
+              $secureStringFiles | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+              $criticalIssues += $secureStringFiles.Count
+          }
+
+          # Check for Write-Host usage
+          $writeHostFiles = Get-ChildItem -Path . -Recurse -Include "*.ps1" |
+            Select-String -Pattern "Write-Host" |
+            Select-Object -ExpandProperty Filename |
+            Sort-Object -Unique
+
+          if ($writeHostFiles) {
+              Write-Host "HIGH: Found Write-Host usage in:" -ForegroundColor Yellow
+              $writeHostFiles | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+              $highIssues += $writeHostFiles.Count
+          }
+
+          Write-Host "Security Scan Results:" -ForegroundColor White
+          Write-Host "  Critical Issues: $criticalIssues" `
+            -ForegroundColor $(if ($criticalIssues -eq 0) { 'Green' } else { 'Red' })
+          Write-Host "  High Issues: $highIssues" `
+            -ForegroundColor $(if ($highIssues -eq 0) { 'Green' } else { 'Yellow' })
+
+          # Set pipeline variables
+          Write-Host "##vso[task.setvariable variable=CriticalIssues]$criticalIssues"
+          Write-Host "##vso[task.setvariable variable=HighIssues]$highIssues"
+
+          # Fail if critical issues found
+          if ($criticalIssues -gt 0) {
+              Write-Host "##vso[task.logissue type=error]Critical security issues found"
+              exit 1
+          }
+
+    - task: PowerShell@2
+      displayName: 'PSScriptAnalyzer Analysis'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== PSScriptAnalyzer Analysis ===" -ForegroundColor Cyan
+
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -IncludeRule @(
+              'PSUseConsistentWhitespace',
+              'PSUseShouldProcessForStateChangingFunctions',
+              'PSAvoidUsingWriteHost',
+              'PSAvoidUsingInvokeExpression',
+              'PSUseOutputTypeCorrectly',
+              'PSUseDeclaredVarsMoreThanAssignments'
+          )
+
+          $criticalRules = @('PSAvoidUsingInvokeExpression')
+          $highRules = @('PSAvoidUsingWriteHost', 'PSUseShouldProcessForStateChangingFunctions')
+
+          $criticalIssues = $results | Where-Object { $_.RuleName -in $criticalRules }
+          $highIssues = $results | Where-Object { $_.RuleName -in $highRules }
+          $mediumIssues = $results | Where-Object { $_.RuleName -notin ($criticalRules + $highRules) }
+
+          Write-Host "PSScriptAnalyzer Results:" -ForegroundColor White
+          Write-Host "  Critical Issues: $($criticalIssues.Count)" `
+            -ForegroundColor $(if ($criticalIssues.Count -eq 0) { 'Green' } else { 'Red' })
+          Write-Host "  High Issues: $($highIssues.Count)" `
+            -ForegroundColor $(if ($highIssues.Count -eq 0) { 'Green' } else { 'Yellow' })
+          Write-Host "  Medium Issues: $($mediumIssues.Count)" -ForegroundColor Cyan
+
+          # Export results for reporting
+          $results | Export-Csv -Path "$(Build.ArtifactStagingDirectory)\PSScriptAnalyzer-Results.csv" -NoTypeInformation
+
+          # Set pipeline variables
+          Write-Host "##vso[task.setvariable variable=PSCriticalIssues]$($criticalIssues.Count)"
+          Write-Host "##vso[task.setvariable variable=PSHighIssues]$($highIssues.Count)"
+          Write-Host "##vso[task.setvariable variable=PSMediumIssues]$($mediumIssues.Count)"
+
+          # Fail if critical issues found
+          if ($criticalIssues.Count -gt $(MaxCriticalIssues)) {
+              Write-Host "##vso[task.logissue type=error]Critical PSScriptAnalyzer issues found"
+              exit 1
+          }
+
+    - task: PowerShell@2
+      displayName: 'Test Coverage Analysis'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Test Coverage Analysis ===" -ForegroundColor Cyan
+
+          # Run Pester tests with coverage
+          $testResults = Invoke-Pester -Path "tests/**/*.Tests.ps1" -OutputFormat NUnitXml `
+            -OutputFile "$(Build.ArtifactStagingDirectory)\test-results.xml" -PassThru
+
+          # Calculate coverage
+          $coverage = $testResults.CodeCoverage.NumberOfCommandsExecuted / `
+            $testResults.CodeCoverage.NumberOfCommandsAnalyzed * 100
+
+          Write-Host "Test Coverage: $([math]::Round($coverage, 2))%" `
+            -ForegroundColor $(if ($coverage -ge $(MinTestCoverage)) { 'Green' } else { 'Red' })
+
+          # Set pipeline variable
+          Write-Host "##vso[task.setvariable variable=TestCoverage]$([math]::Round($coverage, 2))"
+
+          # Fail if coverage below threshold
+          if ($coverage -lt $(MinTestCoverage)) {
+              Write-Host "##vso[task.logissue type=error]Test coverage below threshold"
+              exit 1
+          }
+
+- stage: Build_And_Package
+  displayName: 'Build & Package'
+  dependsOn: Quality_Gates
+  condition: succeeded()
+  jobs:
+  - job: Build_Package
+    displayName: 'Build PowerShell Module Package'
+    pool:
+      vmImage: 'windows-latest'
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Create Module Package'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Creating Module Package ===" -ForegroundColor Cyan
+
+          # Create package directory
+          $packagePath = "$(Build.ArtifactStagingDirectory)\HomeLab-PowerShell-Module"
+          New-Item -Path $packagePath -ItemType Directory -Force | Out-Null
+
+          # Copy module files
+          Copy-Item -Path "src/HomeLab" -Destination "$packagePath/src/HomeLab" -Recurse
+          Copy-Item -Path "docs" -Destination "$packagePath/docs" -Recurse
+          Copy-Item -Path "tests" -Destination "$packagePath/tests" -Recurse
+          Copy-Item -Path "README.md" -Destination "$packagePath/"
+          Copy-Item -Path "LICENSE" -Destination "$packagePath/"
+          Copy-Item -Path "CHANGELOG.md" -Destination "$packagePath/"
+          Copy-Item -Path "CONTRIBUTING.md" -Destination "$packagePath/"
+          Copy-Item -Path "SECURITY.md" -Destination "$packagePath/"
+
+          # Create deployment script
+          $scriptLines = @(
+              "# HomeLab PowerShell Module Deployment Script",
+              "# Generated: $(Get-Date)",
+              "",
+              'Write-Host "Installing HomeLab PowerShell Module..." -ForegroundColor Green',
+              "",
+              '$modulePath = Join-Path $env:PSModulePath.Split(";")[0] "HomeLab"',
+              'if (-not (Test-Path $modulePath)) {',
+              '    New-Item -Path $modulePath -ItemType Directory -Force | Out-Null',
+              '}',
+              "",
+              'Copy-Item -Path "$PSScriptRoot\*" -Destination $modulePath -Recurse -Force',
+              "",
+              'Write-Host "Module installed successfully!" -ForegroundColor Green',
+              'Write-Host "Import with: Import-Module HomeLab" -ForegroundColor Cyan'
+          )
+
+          $scriptLines -join "`n" | Out-File -FilePath "$packagePath\Install-Module.ps1" -Encoding UTF8
+
+          Write-Host "Module package created at: $packagePath" -ForegroundColor Green
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Module Package'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'HomeLab-PowerShell-Module'
+        publishLocation: 'Container'
+
+- stage: Deploy_To_Test
+  displayName: 'Deploy to Test Environment'
+  dependsOn: Build_And_Package
+  condition: succeeded()
+  jobs:
+  - job: Deploy_Test
+    displayName: 'Deploy to Test Environment'
+    pool:
+      vmImage: 'windows-latest'
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Deploy Module to Test Environment'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Deploying to Test Environment ===" -ForegroundColor Cyan
+
+          $artifactPath = "$(Pipeline.Workspace)\HomeLab-PowerShell-Module\HomeLab-PowerShell-Module"
+
+          if (Test-Path $artifactPath) {
+              $modulePath = Join-Path $env:PSModulePath.Split(';')[0] "HomeLab"
+              if (-not (Test-Path $modulePath)) {
+                  New-Item -Path $modulePath -ItemType Directory -Force | Out-Null
+              }
+
+              Copy-Item -Path "$artifactPath\*" -Destination $modulePath -Recurse -Force
+
+              Write-Host "Module deployed to test environment successfully" -ForegroundColor Green
+          } else {
+              Write-Host "ERROR: Module package not found" -ForegroundColor Red
+              exit 1
+          }
+
+    - task: PowerShell@2
+      displayName: 'Run Integration Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Running Integration Tests ===" -ForegroundColor Cyan
+
+          Import-Module HomeLab -Force
+
+          $integrationTests = @(
+              { Get-Command -Module HomeLab | Measure-Object | Select-Object -ExpandProperty Count },
+              { Test-Path (Get-Module HomeLab).Path }
+          )
+
+          $testResults = @()
+          foreach ($test in $integrationTests) {
+              try {
+                  $result = & $test
+                  $testResults += @{ Success = $true; Result = $result }
+              } catch {
+                  $testResults += @{ Success = $false; Error = $_.Exception.Message }
+              }
+          }
+
+          $passedTests = ($testResults | Where-Object { $_.Success }).Count
+          $totalTests = $testResults.Count
+
+          Write-Host "Integration Test Results:" -ForegroundColor White
+          Write-Host "  Passed: $passedTests/$totalTests" `
+            -ForegroundColor $(if ($passedTests -eq $totalTests) { 'Green' } else { 'Red' })
+
+          if ($passedTests -lt $totalTests) {
+              Write-Host "##vso[task.logissue type=error]Integration tests failed"
+              exit 1
+          }
+
+# Pre-commit Hook Example
+# File: .git/hooks/pre-commit
+# Make executable: chmod +x .git/hooks/pre-commit
+
+# #!/bin/bash
+# set -e
+#
+# echo "Running pre-commit quality checks..."
+#
+# # Run PSScriptAnalyzer
+# powershell -Command "& { Invoke-ScriptAnalyzer -Path '*.ps1' -Settings PSGallery | Where-Object { `$_.Severity -eq 'Error' } | ForEach-Object { exit 1 } }"
+#
+# # Run Pester tests
+# powershell -Command "& { Invoke-Pester -Path 'tests/**/*.Tests.ps1' -OutputFormat NUnitXml -OutputFile 'test-results.xml' }"
+#
+# echo "Pre-commit checks passed!"

@@ -192,8 +192,8 @@ jobs:
             "CONTRIBUTING.md"
             "SECURITY.md"
             ".gitignore"
-            "HomeLab/HomeLab.psd1"
-            "HomeLab/HomeLab.psm1"
+            "src/HomeLab/HomeLab/HomeLab.psd1"
+            "src/HomeLab/HomeLab/HomeLab.psm1"
           )
 
           missing_files=()
@@ -212,11 +212,11 @@ jobs:
           fi
 
           # Check for proper module structure
-          if [ -d "HomeLab/modules" ]; then
+          if [ -d "src/HomeLab/HomeLab/modules" ]; then
             echo "✅ Module directory structure exists"
 
             # Count modules
-            module_count=$(find HomeLab/modules -name "*.psd1" | wc -l)
+            module_count=$(find src/HomeLab/HomeLab/modules -name "*.psd1" | wc -l)
             echo "Found $module_count PowerShell modules"
           else
             echo "❌ Module directory structure missing"
@@ -301,3 +301,4 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "For detailed results, check the individual job logs above." >> $GITHUB_STEP_SUMMARY
+

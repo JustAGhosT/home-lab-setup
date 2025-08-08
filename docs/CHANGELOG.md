@@ -8,23 +8,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive testing framework with Pester 5.0+
-- GitHub Actions workflows for CI/CD
-- GitHub repository deployment functionality
-- OIDC federation support for secure authentication
-- Automated code quality checks (PowerShell, Markdown, YAML)
-- Security scanning with Trivy
-- Dependency auditing for npm/pnpm packages
-- HTML test report generation with PScribo fallback
-- API reference documentation
-- Development and contribution guidelines
-- Comprehensive troubleshooting guide
+- **Multi-Platform Deployment System**: Complete support for 5 major cloud platforms
+  - Azure (Static Web Apps & App Service) - First-class citizen
+  - Vercel (Next.js, React, Vue optimized)
+  - Netlify (JAMstack platform)
+  - AWS (S3 + CloudFront)
+  - Google Cloud (Cloud Run & App Engine)
+- **Dedicated Platform Functions**: Each platform has its own specialized deployment function
+  - `Deploy-Azure`: Comprehensive Azure resource management
+  - `Deploy-Vercel`: Framework-optimized Vercel deployment
+  - `Deploy-Netlify`: JAMstack-optimized Netlify deployment
+  - `Deploy-AWS`: S3 + CloudFront static hosting
+  - `Deploy-GoogleCloud`: Cloud Run and App Engine support
+- **Progress Tracking System**: Step-by-step progress indicators throughout deployment process
+- **AI-Powered Repository Suggestions**: Intelligent repository scoring algorithm
+  - Language detection and framework identification
+  - Description keyword analysis
+  - Name pattern recognition
+  - Recent activity evaluation
+  - Repository size and complexity assessment
+  - Community engagement metrics (stars, forks)
+- **Auto-Detection System**: Intelligent project type detection
+  - Analyzes project structure and framework indicators
+  - Automatically chooses optimal deployment strategy
+  - Supports static sites, full-stack apps, and serverless functions
+- **Consistent Architecture**: Unified interface across all platforms
+  - Standardized parameter structures
+  - Consistent return values
+  - Unified error handling
+  - Platform-agnostic deployment orchestration
+- **Enhanced User Experience**: Comprehensive UI improvements
+  - Interactive platform selection
+  - Progress tracking with visual indicators
+  - Intelligent repository suggestions
+  - Platform-specific configuration guidance
+- **Comprehensive Testing Framework**: Pester 5.0+ with extensive test coverage
+- **GitHub Actions Workflows**: Automated CI/CD pipelines
+- **GitHub Repository Deployment**: Direct repository integration
+- **OIDC Federation Support**: Secure password-less authentication
+- **Automated Code Quality Checks**: PowerShell, Markdown, YAML validation
+- **Security Scanning**: Trivy vulnerability scanning
+- **Dependency Auditing**: npm/pnpm package security
+- **HTML Test Report Generation**: PScribo fallback for comprehensive reporting
+- **API Reference Documentation**: Complete function documentation
+- **Development Guidelines**: Comprehensive contribution guidelines
+- **Troubleshooting Guide**: Detailed problem resolution documentation
 
 ### Changed
-- Updated README.md to reflect actual project structure
-- Enhanced security checklist with modern threats and GitHub integration
-- Improved error handling in PowerShell modules
-- Updated cost estimates with current Azure pricing
+- **Architecture Refactoring**: Completely restructured deployment system for multi-platform support
+  - Separated Azure-specific logic into dedicated `Deploy-Azure` function
+  - Created platform-agnostic deployment orchestrator
+  - Implemented consistent parameter structures across all platforms
+  - Unified return value formats for all deployment functions
+- **Enhanced User Interface**: Improved interactive menu system
+  - Added platform selection interface
+  - Integrated progress tracking throughout deployment process
+  - Enhanced repository selection with AI-powered suggestions
+  - Improved error messages and user guidance
+- **Documentation Overhaul**: Comprehensive documentation updates
+  - Complete rewrite of website deployment guide for multi-platform support
+  - Updated API reference with all new deployment functions
+  - Enhanced troubleshooting guide with platform-specific solutions
+  - Added platform decision matrix and comparison tables
+- **Updated README.md**: Reflects actual project structure and new capabilities
+- **Enhanced Security Checklist**: Modern threats and GitHub integration
+- **Improved Error Handling**: Comprehensive error management across all platforms
+- **Updated Cost Estimates**: Current pricing for all supported platforms
 
 ### Fixed
 - ReDoS vulnerability in markdown linter regex patterns

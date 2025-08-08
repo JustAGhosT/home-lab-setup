@@ -1,0 +1,286 @@
+# Azure DevOps Pipeline - PowerShell Quality Gates
+# Comprehensive CI/CD pipeline with automated quality checks
+# Prevents code quality issues from reaching production
+
+trigger:
+  - main
+  - develop
+
+pr:
+  - main
+  - develop
+
+variables:
+  # PowerShell Module Versions
+  PSScriptAnalyzerVersion: '1.21.0'
+  PesterVersion: '5.5.0'
+  PowerShellVersion: '7.2'
+
+  # Quality Gate Thresholds
+  MaxCriticalIssues: 0
+  MaxHighIssues: 5
+  MinTestCoverage: 80
+  MaxComplexityScore: 10
+
+  # Logging Configuration
+  LogPath: '$(Build.ArtifactStagingDirectory)\Logs'
+  TestResultsPath: '$(Build.ArtifactStagingDirectory)\TestResults'
+
+stages:
+- stage: Quality_Gates
+  displayName: 'Quality Gates & Security Scan'
+  jobs:
+  - job: PowerShell_Quality_Analysis
+    displayName: 'PowerShell Code Quality Analysis'
+    pool:
+      vmImage: 'windows-latest'
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Install PowerShell Tools'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Install required PowerShell modules
+          $modules = @(
+              @{ Name = 'PSScriptAnalyzer'; Version = '$(PSScriptAnalyzerVersion)' },
+              @{ Name = 'Pester'; Version = '$(PesterVersion)' },
+              @{ Name = 'Az'; Version = '10.0.0' }
+          )
+
+          foreach ($module in $modules) {
+              Write-Host "Installing $($module.Name) version $($module.Version)..." `
+                -ForegroundColor Yellow
+              Install-Module -Name $module.Name -RequiredVersion $module.Version `
+                -Force -AllowClobber
+          }
+
+          # Verify installations
+          Get-Module -ListAvailable PSScriptAnalyzer, Pester, Az | `
+            Select-Object Name, Version
+
+    - task: PowerShell@2
+      displayName: 'Security Vulnerability Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Scan for critical security issues
+          Write-Host "=== SECURITY VULNERABILITY SCAN ===" -ForegroundColor Red
+
+          $securityIssues = @()
+
+          # Check for Invoke-Expression usage (CRITICAL)
+          $invokeExpressionFiles = Get-ChildItem -Path "**/*.ps1" -Recurse |
+              Select-String -Pattern "Invoke-Expression" |
+              Select-Object Filename, LineNumber, Line
+
+          if ($invokeExpressionFiles) {
+              Write-Host "CRITICAL: Invoke-Expression found in $($invokeExpressionFiles.Count) files" `
+                -ForegroundColor Red
+              foreach ($file in $invokeExpressionFiles) {
+                  Write-Host "  $($file.Filename):$($file.LineNumber) - $($file.Line.Trim())" `
+                    -ForegroundColor Red
+                  $securityIssues += "Invoke-Expression in $($file.Filename):$($file.LineNumber)"
+              }
+          }
+
+          # Check for plaintext SecureString (CRITICAL)
+          $secureStringFiles = Get-ChildItem -Path "**/*.ps1" -Recurse |
+              Select-String -Pattern "ConvertTo-SecureString.*-AsPlainText" |
+              Select-Object Filename, LineNumber, Line
+
+          if ($secureStringFiles) {
+              Write-Host "CRITICAL: Plaintext SecureString found in $($secureStringFiles.Count) files" `
+                -ForegroundColor Red
+              foreach ($file in $secureStringFiles) {
+                  Write-Host "  $($file.Filename):$($file.LineNumber) - $($file.Line.Trim())" `
+                    -ForegroundColor Red
+                  $securityIssues += "Plaintext SecureString in $($file.Filename):$($file.LineNumber)"
+              }
+          }
+
+          # Check for Write-Host usage (HIGH)
+          $writeHostFiles = Get-ChildItem -Path "**/*.ps1" -Recurse |
+              Select-String -Pattern "Write-Host" |
+              Select-Object Filename, LineNumber, Line
+
+          if ($writeHostFiles) {
+              Write-Host "HIGH: Write-Host found in $($writeHostFiles.Count) files" `
+                -ForegroundColor Yellow
+              foreach ($file in $writeHostFiles) {
+                  Write-Host "  $($file.Filename):$($file.LineNumber) - $($file.Line.Trim())" `
+                    -ForegroundColor Yellow
+                  $securityIssues += "Write-Host in $($file.Filename):$($file.LineNumber)"
+              }
+          }
+
+          # Fail build if critical security issues found
+          if ($securityIssues.Count -gt 0) {
+              Write-Host "##vso[task.logissue type=error]Security vulnerabilities found: $($securityIssues.Count)"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+
+          Write-Host "Security scan completed - No critical vulnerabilities found" `
+            -ForegroundColor Green
+
+    - task: PowerShell@2
+      displayName: 'PSScriptAnalyzer Code Quality Check'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Create custom PSScriptAnalyzer settings
+          $settings = @{
+              IncludeDefaultRules = $true
+              CustomRulePath = @()
+              ExcludeRules = @('PSUseShouldProcessForStateChangingFunctions')
+              Severity = @('Error', 'Warning', 'Information')
+          }
+
+          Write-Host "=== PSScriptAnalyzer Code Quality Analysis ===" -ForegroundColor Cyan
+
+          # Run PSScriptAnalyzer on all PowerShell files
+          $results = Invoke-ScriptAnalyzer -Path "**/*.ps1" -Settings $settings -Recurse
+
+          # Categorize issues by severity
+          $criticalIssues = $results | Where-Object { $_.Severity -eq 'Error' }
+          $highIssues = $results | Where-Object { $_.Severity -eq 'Warning' }
+          $mediumIssues = $results | Where-Object { $_.Severity -eq 'Information' }
+
+          Write-Host "Analysis Results:" -ForegroundColor White
+          Write-Host "  Critical Issues: $($criticalIssues.Count)" `
+            -ForegroundColor $(if ($criticalIssues.Count -gt 0) { 'Red' } else { 'Green' })
+          Write-Host "  High Issues: $($highIssues.Count)" `
+            -ForegroundColor $(if ($highIssues.Count -gt $(MaxHighIssues)) { 'Red' } else { 'Yellow' })
+          Write-Host "  Medium Issues: $($mediumIssues.Count)" -ForegroundColor Cyan
+
+          # Fail if critical issues found
+          if ($criticalIssues.Count -gt $(MaxCriticalIssues)) {
+              Write-Host "##vso[task.logissue type=error]Critical PowerShell issues found: $($criticalIssues.Count)"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+
+          # Warn if high issues exceed threshold
+          if ($highIssues.Count -gt $(MaxHighIssues)) {
+              Write-Host "##vso[task.logissue type=warning]High priority issues exceed threshold: $($highIssues.Count)"
+          }
+
+          Write-Host "Code quality analysis completed successfully" -ForegroundColor Green
+
+    - task: PowerShell@2
+      displayName: 'Test Coverage Analysis'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Test Coverage Analysis ===" -ForegroundColor Cyan
+
+          # Run Pester tests with coverage
+          $testResults = Invoke-Pester -Path "tests/**/*.Tests.ps1" -OutputFormat NUnitXml `
+            -OutputFile "$(TestResultsPath)\test-results.xml" -PassThru
+
+          # Calculate coverage
+          $coverage = $testResults.CodeCoverage.NumberOfCommandsExecuted / `
+            $testResults.CodeCoverage.NumberOfCommandsAnalyzed * 100
+
+          Write-Host "Test Coverage: $([math]::Round($coverage, 2))%" `
+            -ForegroundColor $(if ($coverage -ge $(MinTestCoverage)) { 'Green' } else { 'Red' })
+
+          # Fail if coverage below threshold
+          if ($coverage -lt $(MinTestCoverage)) {
+              Write-Host "##vso[task.logissue type=error]Test coverage below threshold: $([math]::Round($coverage, 2))%"
+              Write-Host "##vso[task.complete result=Failed;]"
+              exit 1
+          }
+
+          Write-Host "Test coverage analysis completed successfully" -ForegroundColor Green
+
+- stage: Build
+  displayName: 'Build & Package'
+  dependsOn: Quality_Gates
+  condition: succeeded()
+  jobs:
+  - job: Build_PowerShell_Module
+    displayName: 'Build PowerShell Module'
+    pool:
+      vmImage: 'windows-latest'
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Build Module Package'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== Building PowerShell Module Package ===" -ForegroundColor Cyan
+
+          # Create build directory
+          $buildDir = "$(Build.ArtifactStagingDirectory)\HomeLab"
+          New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+
+          # Copy module files
+          Copy-Item -Path "src\HomeLab\HomeLab\*" -Destination $buildDir -Recurse -Force
+
+          # Create module manifest
+          $manifestPath = Join-Path $buildDir "HomeLab.psd1"
+          New-ModuleManifest -Path $manifestPath -RootModule "HomeLab.psm1" `
+            -Author "Jurie Smit" -Description "HomeLab PowerShell Module" `
+            -PowerShellVersion "7.0" -ModuleVersion "2.0.0"
+
+          Write-Host "Module package created successfully" -ForegroundColor Green
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Module Package'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'HomeLab-Module'
+        publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: 'Deploy to Environments'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: Deploy_Development
+    displayName: 'Deploy to Development'
+    environment: 'development'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            displayName: 'Deploy to Development Environment'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "=== Deploying to Development Environment ===" -ForegroundColor Cyan
+
+                # Import and deploy module
+                Import-Module "$(Pipeline.Workspace)\HomeLab-Module\HomeLab.psd1" -Force
+
+                # Run deployment
+                Deploy-HomeLab -Environment "Development" -Verbose
+
+                Write-Host "Development deployment completed successfully" -ForegroundColor Green
+
+  - deployment: Deploy_Production
+    displayName: 'Deploy to Production'
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            displayName: 'Deploy to Production Environment'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "=== Deploying to Production Environment ===" -ForegroundColor Cyan
+
+                # Import and deploy module
+                Import-Module "$(Pipeline.Workspace)\HomeLab-Module\HomeLab.psd1" -Force
+
+                # Run deployment with confirmation
+                Deploy-HomeLab -Environment "Production" -Confirm:$false -Verbose
+
+                Write-Host "Production deployment completed successfully" -ForegroundColor Green
+

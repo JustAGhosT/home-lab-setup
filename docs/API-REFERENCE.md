@@ -234,27 +234,165 @@ Disconnect-VPN -ProfileName "HomeLab"
 
 ## HomeLab.Web
 
-### Website Deployment
+### Multi-Platform Website Deployment
 
 #### Deploy-Website
-**Synopsis**: Deploys websites to Azure App Service or Static Web Apps.
+**Synopsis**: Main deployment orchestrator that routes to platform-specific deployment functions.
 
 **Syntax**:
 ```powershell
-Deploy-Website [[-DeploymentType] <String>] [[-ResourceGroup] <String>] [[-AppName] <String>] [[-CustomDomain] <String>] [[-Subdomain] <String>] [[-Environment] <String>] [<CommonParameters>]
+Deploy-Website [[-DeploymentType] <String>] [[-Platform] <String>] [[-AppName] <String>] [[-ResourceGroup] <String>] [[-Location] <String>] [[-CustomDomain] <String>] [[-Subdomain] <String>] [[-Environment] <String>] [[-ProjectPath] <String>] [[-RepoUrl] <String>] [[-Branch] <String>] [[-GitHubToken] <SecureString>] [[-SubscriptionId] <String>] [[-VercelToken] <String>] [[-NetlifyToken] <String>] [[-AwsRegion] <String>] [[-GcpProject] <String>] [<CommonParameters>]
 ```
 
 **Parameters**:
-- `DeploymentType`: Deployment type (static, appservice, auto)
-- `ResourceGroup`: Target resource group
+- `DeploymentType`: Deployment type (static, appservice, auto, vercel, netlify, aws, gcp)
+- `Platform`: Target platform (azure, vercel, netlify, aws, gcp)
 - `AppName`: Application name
+- `ResourceGroup`: Target resource group (Azure only)
+- `Location`: Deployment region
 - `CustomDomain`: Custom domain name
 - `Subdomain`: Subdomain prefix
 - `Environment`: Environment (dev, staging, prod)
+- `ProjectPath`: Path to project directory
+- `RepoUrl`: GitHub repository URL
+- `Branch`: Git branch to deploy
+- `GitHubToken`: GitHub personal access token
+- `SubscriptionId`: Azure subscription ID
+- `VercelToken`: Vercel API token
+- `NetlifyToken`: Netlify API token
+- `AwsRegion`: AWS region
+- `GcpProject`: Google Cloud project ID
+
+**Returns**: Deployment information hashtable
 
 **Example**:
 ```powershell
-Deploy-Website -DeploymentType "static" -ResourceGroup "rg-web" -AppName "myapp" -CustomDomain "example.com" -Subdomain "app"
+Deploy-Website -DeploymentType "vercel" -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-app" -Location "us-east-1"
+```
+
+#### Deploy-Azure
+**Synopsis**: Dedicated Azure deployment function for Static Web Apps and App Service.
+
+**Syntax**:
+```powershell
+Deploy-Azure [-AppName] <String> [-ResourceGroup] <String> [-SubscriptionId] <String> [[-Location] <String>] [[-DeploymentType] <String>] [[-CustomDomain] <String>] [[-Subdomain] <String>] [[-GitHubToken] <SecureString>] [[-RepoUrl] <String>] [[-Branch] <String>] [[-ProjectPath] <String>] [<CommonParameters>]
+```
+
+**Parameters**:
+- `AppName`: Application name for Azure resources
+- `ResourceGroup`: Azure Resource Group name
+- `SubscriptionId`: Azure subscription ID
+- `Location`: Azure region (default: westeurope)
+- `DeploymentType`: Type of deployment (static, appservice, auto)
+- `CustomDomain`: Custom domain for the application
+- `Subdomain`: Subdomain for the application
+- `GitHubToken`: GitHub personal access token
+- `RepoUrl`: GitHub repository URL
+- `Branch`: Git branch to deploy (default: main)
+- `ProjectPath`: Path to project directory
+
+**Returns**: Deployment information hashtable
+
+**Example**:
+```powershell
+Deploy-Azure -AppName "my-app" -ResourceGroup "my-rg" -SubscriptionId "00000000-0000-0000-0000-000000000000" -DeploymentType "auto" -ProjectPath "C:\Projects\my-app"
+```
+
+#### Deploy-Vercel
+**Synopsis**: Deploys websites to Vercel platform with framework optimization.
+
+**Syntax**:
+```powershell
+Deploy-Vercel [-AppName] <String> [-ProjectPath] <String> [[-Location] <String>] [[-VercelToken] <String>] [[-CustomDomain] <String>] [[-RepoUrl] <String>] [[-Branch] <String>] [<CommonParameters>]
+```
+
+**Parameters**:
+- `AppName`: Application name for Vercel
+- `ProjectPath`: Path to project directory
+- `Location`: Vercel region (default: us-east-1)
+- `VercelToken`: Vercel API token
+- `CustomDomain`: Custom domain for the application
+- `RepoUrl`: GitHub repository URL
+- `Branch`: Git branch to deploy (default: main)
+
+**Returns**: Deployment information hashtable
+
+**Example**:
+```powershell
+Deploy-Vercel -AppName "my-nextjs-app" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -VercelToken "ver_abc123"
+```
+
+#### Deploy-Netlify
+**Synopsis**: Deploys websites to Netlify platform optimized for JAMstack.
+
+**Syntax**:
+```powershell
+Deploy-Netlify [-AppName] <String> [-ProjectPath] <String> [[-Location] <String>] [[-NetlifyToken] <String>] [[-CustomDomain] <String>] [[-RepoUrl] <String>] [[-Branch] <String>] [<CommonParameters>]
+```
+
+**Parameters**:
+- `AppName`: Application name for Netlify
+- `ProjectPath`: Path to project directory
+- `Location`: Netlify region (default: us-east-1)
+- `NetlifyToken`: Netlify API token
+- `CustomDomain`: Custom domain for the application
+- `RepoUrl`: GitHub repository URL
+- `Branch`: Git branch to deploy (default: main)
+
+**Returns**: Deployment information hashtable
+
+**Example**:
+```powershell
+Deploy-Netlify -AppName "my-jamstack-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -NetlifyToken "abc123"
+```
+
+#### Deploy-AWS
+**Synopsis**: Deploys websites to AWS using S3 and CloudFront.
+
+**Syntax**:
+```powershell
+Deploy-AWS [-AppName] <String> [-ProjectPath] <String> [[-Location] <String>] [[-AwsRegion] <String>] [[-CustomDomain] <String>] [[-RepoUrl] <String>] [[-Branch] <String>] [<CommonParameters>]
+```
+
+**Parameters**:
+- `AppName`: Application name for AWS
+- `ProjectPath`: Path to project directory
+- `Location`: AWS region (default: us-east-1)
+- `AwsRegion`: AWS region for deployment
+- `CustomDomain`: Custom domain for the application
+- `RepoUrl`: GitHub repository URL
+- `Branch`: Git branch to deploy (default: main)
+
+**Returns**: Deployment information hashtable
+
+**Example**:
+```powershell
+Deploy-AWS -AppName "my-static-site" -ProjectPath "C:\Projects\my-app" -Location "us-east-1" -AwsRegion "us-east-1"
+```
+
+#### Deploy-GoogleCloud
+**Synopsis**: Deploys websites to Google Cloud using Cloud Run or App Engine.
+
+**Syntax**:
+```powershell
+Deploy-GoogleCloud [-AppName] <String> [-ProjectPath] <String> [[-Location] <String>] [[-GcpProject] <String>] [[-CustomDomain] <String>] [[-RepoUrl] <String>] [[-Branch] <String>] [[-DeploymentType] <String>] [<CommonParameters>]
+```
+
+**Parameters**:
+- `AppName`: Application name for Google Cloud
+- `ProjectPath`: Path to project directory
+- `Location`: Google Cloud region (default: us-central1)
+- `GcpProject`: Google Cloud project ID
+- `CustomDomain`: Custom domain for the application
+- `RepoUrl`: GitHub repository URL
+- `Branch`: Git branch to deploy (default: main)
+- `DeploymentType`: Deployment type (cloudrun, appengine)
+
+**Returns**: Deployment information hashtable
+
+**Example**:
+```powershell
+Deploy-GoogleCloud -AppName "my-app" -ProjectPath "C:\Projects\my-app" -Location "us-central1" -GcpProject "my-project" -DeploymentType "cloudrun"
 ```
 
 #### Get-WebsiteStatus
