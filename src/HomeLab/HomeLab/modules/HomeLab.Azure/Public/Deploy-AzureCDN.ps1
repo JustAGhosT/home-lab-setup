@@ -137,7 +137,7 @@ function Deploy-AzureCDN {
                 "--profile-name", $CdnProfileName,
                 "--resource-group", $ResourceGroup,
                 "--origin", $OriginHostName,
-                "--origin-host-header", ($OriginHostHeader ?? $OriginHostName),
+                "--origin-host-header", (if ($OriginHostHeader) { $OriginHostHeader } else { $OriginHostName }),
                 "--origin-path", $OriginPath
             )
             

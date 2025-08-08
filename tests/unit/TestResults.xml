@@ -1,104 +1,154 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
-<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="29" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2025-07-20" time="22:42:45">
-  <environment user="smitj" user-domain="HOME" machine-name="HOME" os-version="10.0.26120" nunit-version="2.5.8.0" cwd="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit" platform="Microsoft Windows 11 Pro|C:\WINDOWS|\Device\Harddisk0\Partition3" clr-version="10.0.0" />
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="43" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="1" invalid="0" date="2025-08-08" time="16:57:18">
+  <environment clr-version="4.0.30319.42000" user-domain="HOME" cwd="C:\Users\smitj\repos\home-lab-setup\home-lab-setup" platform="Microsoft Windows 11 Pro Insider Preview|C:\WINDOWS|\Device\Harddisk0\Partition3" machine-name="HOME" nunit-version="2.5.8.0" os-version="10.0.27913" user="smitj" />
   <culture-info current-culture="en-ZA" current-uiculture="en-GB" />
-  <test-suite type="TestFixture" name="Pester" executed="True" result="Success" success="True" time="4.3871" asserts="0" description="Pester">
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Ignored" success="True" time="61.7244" asserts="0" description="Pester">
     <results>
-      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Azure.tests.ps1" executed="True" result="Success" success="True" time="2.8198" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Azure.tests.ps1">
+      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Azure.tests.ps1" executed="True" result="Success" success="True" time="44.9688" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Azure.tests.ps1">
         <results>
-          <test-suite type="TestFixture" name="HomeLab.Azure Module Tests" executed="True" result="Success" success="True" time="1.1518" asserts="0" description="HomeLab.Azure Module Tests">
+          <test-suite type="TestFixture" name="HomeLab.Azure Module Tests" executed="True" result="Success" success="True" time="41.0025" asserts="0" description="HomeLab.Azure Module Tests">
             <results>
-              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.Azure Resource Deployment" executed="True" result="Success" success="True" time="0.7525" asserts="0" description="HomeLab.Azure Module Tests.Azure Resource Deployment">
+              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.Azure Resource Deployment" executed="True" result="Success" success="True" time="0.7405" asserts="0" description="HomeLab.Azure Module Tests.Azure Resource Deployment">
                 <results>
-                  <test-case description="Should create a resource group successfully" name="HomeLab.Azure Module Tests.Azure Resource Deployment.Should create a resource group successfully" time="0.5908" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should handle deployment failures gracefully" name="HomeLab.Azure Module Tests.Azure Resource Deployment.Should handle deployment failures gracefully" time="0.1195" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should deploy infrastructure successfully" name="HomeLab.Azure Module Tests.Azure Resource Deployment.Should deploy infrastructure successfully" time="0.5948" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.VPN Gateway Management" executed="True" result="Success" success="True" time="0.9632" asserts="0" description="HomeLab.Azure Module Tests.VPN Gateway Management">
+              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.VPN Gateway Management" executed="True" result="Success" success="True" time="13.2437" asserts="0" description="HomeLab.Azure Module Tests.VPN Gateway Management">
                 <results>
-                  <test-case description="Should enable VPN Gateway successfully" name="HomeLab.Azure Module Tests.VPN Gateway Management.Should enable VPN Gateway successfully" time="0.0863" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should disable VPN Gateway successfully" name="HomeLab.Azure Module Tests.VPN Gateway Management.Should disable VPN Gateway successfully" time="0.0631" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should get VPN Gateway state correctly" name="HomeLab.Azure Module Tests.VPN Gateway Management.Should get VPN Gateway state correctly" time="0.0212" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should set VPN Gateway state successfully" name="HomeLab.Azure Module Tests.VPN Gateway Management.Should set VPN Gateway state successfully" time="11.9297" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should get VPN Gateway state correctly" name="HomeLab.Azure Module Tests.VPN Gateway Management.Should get VPN Gateway state correctly" time="0.3598" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.NAT Gateway Management" executed="True" result="Success" success="True" time="1.0388" asserts="0" description="HomeLab.Azure Module Tests.NAT Gateway Management">
+              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.NAT Gateway Management" executed="True" result="Success" success="True" time="13.9219" asserts="0" description="HomeLab.Azure Module Tests.NAT Gateway Management">
                 <results>
-                  <test-case description="Should enable NAT Gateway successfully" name="HomeLab.Azure Module Tests.NAT Gateway Management.Should enable NAT Gateway successfully" time="0.0166" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should disable NAT Gateway successfully" name="HomeLab.Azure Module Tests.NAT Gateway Management.Should disable NAT Gateway successfully" time="0.0258" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should enable NAT Gateway successfully" name="HomeLab.Azure Module Tests.NAT Gateway Management.Should enable NAT Gateway successfully" time="0.4844" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should disable NAT Gateway successfully" name="HomeLab.Azure Module Tests.NAT Gateway Management.Should disable NAT Gateway successfully" time="0.0953" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.Azure Resource Validation" executed="True" result="Success" success="True" time="1.0978" asserts="0" description="HomeLab.Azure Module Tests.Azure Resource Validation">
+              <test-suite type="TestFixture" name="HomeLab.Azure Module Tests.Azure Resource Validation" executed="True" result="Success" success="True" time="29.9443" asserts="0" description="HomeLab.Azure Module Tests.Azure Resource Validation">
                 <results>
-                  <test-case description="Should validate resource group existence" name="HomeLab.Azure Module Tests.Azure Resource Validation.Should validate resource group existence" time="0.0153" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should validate resource name format" name="HomeLab.Azure Module Tests.Azure Resource Validation.Should validate resource name format" time="0.0139" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should test resource group existence" name="HomeLab.Azure Module Tests.Azure Resource Validation.Should test resource group existence" time="15.9463" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
             </results>
           </test-suite>
         </results>
       </test-suite>
-      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Core.tests.ps1" executed="True" result="Success" success="True" time="0.9542" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Core.tests.ps1">
+      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Core.tests.ps1" executed="True" result="Success" success="True" time="1.5367" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Core.tests.ps1">
         <results>
-          <test-suite type="TestFixture" name="HomeLab.Core Module Tests" executed="True" result="Success" success="True" time="0.618" asserts="0" description="HomeLab.Core Module Tests">
+          <test-suite type="TestFixture" name="HomeLab.Core Module Tests" executed="True" result="Success" success="True" time="1.1371" asserts="0" description="HomeLab.Core Module Tests">
             <results>
-              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Configuration Management" executed="True" result="Success" success="True" time="0.1438" asserts="0" description="HomeLab.Core Module Tests.Configuration Management">
+              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Configuration Management" executed="True" result="Success" success="True" time="0.4859" asserts="0" description="HomeLab.Core Module Tests.Configuration Management">
                 <results>
-                  <test-case description="Should initialize configuration with default values" name="HomeLab.Core Module Tests.Configuration Management.Should initialize configuration with default values" time="0.0223" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should get configuration values correctly" name="HomeLab.Core Module Tests.Configuration Management.Should get configuration values correctly" time="0.0283" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should update configuration values correctly" name="HomeLab.Core Module Tests.Configuration Management.Should update configuration values correctly" time="0.0152" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should remove configuration values correctly" name="HomeLab.Core Module Tests.Configuration Management.Should remove configuration values correctly" time="0.0213" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should backup and restore configuration" name="HomeLab.Core Module Tests.Configuration Management.Should backup and restore configuration" time="0.0207" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should initialize configuration with default values" name="HomeLab.Core Module Tests.Configuration Management.Should initialize configuration with default values" time="0.119" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should get configuration values correctly" name="HomeLab.Core Module Tests.Configuration Management.Should get configuration values correctly" time="0.0424" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should update configuration values correctly" name="HomeLab.Core Module Tests.Configuration Management.Should update configuration values correctly" time="0.0569" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should remove configuration values correctly" name="HomeLab.Core Module Tests.Configuration Management.Should remove configuration values correctly" time="0.0671" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should backup and restore configuration" name="HomeLab.Core Module Tests.Configuration Management.Should backup and restore configuration" time="0.0642" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Path Validation" executed="True" result="Success" success="True" time="0.2228" asserts="0" description="HomeLab.Core Module Tests.Path Validation">
+              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Path Validation" executed="True" result="Success" success="True" time="0.6282" asserts="0" description="HomeLab.Core Module Tests.Path Validation">
                 <results>
-                  <test-case description="Should validate correct paths" name="HomeLab.Core Module Tests.Path Validation.Should validate correct paths" time="0.0272" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should reject invalid paths with special characters" name="HomeLab.Core Module Tests.Path Validation.Should reject invalid paths with special characters" time="0.0137" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should validate correct paths" name="HomeLab.Core Module Tests.Path Validation.Should validate correct paths" time="0.0699" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should reject invalid paths with special characters" name="HomeLab.Core Module Tests.Path Validation.Should reject invalid paths with special characters" time="0.0391" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Module Version" executed="True" result="Success" success="True" time="0.2907" asserts="0" description="HomeLab.Core Module Tests.Module Version">
+              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Module Version" executed="True" result="Success" success="True" time="0.6972" asserts="0" description="HomeLab.Core Module Tests.Module Version">
                 <results>
-                  <test-case description="Should return a valid version" name="HomeLab.Core Module Tests.Module Version.Should return a valid version" time="0.0214" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should return a valid version" name="HomeLab.Core Module Tests.Module Version.Should return a valid version" time="0.0405" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Utility Functions" executed="True" result="Success" success="True" time="0.3876" asserts="0" description="HomeLab.Core Module Tests.Utility Functions">
+              <test-suite type="TestFixture" name="HomeLab.Core Module Tests.Utility Functions" executed="True" result="Success" success="True" time="1.0291" asserts="0" description="HomeLab.Core Module Tests.Utility Functions">
                 <results>
-                  <test-case description="Should convert PSCustomObject to hashtable" name="HomeLab.Core Module Tests.Utility Functions.Should convert PSCustomObject to hashtable" time="0.0319" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should write log messages safely" name="HomeLab.Core Module Tests.Utility Functions.Should write log messages safely" time="0.0283" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should convert PSCustomObject to hashtable" name="HomeLab.Core Module Tests.Utility Functions.Should convert PSCustomObject to hashtable" time="0.2575" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should write log messages safely" name="HomeLab.Core Module Tests.Utility Functions.Should write log messages safely" time="0.0443" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
             </results>
           </test-suite>
         </results>
       </test-suite>
-      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Security.tests.ps1" executed="True" result="Success" success="True" time="0.613" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Security.tests.ps1">
+      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.GitHub.tests.ps1" executed="True" result="Ignored" success="True" time="11.555" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.GitHub.tests.ps1">
         <results>
-          <test-suite type="TestFixture" name="HomeLab.Security Module Tests" executed="True" result="Success" success="True" time="0.359" asserts="0" description="HomeLab.Security Module Tests">
+          <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests" executed="True" result="Ignored" success="True" time="10.4867" asserts="0" description="HomeLab.GitHub Module Tests">
             <results>
-              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.Certificate Generation" executed="True" result="Success" success="True" time="0.063" asserts="0" description="HomeLab.Security Module Tests.Certificate Generation">
+              <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests.Module Loading" executed="True" result="Success" success="True" time="0.3203" asserts="0" description="HomeLab.GitHub Module Tests.Module Loading">
                 <results>
-                  <test-case description="Should create a root certificate" name="HomeLab.Security Module Tests.Certificate Generation.Should create a root certificate" time="0.0141" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should create a client certificate" name="HomeLab.Security Module Tests.Certificate Generation.Should create a client certificate" time="0.0097" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should sanitize certificate names" name="HomeLab.Security Module Tests.Certificate Generation.Should sanitize certificate names" time="0.0073" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should load the module successfully" name="HomeLab.GitHub Module Tests.Module Loading.Should load the module successfully" time="0.1168" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should export expected functions" name="HomeLab.GitHub Module Tests.Module Loading.Should export expected functions" time="0.1567" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.VPN Gateway Certificate Management" executed="True" result="Success" success="True" time="0.0974" asserts="0" description="HomeLab.Security Module Tests.VPN Gateway Certificate Management">
+              <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests.Configuration Management" executed="True" result="Success" success="True" time="1.2963" asserts="0" description="HomeLab.GitHub Module Tests.Configuration Management">
                 <results>
-                  <test-case description="Should add a certificate to the VPN gateway" name="HomeLab.Security Module Tests.VPN Gateway Certificate Management.Should add a certificate to the VPN gateway" time="0.011" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should get default configuration when none exists" name="HomeLab.GitHub Module Tests.Configuration Management.Should get default configuration when none exists" time="0.1669" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should set and get configuration" name="HomeLab.GitHub Module Tests.Configuration Management.Should set and get configuration" time="0.774" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.VPN Client Management" executed="True" result="Success" success="True" time="0.1596" asserts="0" description="HomeLab.Security Module Tests.VPN Client Management">
+              <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests.GitHub Connection (Mock Tests)" executed="True" result="Ignored" success="True" time="1.7649" asserts="0" description="HomeLab.GitHub Module Tests.GitHub Connection (Mock Tests)">
                 <results>
-                  <test-case description="Should add a computer to the VPN" name="HomeLab.Security Module Tests.VPN Client Management.Should add a computer to the VPN" time="0.0172" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should connect to the VPN" name="HomeLab.Security Module Tests.VPN Client Management.Should connect to the VPN" time="0.0084" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should disconnect from the VPN" name="HomeLab.Security Module Tests.VPN Client Management.Should disconnect from the VPN" time="0.0076" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should get VPN connection status" name="HomeLab.Security Module Tests.VPN Client Management.Should get VPN connection status" time="0.0059" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should handle connection test without token" name="HomeLab.GitHub Module Tests.GitHub Connection (Mock Tests).Should handle connection test without token" time="0.1263" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should validate token format in Connect-GitHub" name="HomeLab.GitHub Module Tests.GitHub Connection (Mock Tests).Should validate token format in Connect-GitHub" time="0.294" asserts="0" success="False" result="Ignored" executed="False" />
                 </results>
               </test-suite>
-              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.Certificate Management" executed="True" result="Success" success="True" time="0.2174" asserts="0" description="HomeLab.Security Module Tests.Certificate Management">
+              <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests.Repository Management Functions" executed="True" result="Success" success="True" time="2.3515" asserts="0" description="HomeLab.GitHub Module Tests.Repository Management Functions">
                 <results>
-                  <test-case description="Should list certificates" name="HomeLab.Security Module Tests.Certificate Management.Should list certificates" time="0.0134" asserts="0" success="True" result="Success" executed="True" />
-                  <test-case description="Should filter certificates by type" name="HomeLab.Security Module Tests.Certificate Management.Should filter certificates by type" time="0.0161" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should have Get-GitHubRepositories function available" name="HomeLab.GitHub Module Tests.Repository Management Functions.Should have Get-GitHubRepositories function available" time="0.1022" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should have Select-GitHubRepository function available" name="HomeLab.GitHub Module Tests.Repository Management Functions.Should have Select-GitHubRepository function available" time="0.118" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should have Clone-GitHubRepository function available" name="HomeLab.GitHub Module Tests.Repository Management Functions.Should have Clone-GitHubRepository function available" time="0.2493" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+              <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests.Deployment Functions" executed="True" result="Success" success="True" time="3.246" asserts="0" description="HomeLab.GitHub Module Tests.Deployment Functions">
+                <results>
+                  <test-case description="Should have Deploy-GitHubRepository function available" name="HomeLab.GitHub Module Tests.Deployment Functions.Should have Deploy-GitHubRepository function available" time="0.0982" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should handle deployment without selected repository" name="HomeLab.GitHub Module Tests.Deployment Functions.Should handle deployment without selected repository" time="0.73" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+              <test-suite type="TestFixture" name="HomeLab.GitHub Module Tests.Error Handling" executed="True" result="Success" success="True" time="5.4685" asserts="0" description="HomeLab.GitHub Module Tests.Error Handling">
+                <results>
+                  <test-case description="Should handle missing Git gracefully" name="HomeLab.GitHub Module Tests.Error Handling.Should handle missing Git gracefully" time="1.7102" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should handle invalid parameters gracefully" name="HomeLab.GitHub Module Tests.Error Handling.Should handle invalid parameters gracefully" time="0.1646" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should handle unauthenticated state gracefully" name="HomeLab.GitHub Module Tests.Error Handling.Should handle unauthenticated state gracefully" time="0.1442" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should require authentication for repository operations" name="HomeLab.GitHub Module Tests.Error Handling.Should require authentication for repository operations" time="0.1535" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Security.tests.ps1" executed="True" result="Success" success="True" time="3.6639" asserts="0" description="C:\Users\smitj\repos\home-lab-setup\home-lab-setup\tests\unit\HomeLab.Security.tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="HomeLab.Security Module Tests" executed="True" result="Success" success="True" time="2.9692" asserts="0" description="HomeLab.Security Module Tests">
+            <results>
+              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.Certificate Generation" executed="True" result="Success" success="True" time="0.5824" asserts="0" description="HomeLab.Security Module Tests.Certificate Generation">
+                <results>
+                  <test-case description="Should create a root certificate" name="HomeLab.Security Module Tests.Certificate Generation.Should create a root certificate" time="0.1535" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should create a client certificate" name="HomeLab.Security Module Tests.Certificate Generation.Should create a client certificate" time="0.2425" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should sanitize certificate names" name="HomeLab.Security Module Tests.Certificate Generation.Should sanitize certificate names" time="0.0644" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.VPN Gateway Certificate Management" executed="True" result="Success" success="True" time="1.4228" asserts="0" description="HomeLab.Security Module Tests.VPN Gateway Certificate Management">
+                <results>
+                  <test-case description="Should add a certificate to the VPN gateway" name="HomeLab.Security Module Tests.VPN Gateway Certificate Management.Should add a certificate to the VPN gateway" time="0.7409" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.VPN Client Management" executed="True" result="Success" success="True" time="2.0672" asserts="0" description="HomeLab.Security Module Tests.VPN Client Management">
+                <results>
+                  <test-case description="Should add a computer to the VPN" name="HomeLab.Security Module Tests.VPN Client Management.Should add a computer to the VPN" time="0.1738" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should connect to the VPN" name="HomeLab.Security Module Tests.VPN Client Management.Should connect to the VPN" time="0.0598" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should disconnect from the VPN" name="HomeLab.Security Module Tests.VPN Client Management.Should disconnect from the VPN" time="0.1806" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should get VPN connection status" name="HomeLab.Security Module Tests.VPN Client Management.Should get VPN connection status" time="0.1339" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.Certificate Management" executed="True" result="Success" success="True" time="2.4648" asserts="0" description="HomeLab.Security Module Tests.Certificate Management">
+                <results>
+                  <test-case description="Should list certificates" name="HomeLab.Security Module Tests.Certificate Management.Should list certificates" time="0.1776" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should filter certificates by type" name="HomeLab.Security Module Tests.Certificate Management.Should filter certificates by type" time="0.1621" asserts="0" success="True" result="Success" executed="True" />
+                </results>
+              </test-suite>
+              <test-suite type="TestFixture" name="HomeLab.Security Module Tests.Certificate Path Management" executed="True" result="Success" success="True" time="2.7902" asserts="0" description="HomeLab.Security Module Tests.Certificate Path Management">
+                <results>
+                  <test-case description="Should return a valid certificate path" name="HomeLab.Security Module Tests.Certificate Path Management.Should return a valid certificate path" time="0.0842" asserts="0" success="True" result="Success" executed="True" />
+                  <test-case description="Should return the test certificate path" name="HomeLab.Security Module Tests.Certificate Path Management.Should return the test certificate path" time="0.1631" asserts="0" success="True" result="Success" executed="True" />
                 </results>
               </test-suite>
             </results>
