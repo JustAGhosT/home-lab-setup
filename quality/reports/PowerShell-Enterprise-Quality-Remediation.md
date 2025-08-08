@@ -64,9 +64,13 @@ Based on comprehensive PSScriptAnalyzer analysis, your PowerShell codebase requi
 $deployOutput = Invoke-Expression $deployCmd 2>&1
 
 # AFTER (SECURE):
+# For simple commands with known executable:
 $deployOutput = & $deployCmd 2>&1
-# OR for complex scenarios:
-$deployOutput = Start-Process -FilePath $deployCmd -ArgumentList $args -Wait -PassThru
+# OR for complex scenarios with explicit parameterization:
+$deployOutput = Start-Process -FilePath $exe -ArgumentList @args -Wait -PassThru
+# OR for maximum security, build command as array:
+$cmdArray = @($exe, $arg1, $arg2, $arg3)
+$deployOutput = & $cmdArray[0] @($cmdArray[1..($cmdArray.Length-1)]) 2>&1
 ```
 
 #### 1.2 Credential Management Implementation
@@ -75,9 +79,14 @@ $deployOutput = Start-Process -FilePath $deployCmd -ArgumentList $args -Wait -Pa
 $secureKey = ConvertTo-SecureString "MySecureKey123!" -AsPlainText -Force
 
 # AFTER (SECURE):
+# For interactive use:
 $secureKey = Read-Host -Prompt "Enter secure key" -AsSecureString
+# OR for CI/CD automation (environment variables):
+$secureKey = ConvertTo-SecureString $env:SECURE_KEY -AsPlainText -Force
 # OR use Azure Key Vault:
 $secureKey = Get-AzKeyVaultSecret -VaultName "my-vault" -Name "my-secret"
+# OR use GitHub Secrets (for GitHub Actions):
+$secureKey = ConvertTo-SecureString $env:GITHUB_SECRET -AsPlainText -Force
 ```
 
 #### 1.3 Enterprise Logging Framework Implementation
@@ -205,7 +214,8 @@ catch {
       $results = Invoke-ScriptAnalyzer -Path "**/*.ps1" -Settings PSGallery
       $criticalIssues = $results | Where-Object { $_.Severity -eq 'Error' }
       if ($criticalIssues.Count -gt 0) {
-        Write-Host "##vso[task.logissue type=error]Critical PowerShell issues found: $($criticalIssues.Count)"
+        Write-Error "Critical PowerShell issues found: $($criticalIssues.Count)"
+        Write-Output "##vso[task.logissue type=error]Critical PowerShell issues found: $($criticalIssues.Count)"
         exit 1
       }
 ```

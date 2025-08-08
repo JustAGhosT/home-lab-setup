@@ -83,10 +83,11 @@ home-lab-setup/
 │   ├── 📁 quality/                     # Quality gate configs
 │   └── 📁 security/                    # Security configs
 │
-├── 📁 pipelines/                        # CI/CD pipelines
-│   ├── azure-pipelines.yml             # Azure DevOps pipeline
-│   ├── github-actions.yml              # GitHub Actions workflow
-│   └── 📁 templates/                   # Pipeline templates
+├── 📁 pipelines/                        # CI/CD pipeline templates and docs
+│   ├── README.md                       # Documentation and usage
+│   └── 📁 templates/                   # Reusable pipeline/workflow templates
+├── azure-pipelines.yml                 # Azure DevOps pipeline (or configure to pipelines/azure-pipelines.yml)
+└── .github/workflows/                  # GitHub Actions workflows
 │
 ├── 📁 quality/                          # Quality assurance
 │   ├── 📁 artifacts/                   # Quality artifacts
@@ -218,9 +219,14 @@ home-lab-setup/
 
 ### 1. **Backup Current State**
 ```powershell
-# Create backup of current structure
-$backupPath = "backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-Copy-Item -Path "." -Destination $backupPath -Recurse -Exclude ".git", "node_modules", "artifacts"
+# Create backup safely outside the repo to avoid self-copy/recursion
+$repoRoot  = Get-Location
+$parentDir = Split-Path -Parent $repoRoot
+$backupPath = Join-Path $parentDir ("{0}-backup-{1}" -f (Split-Path -Leaf $repoRoot), (Get-Date -Format 'yyyyMMdd-HHmmss'))
+New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
+$exclude = @('.git','node_modules','artifacts')
+Get-ChildItem -Force -LiteralPath $repoRoot -Exclude $exclude |
+  ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $backupPath -Recurse -Force }
 ```
 
 ### 2. **Gradual Migration**

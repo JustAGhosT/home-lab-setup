@@ -348,7 +348,7 @@ if ($Help) {
 # Handle direct parameter switches
 if ($WebsiteDeployment) {
     Write-Host "Starting Website Deployment..." -ForegroundColor Green
-    & "$PSScriptRoot\Deploy-Website.ps1"
+    & (Join-Path $PSScriptRoot '..\deploy\Deploy-Website.ps1')
     return
 }
 
@@ -582,11 +582,11 @@ do {
                                                 $testResponse = Invoke-RestMethod -Uri "https://api.github.com/user" -Headers $testHeaders -Method Get
                                                 Write-Host "Token validated successfully! Hello, $($testResponse.login)!" -ForegroundColor Green
                                                 
-                                                # Save to environment variables (both process and user level)
-                                                $env:GITHUB_TOKEN = $plainToken
-                                                # Removed persistent environment variable setting for security
-                                                # Token is now only stored in session memory
-                                                Write-Host "GitHub token saved to environment variables" -ForegroundColor Green
+                                                # Store token in script-scoped variable for session use only
+                                                $script:GitHubToken = $plainToken
+                                                # Removed environment variable setting for security
+                                                # Token is now only stored in private script memory
+                                                Write-Host "GitHub token stored securely in session memory" -ForegroundColor Green
                                                 
                                                 return $plainToken
                                             }

@@ -161,6 +161,7 @@ function Get-GitHubRepositories {
         # Convert SecureString to plain text temporarily
         $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($GitHubToken)
         $plainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)  # Wipe unmanaged buffer immediately
         
         try {
             $headers = @{
@@ -181,6 +182,10 @@ function Get-GitHubRepositories {
             if ($plainToken) {
                 $plainToken = $null
                 [System.GC]::Collect()
+            }
+            # Ensure BSTR is freed if not already done
+            if ($BSTR -and $BSTR -ne [System.IntPtr]::Zero) {
+                [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
             }
         }
     }
