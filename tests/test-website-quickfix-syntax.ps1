@@ -3,7 +3,7 @@ Write-Host "Testing Website-QuickFix.ps1 syntax..." -ForegroundColor Cyan
 
 try {
     # Test syntax by dot-sourcing the file
-    . "HomeLab/modules/HomeLab.UI/Public/Website-QuickFix.ps1"
+    . "src/HomeLab/HomeLab/modules/HomeLab.UI/Public/Website-QuickFix.ps1"
     Write-Host "✅ Syntax check passed!" -ForegroundColor Green
     
     # Test that functions are available

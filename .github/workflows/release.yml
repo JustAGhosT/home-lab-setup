@@ -76,7 +76,7 @@ jobs:
           $versionNumber = $version.TrimStart('v')
 
           # Update HomeLab.psd1
-          $manifestPath = "HomeLab/HomeLab.psd1"
+          $manifestPath = "src/HomeLab/HomeLab/HomeLab.psd1"
           $content = Get-Content $manifestPath -Raw
           $content = $content -replace "ModuleVersion\s*=\s*'[^']*'", "ModuleVersion = '$versionNumber'"
           $content = $content -replace "ReleaseNotes\s*=\s*'[^']*'", "ReleaseNotes = '$version - See CHANGELOG.md for details'"
@@ -94,7 +94,7 @@ jobs:
           New-Item -ItemType Directory -Path $releaseDir -Force
 
           # Copy essential files
-          Copy-Item -Path "HomeLab" -Destination "$releaseDir/HomeLab" -Recurse
+          Copy-Item -Path "src/HomeLab" -Destination "$releaseDir/src/HomeLab" -Recurse
           Copy-Item -Path "functions" -Destination "$releaseDir/functions" -Recurse
           Copy-Item -Path "docs" -Destination "$releaseDir/docs" -Recurse
           Copy-Item -Path "tests" -Destination "$releaseDir/tests" -Recurse
@@ -182,7 +182,7 @@ jobs:
           Expand-Archive -Path $archiveName -DestinationPath "extracted"
 
           # Verify module structure
-          if (-not (Test-Path "extracted/HomeLab/HomeLab.psd1")) {
+          if (-not (Test-Path "extracted/src/HomeLab/HomeLab/HomeLab.psd1")) {
             Write-Error "Module manifest not found in expected location"
             exit 1
           }
@@ -220,3 +220,4 @@ jobs:
           else
             echo "❌ Release failed" >> $GITHUB_STEP_SUMMARY
           fi
+
