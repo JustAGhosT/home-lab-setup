@@ -348,7 +348,8 @@ if ($Help) {
 # Handle direct parameter switches
 if ($WebsiteDeployment) {
     Write-Host "Starting Website Deployment..." -ForegroundColor Green
-    & (Join-Path $PSScriptRoot '..\deploy\Deploy-Website.ps1')
+-   & (Join-Path $PSScriptRoot '..\deploy\Deploy-Website.ps1')
++   & (Join-Path $PSScriptRoot '..' 'deploy' 'Deploy-Website.ps1')
     return
 }
 
