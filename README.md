@@ -178,6 +178,8 @@ This repository includes comprehensive documentation to help you deploy, manage,
 ### User Interface & Navigation
 - [UI Quick Reference](docs/UI-QUICK-REFERENCE.md) - Keyboard shortcuts, menu navigation, and tips ✨ NEW
 - [UI/UX Improvements](docs/UI-UX-IMPROVEMENTS.md) - Technical details of recent UI enhancements ✨ NEW
+- [Keyboard Shortcuts Guide](docs/KEYBOARD-SHORTCUTS.md) - Complete keyboard shortcuts reference ✨ NEW
+- [Advanced Features Guide](docs/ADVANCED-FEATURES.md) - Retry, caching, progress tracking, and more ✨ NEW
 
 ### Development & Testing
 - [Testing Guide](docs/TESTING.md) - Running tests and test development
@@ -205,6 +207,31 @@ To better understand the network architecture and components, refer to these dia
 - [Cost Optimization Strategy](docs/diagrams/cost-optimization-strategy.md) - Managing Azure costs
 
 ## Features
+
+### ✨ Enhanced User Experience (NEW)
+
+**Keyboard Shortcuts**:
+- Quick navigation with `Ctrl+D` (Dashboard), `Ctrl+P` (Deployment), `Ctrl+V` (VPN)
+- Operation shortcuts for common tasks
+- Press `Shift+?` to view all shortcuts
+
+**Advanced Operation Features**:
+- **Retry Mechanism**: Automatic retry with exponential backoff for failed operations
+- **Timeout Protection**: Configurable timeouts prevent hanging operations
+- **Progress Tracking**: Real-time progress indicators for long-running tasks
+- **Result Caching**: Intelligent caching reduces redundant API calls and improves performance
+
+**Log Management**:
+- Export logs in multiple formats (Text, JSON, CSV)
+- Search and filter capabilities
+- Generate summary statistics
+- Clean ANSI formatting for readability
+
+**Theme Support**:
+- Dark mode with system preference detection
+- Manual light/dark toggle
+- Persistent theme preferences
+- Smooth theme transitions
 
 ### 🚀 Multi-Platform Website Deployment
 
