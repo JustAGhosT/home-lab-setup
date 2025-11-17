@@ -319,7 +319,8 @@ function Invoke-MainMenu {
                             Write-Host "`nSoftware KVM Setup menu not implemented yet.`n" -ForegroundColor Yellow
                             Start-Sleep -Seconds 2
                         }
-                    }"9" {
+                    }
+                    "9" {
                         # DIRECT REPLACEMENT - Bypass all complex logic
                         Clear-Host
                         
