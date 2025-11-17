@@ -8,5 +8,11 @@
   },
   "devDependencies": {
     "markdownlint-cli": "0.45.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "js-yaml": "4.1.1",
+      "glob": "11.1.0"
+    }
   }
 }
