@@ -170,12 +170,24 @@ The deployment process includes:
 
 This repository includes comprehensive documentation to help you deploy, manage, and understand your HomeLab environment:
 
+### Getting Started
 - [Prerequisites Guide](docs/PREREQUISITES.md) - Requirements before starting
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
+- [Quick Start Guide](QUICK-START.md) - Fastest path to deployment
+
+### User Interface & Navigation
+- [UI Quick Reference](docs/UI-QUICK-REFERENCE.md) - Keyboard shortcuts, menu navigation, and tips ✨ NEW
+- [UI/UX Improvements](docs/UI-UX-IMPROVEMENTS.md) - Technical details of recent UI enhancements ✨ NEW
+
+### Development & Testing
 - [Testing Guide](docs/TESTING.md) - Running tests and test development
 - [Development Guide](docs/DEVELOPMENT.md) - Developer setup and contribution guidelines
+
+### Features & Integration
 - [GitHub Integration Guide](docs/GITHUB-INTEGRATION.md) - GitHub Actions and repository deployment
 - [Website Deployment Guide](docs/WEBSITE-DEPLOYMENT.md) - Instructions for deploying websites
+
+### Advanced Topics
 - [VPN Gateway Guide](docs/networking/vpn-gateway.md) - Advanced VPN configuration options
 - [Certificate Management Guide](docs/security/client-certificate-management.md) - Managing certificates for VPN authentication
 
