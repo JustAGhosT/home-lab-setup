@@ -31,6 +31,7 @@ class MarkdownLinter:
     }
 
     # Common markdown patterns
+    # Bug fix: Improved regex patterns with better edge case handling
     HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>.{0,1000})$")
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
@@ -38,12 +39,14 @@ class MarkdownLinter:
     HTML_COMMENT_START_PATTERN = re.compile(r"^<!--")
     HTML_COMMENT_END_PATTERN = re.compile(r"-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
+    # Bug fix: Improve ordered list pattern to handle edge cases with spacing
     ORDERED_LIST_PATTERN = re.compile(
-        r"^\s*(?P<number>\d+)\.(?P<content>\s+.{0,1000})$"
+        r"^\s*(?P<number>\d+)\.(?P<content>\s+.+?)$"
     )
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
-    BARE_URL_PATTERN = re.compile(r"(?<![<\[\(])(https?://[^\s<>\[\]()]+)(?![>\]\)])")
+    # Bug fix: Improve URL pattern to avoid false positives with markdown links
+    BARE_URL_PATTERN = re.compile(r"(?<![<\[\(])(https?://[^\s<>\[\]()\"\']+)(?![>\]\)])")
     EMAIL_PATTERN = re.compile(
         r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
     )
@@ -345,20 +348,31 @@ class MarkdownLinter:
         self, report: FileReport, content: str, lines: list
     ) -> None:
         """Perform final checks after processing all lines."""
-        # Check for final newline
-        if (
-            self.config["insert_final_newline"]
-            and content
-            and not content.endswith("\n")
-        ):
-            self._add_issue(
-                report,
-                len(lines),
-                "Missing final newline",
-                "MD047",
-                fix=lambda c: c + "\n",
-                file_level=True,
-            )
+        # Bug fix: Check for final newline with proper validation
+        if self.config["insert_final_newline"] and content:
+            # Bug fix: Handle edge case where file ends with multiple newlines
+            if not content.endswith("\n"):
+                self._add_issue(
+                    report,
+                    len(lines),
+                    "Missing final newline",
+                    "MD047",
+                    fix=lambda c: c + "\n",
+                    file_level=True,
+                )
+            # Bug fix: Check for multiple trailing newlines
+            elif content.endswith("\n\n\n") and not self.config["allow_multiple_blank_lines"]:
+                # Count trailing newlines
+                trailing_newlines = len(content) - len(content.rstrip("\n"))
+                if trailing_newlines > 1:
+                    self._add_issue(
+                        report,
+                        len(lines),
+                        f"Multiple trailing newlines ({trailing_newlines} found, expected 1)",
+                        "MD012",
+                        fix=lambda c: c.rstrip("\n") + "\n",
+                        file_level=True,
+                    )
 
         # Store the fixed content if there are fixes
         if any(issue.fixable for issue in report.issues):

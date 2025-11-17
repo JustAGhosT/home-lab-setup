@@ -9,61 +9,82 @@ interface DeploymentStatus {
   lastDeployment?: string;
 }
 
+// Bug fix: Extract hard-coded module path into a constant
+const HOMELAB_MODULE_PATH = '/app/src/HomeLab/HomeLab/HomeLab.psd1';
+
 const Deployment: React.FC = () => {
   const [logs, setLogs] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [status, setStatus] = useState<DeploymentStatus | null>(null);
 
-  const executeCommand = async (command: string, description: string) => {
+  const executeCommand = async (command: string, description: string): Promise<void> => {
     setIsDeploying(true);
     setActiveOperation(description);
     setLogs('');
 
     try {
       const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
+      setLogs(result || 'Command executed successfully with no output');
     } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      // Bug fix: Better error formatting and logging
+      const errorMessage = error instanceof Error 
+        ? `Error: ${error.message}` 
+        : `Error: ${String(error)}`;
+      setLogs(errorMessage);
+      console.error(`Failed to execute ${description}:`, error);
     } finally {
       setIsDeploying(false);
       setActiveOperation('');
     }
   };
 
-  const handleDeployFull = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-FullInfrastructure',
-      'Deploying Full Infrastructure'
-    );
+  const handleDeployFull = async (): Promise<void> => {
+    // Bug fix: Wrap in try-catch to prevent unhandled promise rejections
+    try {
+      await executeCommand(
+        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-FullInfrastructure`,
+        'Deploying Full Infrastructure'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployFull:', error);
+    }
   };
 
-  const handleDeployNetwork = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-NetworkOnly',
-      'Deploying Network Only'
-    );
+  const handleDeployNetwork = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-NetworkOnly`,
+        'Deploying Network Only'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployNetwork:', error);
+    }
   };
 
-  const handleDeployVpnGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-VpnGateway',
-      'Deploying VPN Gateway (This may take 30-45 minutes)'
-    );
+  const handleDeployVpnGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-VpnGateway`,
+        'Deploying VPN Gateway (This may take 30-45 minutes)'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployVpnGateway:', error);
+    }
   };
 
-  const handleDeployNatGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-NatGateway',
-      'Deploying NAT Gateway'
-    );
+  const handleDeployNatGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-NatGateway`,
+        'Deploying NAT Gateway'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployNatGateway:', error);
+    }
   };
 
-  const handleCheckStatus = async () => {
+  const handleCheckStatus = async (): Promise<void> => {
     setIsDeploying(true);
     setActiveOperation('Checking Deployment Status');
     setLogs('');
@@ -71,35 +92,49 @@ const Deployment: React.FC = () => {
     try {
       const result = await invoke('pwsh', [
         '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-DeploymentStatus | ConvertTo-Json'
+        `Import-Module ${HOMELAB_MODULE_PATH}; Get-DeploymentStatus | ConvertTo-Json`
       ]);
-      const deploymentStatus = JSON.parse(result);
-      setStatus(deploymentStatus);
-      setLogs('Deployment status retrieved successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
+      
+      // Bug fix: Validate result before parsing
+      if (result && result.trim() !== '') {
+        const deploymentStatus = JSON.parse(result);
+        setStatus(deploymentStatus);
+        setLogs('Deployment status retrieved successfully');
       } else {
-        setLogs(`Error: ${String(error)}`);
+        setLogs('Warning: No deployment status returned');
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? `Error: ${error.message}` 
+        : `Error: ${String(error)}`;
+      setLogs(errorMessage);
+      console.error('Failed to check deployment status:', error);
     } finally {
       setIsDeploying(false);
       setActiveOperation('');
     }
   };
 
-  const handleEnableVpnGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Enable-VpnGateway',
-      'Enabling VPN Gateway'
-    );
+  const handleEnableVpnGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        `Import-Module ${HOMELAB_MODULE_PATH}; Enable-VpnGateway`,
+        'Enabling VPN Gateway'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleEnableVpnGateway:', error);
+    }
   };
 
-  const handleDisableVpnGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Disable-VpnGateway',
-      'Disabling VPN Gateway'
-    );
+  const handleDisableVpnGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        `Import-Module ${HOMELAB_MODULE_PATH}; Disable-VpnGateway`,
+        'Disabling VPN Gateway'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDisableVpnGateway:', error);
+    }
   };
 
   return (
