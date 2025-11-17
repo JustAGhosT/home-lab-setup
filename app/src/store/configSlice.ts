@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { invoke } from '../../utils/invoke';
+import { invoke } from '../utils/invoke';
+import type { AppDispatch } from './store';
 
 interface ConfigState {
   config: any;
@@ -42,7 +43,7 @@ export const {
   setConfigValue,
 } = configSlice.actions;
 
-export const fetchConfig = () => async (dispatch: any) => {
+export const fetchConfig = () => async (dispatch: AppDispatch) => {
   dispatch(fetchConfigStart());
   try {
     const result = await invoke('pwsh', ['-Command', 'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-Configuration | ConvertTo-Json']);
@@ -56,7 +57,7 @@ export const fetchConfig = () => async (dispatch: any) => {
   }
 };
 
-export const saveConfig = (config: any) => async (dispatch: any) => {
+export const saveConfig = (config: any) => async (_dispatch: AppDispatch) => {
   try {
     await invoke('pwsh', ['-Command', `Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Set-Configuration -Configuration '${JSON.stringify(config)}'`]);
   } catch (error) {

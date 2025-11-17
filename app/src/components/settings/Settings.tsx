@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import MainLayout from '../layout/MainLayout';
 import { fetchConfig, saveConfig, setConfigValue } from '../../store/configSlice';
-import { RootState } from '../../store/store';
+import { RootState, AppDispatch } from '../../store/store';
 
 const Settings: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { config, loading, error } = useSelector((state: RootState) => state.config);
 
   useEffect(() => {

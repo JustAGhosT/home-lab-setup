@@ -1,36 +1,47 @@
 import React, { useState } from 'react';
 import MainLayout from '../layout/MainLayout';
-import { invoke } from '../../utils/invoke';
+import VpnCertificates from './VpnCertificates';
+import VpnGateway from './VpnGateway';
+import VpnClient from './VpnClient';
+
+type VpnTab = 'certificates' | 'gateway' | 'client';
 
 const Vpn: React.FC = () => {
-  const [logs, setLogs] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<VpnTab>('certificates');
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    setLogs('');
-
-    try {
-      const result = await invoke('pwsh', ['-Command', 'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; New-VpnCertificate']);
-      setLogs(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(error.message);
-      } else {
-        setLogs(String(error));
-      }
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const tabs = [
+    { id: 'certificates' as VpnTab, label: 'Certificates', icon: '🔐' },
+    { id: 'gateway' as VpnTab, label: 'Gateway', icon: '🌐' },
+    { id: 'client' as VpnTab, label: 'Client', icon: '💻' },
+  ];
 
   return (
     <MainLayout title="VPN Management">
       <div className="vpn">
-        <button onClick={handleGenerate} disabled={isGenerating}>
-          {isGenerating ? 'Generating...' : 'Generate VPN Certificate'}
-        </button>
-        <pre>{logs}</pre>
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="flex space-x-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-3 px-4 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="tab-content">
+          {activeTab === 'certificates' && <VpnCertificates />}
+          {activeTab === 'gateway' && <VpnGateway />}
+          {activeTab === 'client' && <VpnClient />}
+        </div>
       </div>
     </MainLayout>
   );
