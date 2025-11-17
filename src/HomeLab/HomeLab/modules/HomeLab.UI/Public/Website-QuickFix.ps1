@@ -359,66 +359,65 @@ function Deploy-SimpleAutoDetectWebsite {
         }
         break
     } while ($true)
-    return
-}
     
-# Ask about custom domain
-$useDomain = Read-Host "Configure custom domain? (y/n)"
-$customDomain = $null
-$subdomain = $null
+    # Ask about custom domain
+    $useDomain = Read-Host "Configure custom domain? (y/n)"
+    $customDomain = $null
+    $subdomain = $null
     
-if ($useDomain -eq "y") {
-    $customDomain = Read-Host "Enter domain (e.g., example.com)"
-    $subdomain = Read-Host "Enter subdomain (e.g., www)"
-}
-    
-# Build parameters
-$params = @{
-    DeploymentType = "auto"
-    ResourceGroup  = $resourceGroup
-    AppName        = $appName
-    SubscriptionId = $subscriptionId
-    ProjectPath    = $projectPath
-}
-    
-if ($customDomain) {
-    $params.CustomDomain = $customDomain
-}
-    
-if ($subdomain) {
-    $params.Subdomain = $subdomain
-}
-    
-# Show deployment summary
-Write-Host ""
-Write-Host "Deployment Summary:" -ForegroundColor Cyan
-Write-Host "Type: Auto-Detect" -ForegroundColor White
-Write-Host "Resource Group: $resourceGroup" -ForegroundColor White
-Write-Host "App Name: $appName" -ForegroundColor White
-Write-Host "Subscription: $subscriptionId" -ForegroundColor White
-Write-Host "Project Path: $projectPath" -ForegroundColor White
-    
-if ($customDomain) {
-    Write-Host "Domain: $subdomain.$customDomain" -ForegroundColor White
-}
-    
-# Confirm and deploy
-Write-Host ""
-$confirm = Read-Host "Proceed with deployment? (y/n)"
-    
-if ($confirm -eq "y") {
-    try {
-        # Call the actual deployment function
-        Write-Host "Auto-detecting project type and deploying website..." -ForegroundColor Yellow
-        Deploy-Website @params
-        Write-Host "Deployment completed successfully!" -ForegroundColor Green
+    if ($useDomain -eq "y") {
+        $customDomain = Read-Host "Enter domain (e.g., example.com)"
+        $subdomain = Read-Host "Enter subdomain (e.g., www)"
     }
-    catch {
-        Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+    
+    # Build parameters
+    $params = @{
+        DeploymentType = "auto"
+        ResourceGroup  = $resourceGroup
+        AppName        = $appName
+        SubscriptionId = $subscriptionId
+        ProjectPath    = $projectPath
     }
-}
-else {
-    Write-Host "Deployment cancelled." -ForegroundColor Yellow
+    
+    if ($customDomain) {
+        $params.CustomDomain = $customDomain
+    }
+    
+    if ($subdomain) {
+        $params.Subdomain = $subdomain
+    }
+    
+    # Show deployment summary
+    Write-Host ""
+    Write-Host "Deployment Summary:" -ForegroundColor Cyan
+    Write-Host "Type: Auto-Detect" -ForegroundColor White
+    Write-Host "Resource Group: $resourceGroup" -ForegroundColor White
+    Write-Host "App Name: $appName" -ForegroundColor White
+    Write-Host "Subscription: $subscriptionId" -ForegroundColor White
+    Write-Host "Project Path: $projectPath" -ForegroundColor White
+    
+    if ($customDomain) {
+        Write-Host "Domain: $subdomain.$customDomain" -ForegroundColor White
+    }
+    
+    # Confirm and deploy
+    Write-Host ""
+    $confirm = Read-Host "Proceed with deployment? (y/n)"
+    
+    if ($confirm -eq "y") {
+        try {
+            # Call the actual deployment function
+            Write-Host "Auto-detecting project type and deploying website..." -ForegroundColor Yellow
+            Deploy-Website @params
+            Write-Host "Deployment completed successfully!" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Deployment failed: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    else {
+        Write-Host "Deployment cancelled." -ForegroundColor Yellow
+    }
 }
 
 <#

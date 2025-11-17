@@ -87,6 +87,12 @@ function Show-Menu {
         [switch]$ShowHelp
     )
     
+    # Validate that MenuItems is not empty
+    if ($null -eq $MenuItems -or $MenuItems.Count -eq 0) {
+        Write-Error "MenuItems cannot be null or empty"
+        return $null
+    }
+    
     if ($ShowProgress) {
         # Show a quick progress bar when loading the menu.
         for ($i = 0; $i -le 100; $i += 10) {

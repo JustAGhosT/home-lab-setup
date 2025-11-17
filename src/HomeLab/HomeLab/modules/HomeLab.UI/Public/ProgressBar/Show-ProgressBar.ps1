@@ -3,7 +3,7 @@ function Show-ProgressBar {
     .SYNOPSIS
         Displays a text-based progress bar in the console.
     .DESCRIPTION
-        Creates and displays a customizable text-based progress bar in the console with optional status text.
+        Creates and displays a customizable text-based progress bar in the console with optional status text and ETA.
     .PARAMETER PercentComplete
         The percentage of completion (0-100).
     .PARAMETER Width
@@ -22,10 +22,14 @@ function Show-ProgressBar {
         If specified, doesn't add a new line after the progress bar.
     .PARAMETER ReturnString
         If specified, returns the progress bar as a string instead of displaying it.
+    .PARAMETER StartTime
+        The start time of the operation, used to calculate ETA.
+    .PARAMETER ShowETA
+        If specified and StartTime is provided, shows estimated time remaining.
     .EXAMPLE
         Show-ProgressBar -PercentComplete 50 -Activity "Deploying" -Status "Creating resources..."
     .EXAMPLE
-        Show-ProgressBar -PercentComplete 75 -Width 30 -ForegroundColor Cyan -NoPercentage
+        $start = Get-Date; Show-ProgressBar -PercentComplete 75 -StartTime $start -ShowETA
     #>
     [CmdletBinding()]
     param (
@@ -54,7 +58,13 @@ function Show-ProgressBar {
         [switch]$NoNewLine,
         
         [Parameter(Mandatory = $false)]
-        [switch]$ReturnString
+        [switch]$ReturnString,
+        
+        [Parameter(Mandatory = $false)]
+        [DateTime]$StartTime,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$ShowETA
     )
     
     # Ensure percent complete is within valid range
@@ -74,6 +84,24 @@ function Show-ProgressBar {
         $progressBar += " {0,3:N0}%" -f $PercentComplete
     }
     
+    # Calculate and add ETA if requested
+    if ($ShowETA -and $StartTime -and $PercentComplete -gt 0 -and $PercentComplete -lt 100) {
+        $elapsed = (Get-Date) - $StartTime
+        $totalEstimated = $elapsed.TotalSeconds / ($PercentComplete / 100)
+        $remaining = $totalEstimated - $elapsed.TotalSeconds
+        
+        if ($remaining -gt 0) {
+            $etaSpan = [TimeSpan]::FromSeconds($remaining)
+            if ($etaSpan.TotalHours -ge 1) {
+                $etaString = "{0:hh\:mm\:ss}" -f $etaSpan
+            }
+            else {
+                $etaString = "{0:mm\:ss}" -f $etaSpan
+            }
+            $progressBar += " ETA: $etaString"
+        }
+    }
+    
     # Add status if provided
     if ($Status) {
         $progressBar += " - $Status"
@@ -84,7 +112,9 @@ function Show-ProgressBar {
     }
     else {
         # Clear the current line before writing the progress bar
-        Clear-CurrentLine
+        if (Get-Command -Name Clear-CurrentLine -ErrorAction SilentlyContinue) {
+            Clear-CurrentLine
+        }
         
         # Display the activity if provided
         if ($Activity -ne "Progress") {
