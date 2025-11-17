@@ -20,6 +20,9 @@ const Sidebar: React.FC = () => {
         <NavLink to="/nat" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
           NAT Gateway
         </NavLink>
+        <NavLink to="/dns" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+          DNS Management
+        </NavLink>
         <NavLink to="/docs" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
           Documentation
         </NavLink>
