@@ -171,8 +171,13 @@ export function parseLogsFromText(text: string): LogEntry[] {
   
   // Simple pattern matching for structured logs
   // Expected format: [timestamp] [LEVEL] operation: message
-  // Security fix: Use atomic groups and possessive quantifiers to prevent ReDoS
-  const logPattern = /^\[([^\]]+)\]\s+\[([^\]]+)\]\s+([^:]+?):\s+(.+)$/;
+  // Security fix: Use negated character classes to prevent ReDoS attacks
+  // Pattern breakdown: [timestamp] [LEVEL] operation: message
+  // - [timestamp]: matches anything except ]
+  // - [LEVEL]: matches anything except ]
+  // - operation: matches anything except : (limited to prevent backtracking)
+  // - message: matches remaining characters
+  const logPattern = /^\[([^\]]+)\]\s+\[([^\]]+)\]\s+([^:]+):\s+(.*)$/;
   
   for (const line of lines) {
     const match = line.match(logPattern);

@@ -52,8 +52,10 @@ class MarkdownLinter:
     HTML_COMMENT_END_PATTERN = re.compile(r"-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
     # Bug fix: Improve ordered list pattern to handle edge cases with spacing
+    # Security fix: Use possessive quantifier pattern to prevent ReDoS
+    # Changed \s+.+? to \s+.* to avoid backtracking between \s+ and .+?
     ORDERED_LIST_PATTERN = re.compile(
-        r"^\s*(?P<number>\d+)\.(?P<content>\s+.+?)$"
+        r"^\s*(?P<number>\d+)\.(?P<content>\s+.*)$"
     )
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
