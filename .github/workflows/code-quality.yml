@@ -65,7 +65,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "18"
 
@@ -157,7 +157,7 @@ jobs:
 
       - name: Setup Node.js (if package.json exists)
         if: hashFiles('package.json') != ''
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "18"
 
