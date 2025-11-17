@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MainLayout from '../layout/MainLayout';
 import { invoke } from '../../utils/invoke';
+import { DeploymentCommands, GatewayCommands, AzureCommands } from '../../constants/commands';
 
 interface DeploymentStatus {
   network: string;
@@ -8,9 +9,6 @@ interface DeploymentStatus {
   natGateway: string;
   lastDeployment?: string;
 }
-
-// Bug fix: Extract hard-coded module path into a constant
-const HOMELAB_MODULE_PATH = '/app/src/HomeLab/HomeLab/HomeLab.psd1';
 
 const Deployment: React.FC = () => {
   const [logs, setLogs] = useState<string>('');
@@ -42,8 +40,9 @@ const Deployment: React.FC = () => {
   const handleDeployFull = async (): Promise<void> => {
     // Bug fix: Wrap in try-catch to prevent unhandled promise rejections
     try {
+      // Code improvement: Use centralized command constants
       await executeCommand(
-        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-FullInfrastructure`,
+        DeploymentCommands.deployFull(),
         'Deploying Full Infrastructure'
       );
     } catch (error) {
@@ -54,7 +53,7 @@ const Deployment: React.FC = () => {
   const handleDeployNetwork = async (): Promise<void> => {
     try {
       await executeCommand(
-        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-NetworkOnly`,
+        DeploymentCommands.deployNetwork(),
         'Deploying Network Only'
       );
     } catch (error) {
@@ -65,7 +64,7 @@ const Deployment: React.FC = () => {
   const handleDeployVpnGateway = async (): Promise<void> => {
     try {
       await executeCommand(
-        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-VpnGateway`,
+        DeploymentCommands.deployVpnGateway(),
         'Deploying VPN Gateway (This may take 30-45 minutes)'
       );
     } catch (error) {
@@ -76,7 +75,7 @@ const Deployment: React.FC = () => {
   const handleDeployNatGateway = async (): Promise<void> => {
     try {
       await executeCommand(
-        `Import-Module ${HOMELAB_MODULE_PATH}; Deploy-NatGateway`,
+        DeploymentCommands.deployNatGateway(),
         'Deploying NAT Gateway'
       );
     } catch (error) {
@@ -92,7 +91,7 @@ const Deployment: React.FC = () => {
     try {
       const result = await invoke('pwsh', [
         '-Command',
-        `Import-Module ${HOMELAB_MODULE_PATH}; Get-DeploymentStatus | ConvertTo-Json`
+        AzureCommands.getDeploymentStatus()
       ]);
       
       // Bug fix: Validate result before parsing
@@ -118,7 +117,7 @@ const Deployment: React.FC = () => {
   const handleEnableVpnGateway = async (): Promise<void> => {
     try {
       await executeCommand(
-        `Import-Module ${HOMELAB_MODULE_PATH}; Enable-VpnGateway`,
+        GatewayCommands.enableVpn(),
         'Enabling VPN Gateway'
       );
     } catch (error) {
@@ -129,7 +128,7 @@ const Deployment: React.FC = () => {
   const handleDisableVpnGateway = async (): Promise<void> => {
     try {
       await executeCommand(
-        `Import-Module ${HOMELAB_MODULE_PATH}; Disable-VpnGateway`,
+        GatewayCommands.disableVpn(),
         'Disabling VPN Gateway'
       );
     } catch (error) {

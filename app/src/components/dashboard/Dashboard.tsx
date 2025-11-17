@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '../layout/MainLayout';
 import { invoke } from '../../utils/invoke';
+import { AzureCommands } from '../../constants/commands';
 
 interface AzureStatus {
   isConnected: boolean;
@@ -16,9 +17,6 @@ interface ResourceSummary {
   virtualNetwork: 'Active' | 'Not Deployed';
   lastDeployment?: string;
 }
-
-// Bug fix: Extract hard-coded module path into a constant
-const HOMELAB_MODULE_PATH = '/app/src/HomeLab/HomeLab/HomeLab.psd1';
 
 const Dashboard: React.FC = () => {
   const [azureStatus, setAzureStatus] = useState<AzureStatus | null>(null);
@@ -35,10 +33,10 @@ const Dashboard: React.FC = () => {
     setError(null);
     
     try {
-      // Check Azure connection status
+      // Code improvement: Use centralized command constants
       const azureResult = await invoke('pwsh', [
         '-Command',
-        `Import-Module ${HOMELAB_MODULE_PATH}; Get-AzureConnectionStatus | ConvertTo-Json`
+        AzureCommands.getConnectionStatus()
       ]);
       
       // Bug fix: Validate response before parsing
@@ -52,10 +50,10 @@ const Dashboard: React.FC = () => {
         }
       }
 
-      // Get resource summary
+      // Code improvement: Use centralized command constants
       const resourceResult = await invoke('pwsh', [
         '-Command',
-        `Import-Module ${HOMELAB_MODULE_PATH}; Get-ResourceSummary | ConvertTo-Json`
+        AzureCommands.getResourceSummary()
       ]);
       
       // Bug fix: Validate response before parsing
