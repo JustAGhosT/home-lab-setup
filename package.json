@@ -8,5 +8,8 @@
   },
   "devDependencies": {
     "markdownlint-cli": "0.45.0"
+  },
+  "overrides": {
+    "glob": ">=11.1.0"
   }
 }
