@@ -233,7 +233,7 @@ When operations take time:
 
 ## Security Notes
 
-### Input Validation
+### Input Validation and Security
 
 All inputs are validated for:
 - Format correctness
@@ -275,4 +275,4 @@ If you encounter issues or have suggestions for UI improvements:
 
 ---
 
-**Happy HomeLab Management! 🚀**
+Happy HomeLab Management! 🚀

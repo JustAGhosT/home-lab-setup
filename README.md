@@ -170,7 +170,7 @@ The deployment process includes:
 
 This repository includes comprehensive documentation to help you deploy, manage, and understand your HomeLab environment:
 
-### Getting Started
+### Getting Started Documentation
 - [Prerequisites Guide](docs/PREREQUISITES.md) - Requirements before starting
 - [Setup Guide](docs/SETUP.md) - Step-by-step deployment instructions
 - [Quick Start Guide](QUICK-START.md) - Fastest path to deployment
