@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../layout/MainLayout';
-import { invoke } from '../../utils/invoke';
 import { GatewayCommands, DeploymentCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
+import { invoke } from '../../utils/invoke';
 import toast from 'react-hot-toast';
 
 interface NatGatewayStatus {
@@ -13,33 +14,9 @@ interface NatGatewayStatus {
 }
 
 const Nat: React.FC = () => {
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [status, setStatus] = useState<NatGatewayStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-    setError(null);
-
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result || 'Command executed successfully with no output.');
-      toast.success(`${description} completed successfully!`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error during ${description}: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
-      toast.error(`Error during ${description}: ${errorMessage}`);
-      console.error(`Failed to execute ${description}:`, err);
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
 
   useEffect(() => {
     handleCheckStatus();
@@ -61,24 +38,17 @@ const Nat: React.FC = () => {
   };
 
   const handleCheckStatus = async () => {
-    setIsLoading(true);
     setActiveOperation('Checking NAT Gateway Status');
-    setLogs('');
-    setError(null);
 
     try {
       const result = await invoke('pwsh', ['-Command', GatewayCommands.getNatStatus()]);
       const natStatus = JSON.parse(result);
       setStatus(natStatus);
-      setLogs('NAT Gateway status retrieved successfully');
       toast.success('NAT Gateway status updated!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error checking status: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
       toast.error(`Error checking status: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };

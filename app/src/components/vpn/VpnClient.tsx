@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { invoke } from '../../utils/invoke';
 import { ClientCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
+import { invoke } from '../../utils/invoke';
 import toast from 'react-hot-toast';
 
 interface ConnectionStatus {
@@ -11,33 +12,9 @@ interface ConnectionStatus {
 }
 
 const VpnClient: React.FC = () => {
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-    setError(null);
-
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result || 'Command executed successfully with no output.');
-      toast.success(`${description} completed successfully!`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error during ${description}: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
-      toast.error(`Error during ${description}: ${errorMessage}`);
-      console.error(`Failed to execute ${description}:`, err);
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
 
   useEffect(() => {
     handleCheckStatus();
@@ -58,24 +35,17 @@ const VpnClient: React.FC = () => {
   };
 
   const handleCheckStatus = async () => {
-    setIsLoading(true);
     setActiveOperation('Checking Connection Status');
-    setLogs('');
-    setError(null);
 
     try {
       const result = await invoke('pwsh', ['-Command', ClientCommands.getVpnConnectionStatus()]);
       const status = JSON.parse(result);
       setConnectionStatus(status);
-      setLogs('Connection status retrieved successfully');
       toast.success('Connection status updated!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error checking status: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
       toast.error(`Error checking status: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };

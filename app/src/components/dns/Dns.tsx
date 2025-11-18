@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../layout/MainLayout';
-import { invoke } from '../../utils/invoke';
 import { DnsCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
+import { invoke } from '../../utils/invoke';
 import toast from 'react-hot-toast';
 
 interface DnsZone {
@@ -19,35 +20,11 @@ interface DnsRecord {
 }
 
 const Dns: React.FC = () => {
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [zones, setZones] = useState<DnsZone[]>([]);
   const [records, setRecords] = useState<DnsRecord[]>([]);
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [selectedZone, setSelectedZone] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-    setError(null);
-
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result || 'Command executed successfully with no output.');
-      toast.success(`${description} completed successfully!`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error during ${description}: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
-      toast.error(`Error during ${description}: ${errorMessage}`);
-      console.error(`Failed to execute ${description}:`, err);
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
 
   useEffect(() => {
     handleListZones();
@@ -79,24 +56,17 @@ const Dns: React.FC = () => {
   };
 
   const handleListZones = async () => {
-    setIsLoading(true);
     setActiveOperation('Listing DNS Zones');
-    setLogs('');
-    setError(null);
 
     try {
       const result = await invoke('pwsh', ['-Command', DnsCommands.listZones()]);
       const zoneList = JSON.parse(result);
       setZones(Array.isArray(zoneList) ? zoneList : [zoneList]);
-      setLogs('DNS zones loaded successfully');
       toast.success('DNS zones loaded!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error listing DNS zones: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
       toast.error(`Error listing DNS zones: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
@@ -108,24 +78,17 @@ const Dns: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
     setActiveOperation(`Listing records for ${zone}`);
-    setLogs('');
-    setError(null);
 
     try {
       const result = await invoke('pwsh', ['-Command', DnsCommands.listRecords(zone)]);
       const recordList = JSON.parse(result);
       setRecords(Array.isArray(recordList) ? recordList : [recordList]);
-      setLogs('DNS records loaded successfully');
       toast.success(`Records for ${zone} loaded!`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error listing records: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
       toast.error(`Error listing records: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };

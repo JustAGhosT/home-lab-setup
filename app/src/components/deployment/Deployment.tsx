@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import MainLayout from '../layout/MainLayout';
-import { invoke } from '../../utils/invoke';
 import { DeploymentCommands, GatewayCommands, AzureCommands } from '../../constants/commands';
-import toast from 'react-hot-toast';
+import { useCommand } from '../../hooks/useCommand';
+import { invoke } from '../../utils/invoke';
 
 interface DeploymentStatus {
   network: string;
@@ -12,33 +12,9 @@ interface DeploymentStatus {
 }
 
 const Deployment: React.FC = () => {
-  const [logs, setLogs] = useState<string>('');
-  const [isDeploying, setIsDeploying] = useState<boolean>(false);
+  const { logs, isLoading: isDeploying, error, executeCommand } = useCommand();
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [status, setStatus] = useState<DeploymentStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const executeCommand = async (command: string, description: string): Promise<void> => {
-    setIsDeploying(true);
-    setActiveOperation(description);
-    setLogs('');
-    setError(null);
-
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result || 'Command executed successfully with no output');
-      toast.success(`${description} completed successfully!`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error during ${description}: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
-      toast.error(`Error during ${description}: ${errorMessage}`);
-      console.error(`Failed to execute ${description}:`, err);
-    } finally {
-      setIsDeploying(false);
-      setActiveOperation('');
-    }
-  };
 
   const handleDeployFull = async (): Promise<void> => {
     // Bug fix: Wrap in try-catch to prevent unhandled promise rejections
@@ -87,9 +63,7 @@ const Deployment: React.FC = () => {
   };
 
   const handleCheckStatus = async (): Promise<void> => {
-    setIsDeploying(true);
     setActiveOperation('Checking Deployment Status');
-    setLogs('');
 
     try {
       const result = await invoke('pwsh', [
@@ -101,18 +75,10 @@ const Deployment: React.FC = () => {
       if (result && result.trim() !== '') {
         const deploymentStatus = JSON.parse(result);
         setStatus(deploymentStatus);
-        setLogs('Deployment status retrieved successfully');
-      } else {
-        setLogs('Warning: No deployment status returned');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? `Error: ${error.message}` 
-        : `Error: ${String(error)}`;
-      setLogs(errorMessage);
       console.error('Failed to check deployment status:', error);
     } finally {
-      setIsDeploying(false);
       setActiveOperation('');
     }
   };

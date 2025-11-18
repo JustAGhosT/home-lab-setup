@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { invoke } from '../../utils/invoke';
 import { SecurityCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
+import { invoke } from '../../utils/invoke';
 import toast from 'react-hot-toast';
 
 interface Certificate {
@@ -11,33 +12,9 @@ interface Certificate {
 }
 
 const VpnCertificates: React.FC = () => {
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-    setError(null);
-
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result || 'Command executed successfully with no output.');
-      toast.success(`${description} completed successfully!`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error during ${description}: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
-      toast.error(`Error during ${description}: ${errorMessage}`);
-      console.error(`Failed to execute ${description}:`, err);
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
 
   useEffect(() => {
     handleListCertificates();
@@ -63,24 +40,17 @@ const VpnCertificates: React.FC = () => {
   };
 
   const handleListCertificates = async () => {
-    setIsLoading(true);
     setActiveOperation('Listing Certificates');
-    setLogs('');
-    setError(null);
 
     try {
       const result = await invoke('pwsh', ['-Command', SecurityCommands.listCertificates()]);
       const certs = JSON.parse(result);
       setCertificates(Array.isArray(certs) ? certs : [certs]);
-      setLogs('Certificates loaded successfully');
       toast.success('Certificates loaded!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error listing certificates: ${errorMessage}`);
-      setLogs(`Error: ${errorMessage}`);
       toast.error(`Error listing certificates: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
