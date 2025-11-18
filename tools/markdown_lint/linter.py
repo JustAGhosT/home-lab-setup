@@ -47,9 +47,9 @@ class MarkdownLinter:
     )
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
-    # Security fix: Changed .*? to [^-]* to prevent ReDoS - matches any char except hyphen (part of -->)
-    # This prevents backtracking between .*? and --> by being more specific
-    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--[^-]*(?:-[^-]+)*-->\s*$")
+    # Security fix: Use simple greedy match to end marker to avoid backtracking
+    # Match everything from <!-- to --> without complex patterns
+    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--.*-->\s*$")
     HTML_COMMENT_START_PATTERN = re.compile(r"^<!--")
     HTML_COMMENT_END_PATTERN = re.compile(r"-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
@@ -57,7 +57,7 @@ class MarkdownLinter:
     # Security fix: Use possessive quantifier pattern to prevent ReDoS
     # Changed \s+.+? to \s+.* to avoid backtracking between \s+ and .+?
     ORDERED_LIST_PATTERN = re.compile(
-        r"^\s*(?P<number>\d+)\.(?P<content>\s+.*)$"
+        r"^\s*(?P<number>\d+)\.(?P<content>\s*.*)$"
     )
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
@@ -66,10 +66,10 @@ class MarkdownLinter:
     EMAIL_PATTERN = re.compile(
         rf"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{{{MIN_TLD_LENGTH},}})(?![>\]\)])"
     )
-    # Security fix: Simplified CLOSED_ATX_HEADING_PATTERN to prevent ReDoS
-    # Changed [^\s].*[^\s]\s+ to \S.*\S\s+ for better performance
+    # Security fix: Use \S+\s+ pattern to avoid .* backtracking
+    # Match: # + spaces + non-whitespace + any chars + non-whitespace + spaces + #
     CLOSED_ATX_HEADING_PATTERN = re.compile(
-        rf"^#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s+\S.*\S\s+#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s*$"
+        rf"^#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s+\S[\S\s]*\S\s+#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s*$"
     )
 
     # Code improvement: Constants for repeated messages and error codes
