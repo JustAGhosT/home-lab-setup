@@ -1,8 +1,29 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
 import MainLayout from '../layout/MainLayout';
 import { fetchConfig, saveConfig, setConfigValue } from '../../store/configSlice';
 import { RootState, AppDispatch } from '../../store/store';
+
+// Helper to format labels and add tooltips
+const settingMetadata: { [key: string]: { label: string; tooltip: string } } = {
+  logFileLocation: {
+    label: 'Log File Location',
+    tooltip: 'The directory where log files should be stored.',
+  },
+  azureLocation: {
+    label: 'Azure Location',
+    tooltip: 'The default Azure region for resource deployment.',
+  },
+  projectName: {
+    label: 'Project Name',
+    tooltip: 'A name for your project, used for resource naming.',
+  },
+  environment: {
+    label: 'Environment',
+    tooltip: 'The deployment environment (e.g., dev, test, prod).',
+  },
+};
 
 const Settings: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -19,7 +40,7 @@ const Settings: React.FC = () => {
 
   const handleSave = () => {
     dispatch(saveConfig(config));
-    alert('Settings saved successfully!');
+    toast.success('Settings saved successfully!');
   };
 
   return (
@@ -30,9 +51,9 @@ const Settings: React.FC = () => {
         {config && (
           <form>
             {Object.entries(config).map(([key, value]) => (
-              <div key={key} className="mb-4">
+              <div key={key} className="mb-4" title={settingMetadata[key]?.tooltip}>
                 <label htmlFor={key} className="block text-gray-700 font-bold mb-2">
-                  {key}
+                  {settingMetadata[key]?.label || key}
                 </label>
                 <input
                   type="text"

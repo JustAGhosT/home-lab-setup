@@ -31,49 +31,55 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     setIsLoading(true);
     setError(null);
-    
+    setAzureStatus(null);
+    setResourceSummary(null);
+
     try {
-      // Code improvement: Use centralized command constants
       const azureResult = await invoke('pwsh', [
         '-Command',
-        AzureCommands.getConnectionStatus()
+        AzureCommands.getConnectionStatus(),
       ]);
-      
-      // Bug fix: Validate response before parsing
-      if (azureResult && azureResult.trim() !== '') {
+
+      if (azureResult && azureResult.trim()) {
         const parsedAzureStatus = JSON.parse(azureResult);
-        // Bug fix: Validate parsed object structure
-        if (parsedAzureStatus && typeof parsedAzureStatus.isConnected === 'boolean') {
+        if (
+          parsedAzureStatus &&
+          typeof parsedAzureStatus.isConnected === 'boolean'
+        ) {
           setAzureStatus(parsedAzureStatus);
         } else {
-          throw new Error('Invalid Azure status response format');
+          throw new Error('Invalid Azure status response format. The response from the PowerShell command was not as expected.');
         }
+      } else {
+        setAzureStatus({ isConnected: false }); // Assume disconnected if response is empty
       }
 
-      // Code improvement: Use centralized command constants
       const resourceResult = await invoke('pwsh', [
         '-Command',
-        AzureCommands.getResourceSummary()
+        AzureCommands.getResourceSummary(),
       ]);
-      
-      // Bug fix: Validate response before parsing
-      if (resourceResult && resourceResult.trim() !== '') {
+
+      if (resourceResult && resourceResult.trim()) {
         const parsedResourceSummary = JSON.parse(resourceResult);
-        // Bug fix: Validate parsed object has expected properties
-        if (parsedResourceSummary && 
-            ('vpnGateway' in parsedResourceSummary || 
-             'natGateway' in parsedResourceSummary || 
-             'virtualNetwork' in parsedResourceSummary)) {
+        if (
+          parsedResourceSummary &&
+          typeof parsedResourceSummary.vpnGateway === 'string' &&
+          typeof parsedResourceSummary.natGateway === 'string' &&
+          typeof parsedResourceSummary.virtualNetwork === 'string'
+        ) {
           setResourceSummary(parsedResourceSummary);
+        } else {
+            throw new Error('Invalid resource summary response format. The response from the PowerShell command was not as expected.');
         }
+      } else {
+          setResourceSummary(null); // Set to null if no resources are found or response is empty
       }
+
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'An unknown error occurred';
       console.error('Error loading dashboard data:', errorMessage);
-      setError(errorMessage);
-      // Bug fix: Set null states on error to prevent stale data display
-      setAzureStatus(null);
-      setResourceSummary(null);
+      setError(`Failed to load dashboard data: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +95,6 @@ const Dashboard: React.FC = () => {
   return (
     <MainLayout title="Dashboard">
       <div className="dashboard space-y-6">
-        {/* Welcome Section */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg rounded-lg p-6">
           <h2 className="text-2xl font-bold mb-2">Welcome to HomeLab Setup</h2>
           <p className="text-blue-100">
@@ -97,12 +102,11 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Bug fix: Display error message if loading failed */}
         {error && (
           <div className="bg-red-50 border border-red-300 text-red-800 rounded-lg p-4">
             <h3 className="font-semibold mb-2">⚠️ Error Loading Dashboard</h3>
             <p className="text-sm">{error}</p>
-            <button 
+            <button
               onClick={loadDashboardData}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
             >
@@ -117,7 +121,6 @@ const Dashboard: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Azure Connection Status */}
             <div className="bg-white shadow-md rounded p-6">
               <h3 className="text-xl font-semibold mb-4">Azure Connection Status</h3>
               {azureStatus ? (
@@ -125,8 +128,8 @@ const Dashboard: React.FC = () => {
                   <div className="flex items-center">
                     <span className="font-semibold w-40">Connection:</span>
                     <span className={`px-3 py-1 rounded text-sm font-semibold ${
-                      azureStatus.isConnected 
-                        ? 'bg-green-200 text-green-800' 
+                      azureStatus.isConnected
+                        ? 'bg-green-200 text-green-800'
                         : 'bg-red-200 text-red-800'
                     }`}>
                       {azureStatus.isConnected ? 'Connected ✓' : 'Disconnected ✗'}
@@ -167,7 +170,6 @@ const Dashboard: React.FC = () => {
               )}
             </div>
 
-            {/* Resource Summary */}
             <div className="bg-white shadow-md rounded p-6">
               <h3 className="text-xl font-semibold mb-4">Resource Summary</h3>
               {resourceSummary ? (
@@ -178,8 +180,8 @@ const Dashboard: React.FC = () => {
                       <span className="text-2xl">🌐</span>
                     </div>
                     <span className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
-                      resourceSummary.virtualNetwork === 'Active' 
-                        ? 'bg-green-200 text-green-800' 
+                      resourceSummary.virtualNetwork === 'Active'
+                        ? 'bg-green-200 text-green-800'
                         : 'bg-gray-200 text-gray-800'
                     }`}>
                       {resourceSummary.virtualNetwork}
@@ -192,8 +194,8 @@ const Dashboard: React.FC = () => {
                       <span className="text-2xl">🔐</span>
                     </div>
                     <span className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
-                      resourceSummary.vpnGateway === 'Active' 
-                        ? 'bg-green-200 text-green-800' 
+                      resourceSummary.vpnGateway === 'Active'
+                        ? 'bg-green-200 text-green-800'
                         : resourceSummary.vpnGateway === 'Inactive'
                         ? 'bg-orange-200 text-orange-800'
                         : 'bg-gray-200 text-gray-800'
@@ -208,8 +210,8 @@ const Dashboard: React.FC = () => {
                       <span className="text-2xl">🚪</span>
                     </div>
                     <span className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
-                      resourceSummary.natGateway === 'Active' 
-                        ? 'bg-green-200 text-green-800' 
+                      resourceSummary.natGateway === 'Active'
+                        ? 'bg-green-200 text-green-800'
                         : resourceSummary.natGateway === 'Inactive'
                         ? 'bg-orange-200 text-orange-800'
                         : 'bg-gray-200 text-gray-800'
@@ -230,7 +232,6 @@ const Dashboard: React.FC = () => {
               )}
             </div>
 
-            {/* Quick Actions */}
             <div className="bg-white shadow-md rounded p-6">
               <h3 className="text-xl font-semibold mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -247,7 +248,6 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Getting Started */}
             <div className="bg-blue-50 border border-blue-200 rounded p-6">
               <h3 className="font-semibold text-blue-900 mb-3">🚀 Getting Started</h3>
               <ol className="list-decimal list-inside text-blue-800 space-y-2">

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../layout/MainLayout';
+import { DnsCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
 import { invoke } from '../../utils/invoke';
+import toast from 'react-hot-toast';
 
 interface DnsZone {
   name: string;
@@ -17,68 +20,53 @@ interface DnsRecord {
 }
 
 const Dns: React.FC = () => {
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [zones, setZones] = useState<DnsZone[]>([]);
   const [records, setRecords] = useState<DnsRecord[]>([]);
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [selectedZone, setSelectedZone] = useState<string>('');
 
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
+  useEffect(() => {
+    handleListZones();
+  }, []);
 
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
+  const handleCreateZone = async () => {
+    const zoneName = prompt('Enter the new DNS zone name:');
+    if (zoneName) {
+      await executeCommand(DnsCommands.createZone(zoneName), `Creating DNS Zone: ${zoneName}`);
+      handleListZones();
     }
   };
 
-  const handleCreateZone = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; New-DnsZone',
-      'Creating DNS Zone'
-    );
-  };
-
   const handleAddRecord = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Add-DnsRecord',
-      'Adding DNS Record'
-    );
+    if (!selectedZone) {
+      toast.error('Please select a zone before adding a record.');
+      return;
+    }
+    const name = prompt('Enter the record name (e.g., www):');
+    const type = prompt('Enter the record type (e.g., A, CNAME):');
+    const value = prompt('Enter the record value (e.g., 203.0.113.1):');
+    if (name && type && value) {
+      await executeCommand(
+        DnsCommands.addRecord(selectedZone, name, type, value),
+        `Adding ${type} record to ${selectedZone}`
+      );
+      handleListRecords(selectedZone);
+    }
   };
 
   const handleListZones = async () => {
-    setIsLoading(true);
     setActiveOperation('Listing DNS Zones');
-    setLogs('');
 
     try {
-      const result = await invoke('pwsh', [
-        '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-DnsZones | ConvertTo-Json'
-      ]);
+      const result = await invoke('pwsh', ['-Command', DnsCommands.listZones()]);
       const zoneList = JSON.parse(result);
       setZones(Array.isArray(zoneList) ? zoneList : [zoneList]);
-      setLogs('DNS zones loaded successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      toast.success('DNS zones loaded!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Error listing DNS zones: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
@@ -86,40 +74,29 @@ const Dns: React.FC = () => {
   const handleListRecords = async (zoneName?: string) => {
     const zone = zoneName || selectedZone;
     if (!zone) {
-      setLogs('Error: Please select a DNS zone first');
+      toast.error('Please select a DNS zone first');
       return;
     }
 
-    setIsLoading(true);
-    setActiveOperation('Listing DNS Records');
-    setLogs('');
+    setActiveOperation(`Listing records for ${zone}`);
 
     try {
-      const result = await invoke('pwsh', [
-        '-Command',
-        `Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-DnsRecords -ZoneName '${zone}' | ConvertTo-Json`
-      ]);
+      const result = await invoke('pwsh', ['-Command', DnsCommands.listRecords(zone)]);
       const recordList = JSON.parse(result);
       setRecords(Array.isArray(recordList) ? recordList : [recordList]);
-      setLogs('DNS records loaded successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      toast.success(`Records for ${zone} loaded!`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Error listing records: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
 
   const handleDeleteZone = async (zoneName: string) => {
     if (window.confirm(`Are you sure you want to delete DNS zone "${zoneName}"? This action cannot be undone.`)) {
-      await executeCommand(
-        `Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Remove-DnsZone -ZoneName '${zoneName}'`,
-        `Deleting DNS Zone: ${zoneName}`
-      );
+      await executeCommand(DnsCommands.deleteZone(zoneName), `Deleting DNS Zone: ${zoneName}`);
+      handleListZones();
     }
   };
 
@@ -154,7 +131,7 @@ const Dns: React.FC = () => {
               disabled={isLoading}
               className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              List Zones
+              Refresh Zones
             </button>
 
             <button
@@ -166,15 +143,21 @@ const Dns: React.FC = () => {
             </button>
           </div>
 
-          {isLoading && (
-            <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded">
-              <p className="text-blue-800">
-                <span className="font-semibold">In Progress:</span> {activeOperation}...
-              </p>
+          {error && !isLoading && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <h3 className="font-semibold mb-2">⚠️ DNS Error</h3>
+                <p className="text-sm">{error}</p>
             </div>
           )}
 
-          {zones.length > 0 && (
+          {isLoading && (
+            <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-blue-800 font-semibold">In Progress: {activeOperation}...</p>
+            </div>
+          )}
+
+          {!isLoading && zones.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-3">DNS Zones</h3>
               <div className="overflow-x-auto">

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../layout/MainLayout';
+import { GatewayCommands, DeploymentCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
 import { invoke } from '../../utils/invoke';
+import toast from 'react-hot-toast';
 
 interface NatGatewayStatus {
   name: string;
@@ -11,83 +14,49 @@ interface NatGatewayStatus {
 }
 
 const Nat: React.FC = () => {
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [status, setStatus] = useState<NatGatewayStatus | null>(null);
 
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
+  useEffect(() => {
+    handleCheckStatus();
+  }, []);
 
   const handleCreate = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; New-NatGateway',
-      'Creating NAT Gateway'
-    );
+    await executeCommand(DeploymentCommands.deployNatGateway(), 'Creating NAT Gateway');
+    handleCheckStatus();
   };
 
   const handleEnable = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Enable-NatGateway',
-      'Enabling NAT Gateway'
-    );
+    await executeCommand(GatewayCommands.enableNat(), 'Enabling NAT Gateway');
+    handleCheckStatus();
   };
 
   const handleDisable = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Disable-NatGateway',
-      'Disabling NAT Gateway'
-    );
+    await executeCommand(GatewayCommands.disableNat(), 'Disabling NAT Gateway');
+    handleCheckStatus();
   };
 
   const handleCheckStatus = async () => {
-    setIsLoading(true);
     setActiveOperation('Checking NAT Gateway Status');
-    setLogs('');
 
     try {
-      const result = await invoke('pwsh', [
-        '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-NatGatewayStatus | ConvertTo-Json'
-      ]);
+      const result = await invoke('pwsh', ['-Command', GatewayCommands.getNatStatus()]);
       const natStatus = JSON.parse(result);
       setStatus(natStatus);
-      setLogs('NAT Gateway status retrieved successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      toast.success('NAT Gateway status updated!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Error checking status: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
 
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete the NAT Gateway? This action cannot be undone.')) {
-      await executeCommand(
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Remove-NatGateway',
-        'Deleting NAT Gateway'
-      );
+      await executeCommand(DeploymentCommands.deleteNatGateway(), 'Deleting NAT Gateway');
+      handleCheckStatus();
     }
   };
 
@@ -130,7 +99,7 @@ const Nat: React.FC = () => {
               disabled={isLoading}
               className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Check Status
+              Refresh Status
             </button>
 
             <button
@@ -142,15 +111,21 @@ const Nat: React.FC = () => {
             </button>
           </div>
 
-          {isLoading && (
-            <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded">
-              <p className="text-blue-800">
-                <span className="font-semibold">In Progress:</span> {activeOperation}...
-              </p>
+          {error && !isLoading && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <h3 className="font-semibold mb-2">⚠️ NAT Gateway Error</h3>
+                <p className="text-sm">{error}</p>
             </div>
           )}
 
-          {status && (
+          {isLoading && (
+            <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-blue-800 font-semibold">In Progress: {activeOperation}...</p>
+            </div>
+          )}
+
+          {!isLoading && status && (
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded">
               <h3 className="text-lg font-medium mb-3">NAT Gateway Status</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { GatewayCommands, SecurityCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
 import { invoke } from '../../utils/invoke';
+import toast from 'react-hot-toast';
 
 interface GatewayStatus {
   name: string;
@@ -10,82 +13,44 @@ interface GatewayStatus {
 }
 
 const VpnGateway: React.FC = () => {
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [status, setStatus] = useState<GatewayStatus | null>(null);
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
 
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-    
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
+  useEffect(() => {
+    handleCheckStatus();
+  }, []);
 
   const handleCheckStatus = async () => {
-    setIsLoading(true);
     setActiveOperation('Checking Gateway Status');
-    setLogs('');
-    
+
     try {
-      const result = await invoke('pwsh', [
-        '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-VpnGatewayStatus | ConvertTo-Json'
-      ]);
+      const result = await invoke('pwsh', ['-Command', GatewayCommands.getVpnStatus()]);
       const gatewayStatus = JSON.parse(result);
       setStatus(gatewayStatus);
-      setLogs('Gateway status retrieved successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      toast.success('Gateway status updated!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Error checking status: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
 
   const handleGenerateClientConfig = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; New-VpnClientConfiguration',
-      'Generating VPN Client Configuration'
-    );
+    await executeCommand(GatewayCommands.generateClientConfig(), 'Generating VPN Client Configuration');
   };
 
   const handleUploadCertificate = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Add-VpnGatewayCertificate',
-      'Uploading Certificate to Gateway'
-    );
+    await executeCommand(SecurityCommands.addVpnGatewayCertificate(), 'Uploading Certificate to Gateway');
   };
 
   const handleRemoveCertificate = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Remove-VpnGatewayCertificate',
-      'Removing Certificate from Gateway'
-    );
+    await executeCommand(SecurityCommands.removeVpnGatewayCertificate(), 'Removing Certificate from Gateway');
   };
 
   const handleConfigureSplitTunneling = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Set-VpnSplitTunneling',
-      'Configuring VPN Split Tunneling'
-    );
+    await executeCommand(GatewayCommands.configureSplitTunneling(), 'Configuring VPN Split Tunneling');
   };
 
   return (
@@ -102,7 +67,7 @@ const VpnGateway: React.FC = () => {
             disabled={isLoading}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            Check Status
+            Refresh Status
           </button>
           
           <button
@@ -138,15 +103,21 @@ const VpnGateway: React.FC = () => {
           </button>
         </div>
 
-        {isLoading && (
-          <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded">
-            <p className="text-blue-800">
-              <span className="font-semibold">In Progress:</span> {activeOperation}...
-            </p>
-          </div>
+        {error && !isLoading && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <h3 className="font-semibold mb-2">⚠️ Gateway Error</h3>
+                <p className="text-sm">{error}</p>
+            </div>
         )}
 
-        {status && (
+        {isLoading && (
+            <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-blue-800 font-semibold">In Progress: {activeOperation}...</p>
+            </div>
+        )}
+
+        {!isLoading && status && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded">
             <h3 className="text-lg font-medium mb-3">Gateway Status</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -32,6 +32,7 @@ export const DeploymentCommands = {
   deployNetwork: () => createHomelabCommand('Deploy-NetworkOnly'),
   deployVpnGateway: () => createHomelabCommand('Deploy-VpnGateway'),
   deployNatGateway: () => createHomelabCommand('Deploy-NatGateway'),
+  deleteNatGateway: () => createHomelabCommand('Remove-NatGateway -Force'),
 } as const;
 
 /**
@@ -44,6 +45,8 @@ export const GatewayCommands = {
   disableNat: () => createHomelabCommand('Disable-NatGateway'),
   getVpnStatus: () => createHomelabCommand('Get-VpnGatewayStatus | ConvertTo-Json'),
   getNatStatus: () => createHomelabCommand('Get-NatGatewayStatus | ConvertTo-Json'),
+  generateClientConfig: () => createHomelabCommand('New-VpnClientConfiguration'),
+  configureSplitTunneling: () => createHomelabCommand('Set-VpnSplitTunneling'),
 } as const;
 
 /**
@@ -55,6 +58,30 @@ export const DnsCommands = {
     createHomelabCommand(`Add-DnsRecord -Zone "${zone}" -Name "${name}" -Type "${type}" -Value "${value}"`),
   listZones: () => createHomelabCommand('Get-DnsZones | ConvertTo-Json'),
   listRecords: (zoneName: string) => createHomelabCommand(`Get-DnsRecords -ZoneName "${zoneName}" | ConvertTo-Json`),
+  deleteZone: (zoneName: string) => createHomelabCommand(`Remove-DnsZone -ZoneName "${zoneName}" -Force`),
+} as const;
+
+/**
+ * Security and VPN certificate commands
+ */
+export const SecurityCommands = {
+  createRootCert: () => createHomelabCommand('New-VpnRootCertificate'),
+  createClientCert: () => createHomelabCommand('New-VpnClientCertificate'),
+  addClientToRoot: () => createHomelabCommand('Add-VpnClientCertificateToRoot'),
+  uploadToGateway: () => createHomelabCommand('Upload-VpnCertificateToGateway'),
+  listCertificates: () => createHomelabCommand('Get-VpnCertificates | ConvertTo-Json'),
+  addVpnGatewayCertificate: () => createHomelabCommand('Add-VpnGatewayCertificate'),
+  removeVpnGatewayCertificate: () => createHomelabCommand('Remove-VpnGatewayCertificate'),
+} as const;
+
+/**
+ * VPN client management commands
+ */
+export const ClientCommands = {
+    addComputerToVpn: () => createHomelabCommand('Add-ComputerToVpn'),
+    connectToVpn: () => createHomelabCommand('Connect-ToVpn'),
+    disconnectFromVpn: () => createHomelabCommand('Disconnect-FromVpn'),
+    getVpnConnectionStatus: () => createHomelabCommand('Get-VpnConnectionStatus | ConvertTo-Json'),
 } as const;
 
 /**

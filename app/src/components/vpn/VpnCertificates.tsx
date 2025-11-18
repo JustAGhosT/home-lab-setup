@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { SecurityCommands } from '../../constants/commands';
+import { useCommand } from '../../hooks/useCommand';
 import { invoke } from '../../utils/invoke';
+import toast from 'react-hot-toast';
 
 interface Certificate {
   name: string;
@@ -9,80 +12,45 @@ interface Certificate {
 }
 
 const VpnCertificates: React.FC = () => {
+  const { logs, isLoading, error, executeCommand } = useCommand();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [logs, setLogs] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
 
-  const executeCommand = async (command: string, description: string) => {
-    setIsLoading(true);
-    setActiveOperation(description);
-    setLogs('');
-    
-    try {
-      const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
-    } finally {
-      setIsLoading(false);
-      setActiveOperation('');
-    }
-  };
+  useEffect(() => {
+    handleListCertificates();
+  }, []);
 
   const handleCreateRootCertificate = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; New-VpnRootCertificate',
-      'Creating Root Certificate'
-    );
+    await executeCommand(SecurityCommands.createRootCert(), 'Creating Root Certificate');
+    handleListCertificates();
   };
 
   const handleCreateClientCertificate = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; New-VpnClientCertificate',
-      'Creating Client Certificate'
-    );
+    await executeCommand(SecurityCommands.createClientCert(), 'Creating Client Certificate');
+    handleListCertificates();
   };
 
   const handleAddClientToRoot = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Add-VpnClientCertificateToRoot',
-      'Adding Client Certificate to Root'
-    );
+    await executeCommand(SecurityCommands.addClientToRoot(), 'Adding Client Certificate to Root');
+    handleListCertificates();
   };
 
   const handleUploadToGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Upload-VpnCertificateToGateway',
-      'Uploading Certificate to Gateway'
-    );
+    await executeCommand(SecurityCommands.uploadToGateway(), 'Uploading Certificate to Gateway');
   };
 
   const handleListCertificates = async () => {
-    setIsLoading(true);
     setActiveOperation('Listing Certificates');
-    setLogs('');
-    
+
     try {
-      const result = await invoke('pwsh', [
-        '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-VpnCertificates | ConvertTo-Json'
-      ]);
+      const result = await invoke('pwsh', ['-Command', SecurityCommands.listCertificates()]);
       const certs = JSON.parse(result);
       setCertificates(Array.isArray(certs) ? certs : [certs]);
-      setLogs('Certificates loaded successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      toast.success('Certificates loaded!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Error listing certificates: ${errorMessage}`);
     } finally {
-      setIsLoading(false);
       setActiveOperation('');
     }
   };
@@ -133,19 +101,25 @@ const VpnCertificates: React.FC = () => {
             disabled={isLoading}
             className="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            List Certificates
+            Refresh Certificates
           </button>
         </div>
 
-        {isLoading && (
-          <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded">
-            <p className="text-blue-800">
-              <span className="font-semibold">In Progress:</span> {activeOperation}...
-            </p>
-          </div>
+        {error && !isLoading && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <h3 className="font-semibold mb-2">⚠️ Certificate Error</h3>
+                <p className="text-sm">{error}</p>
+            </div>
         )}
 
-        {logs && (
+        {isLoading && (
+            <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-blue-800 font-semibold">In Progress: {activeOperation}...</p>
+            </div>
+        )}
+
+        {logs && !isLoading && (
           <div className="mb-4">
             <h3 className="text-lg font-medium mb-2">Output:</h3>
             <pre className="bg-gray-900 text-green-400 p-4 rounded overflow-x-auto max-h-96">
