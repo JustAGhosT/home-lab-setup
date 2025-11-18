@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { invoke } from '../../utils/invoke';
+import { ClientCommands } from '../../constants/commands';
+import toast from 'react-hot-toast';
 
 interface ConnectionStatus {
   isConnected: boolean;
@@ -13,67 +15,65 @@ const VpnClient: React.FC = () => {
   const [logs, setLogs] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const executeCommand = async (command: string, description: string) => {
     setIsLoading(true);
     setActiveOperation(description);
     setLogs('');
-    
+    setError(null);
+
     try {
       const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      setLogs(result || 'Command executed successfully with no output.');
+      toast.success(`${description} completed successfully!`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Error during ${description}: ${errorMessage}`);
+      setLogs(`Error: ${errorMessage}`);
+      toast.error(`Error during ${description}: ${errorMessage}`);
+      console.error(`Failed to execute ${description}:`, err);
     } finally {
       setIsLoading(false);
       setActiveOperation('');
     }
   };
 
+  useEffect(() => {
+    handleCheckStatus();
+  }, []);
+
   const handleAddComputer = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Add-ComputerToVpn',
-      'Adding Computer to VPN'
-    );
+    await executeCommand(ClientCommands.addComputerToVpn(), 'Adding Computer to VPN');
   };
 
   const handleConnect = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Connect-ToVpn',
-      'Connecting to VPN'
-    );
+    await executeCommand(ClientCommands.connectToVpn(), 'Connecting to VPN');
+    handleCheckStatus();
   };
 
   const handleDisconnect = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Disconnect-FromVpn',
-      'Disconnecting from VPN'
-    );
+    await executeCommand(ClientCommands.disconnectFromVpn(), 'Disconnecting from VPN');
+    handleCheckStatus();
   };
 
   const handleCheckStatus = async () => {
     setIsLoading(true);
     setActiveOperation('Checking Connection Status');
     setLogs('');
-    
+    setError(null);
+
     try {
-      const result = await invoke('pwsh', [
-        '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-VpnConnectionStatus | ConvertTo-Json'
-      ]);
+      const result = await invoke('pwsh', ['-Command', ClientCommands.getVpnConnectionStatus()]);
       const status = JSON.parse(result);
       setConnectionStatus(status);
       setLogs('Connection status retrieved successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      toast.success('Connection status updated!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Error checking status: ${errorMessage}`);
+      setLogs(`Error: ${errorMessage}`);
+      toast.error(`Error checking status: ${errorMessage}`);
     } finally {
       setIsLoading(false);
       setActiveOperation('');
@@ -118,19 +118,25 @@ const VpnClient: React.FC = () => {
             disabled={isLoading}
             className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            Check Status
+            Refresh Status
           </button>
         </div>
 
-        {isLoading && (
-          <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded">
-            <p className="text-blue-800">
-              <span className="font-semibold">In Progress:</span> {activeOperation}...
-            </p>
-          </div>
+        {error && !isLoading && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <h3 className="font-semibold mb-2">⚠️ VPN Client Error</h3>
+                <p className="text-sm">{error}</p>
+            </div>
         )}
 
-        {connectionStatus && (
+        {isLoading && (
+            <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-blue-800 font-semibold">In Progress: {activeOperation}...</p>
+            </div>
+        )}
+
+        {!isLoading && connectionStatus && (
           <div className={`mb-4 p-4 rounded border ${
             connectionStatus.isConnected 
               ? 'bg-green-50 border-green-200' 

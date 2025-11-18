@@ -97,7 +97,6 @@ export async function invokeWithRetryAndTimeout(
 ): Promise<string> {
   const {
     maxAttempts = RetryConfig.maxAttempts,
-    timeoutMs = OperationTimeouts.medium,
     onRetry
   } = options;
   

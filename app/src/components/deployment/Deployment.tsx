@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import MainLayout from '../layout/MainLayout';
 import { invoke } from '../../utils/invoke';
 import { DeploymentCommands, GatewayCommands, AzureCommands } from '../../constants/commands';
+import toast from 'react-hot-toast';
 
 interface DeploymentStatus {
   network: string;
@@ -15,22 +16,24 @@ const Deployment: React.FC = () => {
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [status, setStatus] = useState<DeploymentStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const executeCommand = async (command: string, description: string): Promise<void> => {
     setIsDeploying(true);
     setActiveOperation(description);
     setLogs('');
+    setError(null);
 
     try {
       const result = await invoke('pwsh', ['-Command', command]);
       setLogs(result || 'Command executed successfully with no output');
-    } catch (error) {
-      // Bug fix: Better error formatting and logging
-      const errorMessage = error instanceof Error 
-        ? `Error: ${error.message}` 
-        : `Error: ${String(error)}`;
-      setLogs(errorMessage);
-      console.error(`Failed to execute ${description}:`, error);
+      toast.success(`${description} completed successfully!`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Error during ${description}: ${errorMessage}`);
+      setLogs(`Error: ${errorMessage}`);
+      toast.error(`Error during ${description}: ${errorMessage}`);
+      console.error(`Failed to execute ${description}:`, err);
     } finally {
       setIsDeploying(false);
       setActiveOperation('');
@@ -208,16 +211,24 @@ const Deployment: React.FC = () => {
             </div>
           </div>
 
+          {error && !isDeploying && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-300 text-red-800 rounded-lg">
+                <h3 className="font-semibold mb-2">⚠️ Deployment Error</h3>
+                <p className="text-sm">{error}</p>
+            </div>
+          )}
+
           {isDeploying && (
-            <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded">
-              <p className="text-blue-800">
-                <span className="font-semibold">In Progress:</span> {activeOperation}...
-              </p>
-              {activeOperation.includes('VPN Gateway') && (
-                <p className="text-blue-600 text-sm mt-2">
-                  Note: VPN Gateway deployment typically takes 30-45 minutes to complete.
-                </p>
-              )}
+            <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <div className="ml-4">
+                    <p className="text-blue-800 font-semibold">In Progress: {activeOperation}...</p>
+                    {activeOperation.includes('VPN Gateway') && (
+                        <p className="text-blue-600 text-sm mt-1">
+                            Note: This can take 30-45 minutes to complete.
+                        </p>
+                    )}
+                </div>
             </div>
           )}
 
