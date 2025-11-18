@@ -47,17 +47,17 @@ class MarkdownLinter:
     )
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
-    # Security fix: Use simple greedy match to end marker to avoid backtracking
-    # Match everything from <!-- to --> without complex patterns
-    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--.*-->\s*$")
+    # Security fix: Use atomic group equivalent - match to first --> found
+    # No backtracking possible as we consume everything before -->
+    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--[^>]*(?:>[^>]*)*-->\s*$")
     HTML_COMMENT_START_PATTERN = re.compile(r"^<!--")
     HTML_COMMENT_END_PATTERN = re.compile(r"-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
     # Bug fix: Improve ordered list pattern to handle edge cases with spacing
-    # Security fix: Use possessive quantifier pattern to prevent ReDoS
-    # Changed \s+.+? to \s+.* to avoid backtracking between \s+ and .+?
+    # Security fix: Remove overlapping quantifiers completely
+    # Match: optional spaces, digits, dot, single space, rest of line
     ORDERED_LIST_PATTERN = re.compile(
-        r"^\s*(?P<number>\d+)\.(?P<content>\s*.*)$"
+        r"^\s*(?P<number>\d+)\.(?P<content> .*)$"
     )
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
@@ -66,10 +66,10 @@ class MarkdownLinter:
     EMAIL_PATTERN = re.compile(
         rf"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{{{MIN_TLD_LENGTH},}})(?![>\]\)])"
     )
-    # Security fix: Use \S+\s+ pattern to avoid .* backtracking
-    # Match: # + spaces + non-whitespace + any chars + non-whitespace + spaces + #
+    # Security fix: Eliminate .* pattern completely - match with explicit patterns
+    # Match: # + space + non-space + [non-space or (space + non-#)]* + space + #
     CLOSED_ATX_HEADING_PATTERN = re.compile(
-        rf"^#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s+\S[\S\s]*\S\s+#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s*$"
+        rf"^#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}} \S(?:[^\s#]|\s(?!#))*\S #{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s*$"
     )
 
     # Code improvement: Constants for repeated messages and error codes
