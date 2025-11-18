@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '../layout/MainLayout';
 import { invoke } from '../../utils/invoke';
+import { AzureCommands } from '../../constants/commands';
 
 interface AzureStatus {
   isConnected: boolean;
@@ -21,6 +22,7 @@ const Dashboard: React.FC = () => {
   const [azureStatus, setAzureStatus] = useState<AzureStatus | null>(null);
   const [resourceSummary, setResourceSummary] = useState<ResourceSummary | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -28,23 +30,50 @@ const Dashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     setIsLoading(true);
+    setError(null);
     
     try {
-      // Check Azure connection status
+      // Code improvement: Use centralized command constants
       const azureResult = await invoke('pwsh', [
         '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-AzureConnectionStatus | ConvertTo-Json'
+        AzureCommands.getConnectionStatus()
       ]);
-      setAzureStatus(JSON.parse(azureResult));
+      
+      // Bug fix: Validate response before parsing
+      if (azureResult && azureResult.trim() !== '') {
+        const parsedAzureStatus = JSON.parse(azureResult);
+        // Bug fix: Validate parsed object structure
+        if (parsedAzureStatus && typeof parsedAzureStatus.isConnected === 'boolean') {
+          setAzureStatus(parsedAzureStatus);
+        } else {
+          throw new Error('Invalid Azure status response format');
+        }
+      }
 
-      // Get resource summary
+      // Code improvement: Use centralized command constants
       const resourceResult = await invoke('pwsh', [
         '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-ResourceSummary | ConvertTo-Json'
+        AzureCommands.getResourceSummary()
       ]);
-      setResourceSummary(JSON.parse(resourceResult));
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      
+      // Bug fix: Validate response before parsing
+      if (resourceResult && resourceResult.trim() !== '') {
+        const parsedResourceSummary = JSON.parse(resourceResult);
+        // Bug fix: Validate parsed object has expected properties
+        if (parsedResourceSummary && 
+            ('vpnGateway' in parsedResourceSummary || 
+             'natGateway' in parsedResourceSummary || 
+             'virtualNetwork' in parsedResourceSummary)) {
+          setResourceSummary(parsedResourceSummary);
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('Error loading dashboard data:', errorMessage);
+      setError(errorMessage);
+      // Bug fix: Set null states on error to prevent stale data display
+      setAzureStatus(null);
+      setResourceSummary(null);
     } finally {
       setIsLoading(false);
     }
@@ -67,6 +96,20 @@ const Dashboard: React.FC = () => {
             Manage your Azure infrastructure, VPN, and NAT Gateway from this centralized dashboard
           </p>
         </div>
+
+        {/* Bug fix: Display error message if loading failed */}
+        {error && (
+          <div className="bg-red-50 border border-red-300 text-red-800 rounded-lg p-4">
+            <h3 className="font-semibold mb-2">⚠️ Error Loading Dashboard</h3>
+            <p className="text-sm">{error}</p>
+            <button 
+              onClick={loadDashboardData}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="bg-white shadow-md rounded p-6 text-center">

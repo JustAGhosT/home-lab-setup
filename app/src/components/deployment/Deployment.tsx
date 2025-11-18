@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MainLayout from '../layout/MainLayout';
 import { invoke } from '../../utils/invoke';
+import { DeploymentCommands, GatewayCommands, AzureCommands } from '../../constants/commands';
 
 interface DeploymentStatus {
   network: string;
@@ -15,55 +16,74 @@ const Deployment: React.FC = () => {
   const [activeOperation, setActiveOperation] = useState<string>('');
   const [status, setStatus] = useState<DeploymentStatus | null>(null);
 
-  const executeCommand = async (command: string, description: string) => {
+  const executeCommand = async (command: string, description: string): Promise<void> => {
     setIsDeploying(true);
     setActiveOperation(description);
     setLogs('');
 
     try {
       const result = await invoke('pwsh', ['-Command', command]);
-      setLogs(result);
+      setLogs(result || 'Command executed successfully with no output');
     } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
-      } else {
-        setLogs(`Error: ${String(error)}`);
-      }
+      // Bug fix: Better error formatting and logging
+      const errorMessage = error instanceof Error 
+        ? `Error: ${error.message}` 
+        : `Error: ${String(error)}`;
+      setLogs(errorMessage);
+      console.error(`Failed to execute ${description}:`, error);
     } finally {
       setIsDeploying(false);
       setActiveOperation('');
     }
   };
 
-  const handleDeployFull = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-FullInfrastructure',
-      'Deploying Full Infrastructure'
-    );
+  const handleDeployFull = async (): Promise<void> => {
+    // Bug fix: Wrap in try-catch to prevent unhandled promise rejections
+    try {
+      // Code improvement: Use centralized command constants
+      await executeCommand(
+        DeploymentCommands.deployFull(),
+        'Deploying Full Infrastructure'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployFull:', error);
+    }
   };
 
-  const handleDeployNetwork = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-NetworkOnly',
-      'Deploying Network Only'
-    );
+  const handleDeployNetwork = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        DeploymentCommands.deployNetwork(),
+        'Deploying Network Only'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployNetwork:', error);
+    }
   };
 
-  const handleDeployVpnGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-VpnGateway',
-      'Deploying VPN Gateway (This may take 30-45 minutes)'
-    );
+  const handleDeployVpnGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        DeploymentCommands.deployVpnGateway(),
+        'Deploying VPN Gateway (This may take 30-45 minutes)'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployVpnGateway:', error);
+    }
   };
 
-  const handleDeployNatGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Deploy-NatGateway',
-      'Deploying NAT Gateway'
-    );
+  const handleDeployNatGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        DeploymentCommands.deployNatGateway(),
+        'Deploying NAT Gateway'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDeployNatGateway:', error);
+    }
   };
 
-  const handleCheckStatus = async () => {
+  const handleCheckStatus = async (): Promise<void> => {
     setIsDeploying(true);
     setActiveOperation('Checking Deployment Status');
     setLogs('');
@@ -71,35 +91,49 @@ const Deployment: React.FC = () => {
     try {
       const result = await invoke('pwsh', [
         '-Command',
-        'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Get-DeploymentStatus | ConvertTo-Json'
+        AzureCommands.getDeploymentStatus()
       ]);
-      const deploymentStatus = JSON.parse(result);
-      setStatus(deploymentStatus);
-      setLogs('Deployment status retrieved successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        setLogs(`Error: ${error.message}`);
+      
+      // Bug fix: Validate result before parsing
+      if (result && result.trim() !== '') {
+        const deploymentStatus = JSON.parse(result);
+        setStatus(deploymentStatus);
+        setLogs('Deployment status retrieved successfully');
       } else {
-        setLogs(`Error: ${String(error)}`);
+        setLogs('Warning: No deployment status returned');
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? `Error: ${error.message}` 
+        : `Error: ${String(error)}`;
+      setLogs(errorMessage);
+      console.error('Failed to check deployment status:', error);
     } finally {
       setIsDeploying(false);
       setActiveOperation('');
     }
   };
 
-  const handleEnableVpnGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Enable-VpnGateway',
-      'Enabling VPN Gateway'
-    );
+  const handleEnableVpnGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        GatewayCommands.enableVpn(),
+        'Enabling VPN Gateway'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleEnableVpnGateway:', error);
+    }
   };
 
-  const handleDisableVpnGateway = async () => {
-    await executeCommand(
-      'Import-Module /app/src/HomeLab/HomeLab/HomeLab.psd1; Disable-VpnGateway',
-      'Disabling VPN Gateway'
-    );
+  const handleDisableVpnGateway = async (): Promise<void> => {
+    try {
+      await executeCommand(
+        GatewayCommands.disableVpn(),
+        'Disabling VPN Gateway'
+      );
+    } catch (error) {
+      console.error('Unhandled error in handleDisableVpnGateway:', error);
+    }
   };
 
   return (

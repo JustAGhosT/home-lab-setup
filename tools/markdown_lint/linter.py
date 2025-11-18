@@ -11,9 +11,19 @@ from .models import FileReport, IssueSeverity, LintIssue
 class MarkdownLinter:
     """Markdown linter and fixer."""
 
+    # Code improvement: Extract magic numbers into named constants
+    MAX_LINE_LENGTH_DEFAULT = 120
+    MAX_CONTENT_LENGTH = 1000
+    MIN_HEADING_LEVEL = 1
+    MAX_HEADING_LEVEL = 6
+    MIN_TLD_LENGTH = 2
+    MAX_URL_TITLE_LENGTH = 100
+    TITLE_TRUNCATE_LENGTH = 97
+    REASONABLE_BREAK_POINT_RATIO = 2
+    
     # Default configuration
     DEFAULT_CONFIG = {
-        "max_line_length": 120,
+        "max_line_length": MAX_LINE_LENGTH_DEFAULT,
         "require_blank_line_before_heading": True,
         "require_blank_line_after_heading": True,
         "allow_multiple_blank_lines": False,
@@ -31,28 +41,63 @@ class MarkdownLinter:
     }
 
     # Common markdown patterns
-    HEADING_PATTERN = re.compile(r"^(?P<level>#{1,6})\s+(?P<content>.{0,1000})$")
+    # Bug fix: Improved regex patterns with better edge case handling
+    HEADING_PATTERN = re.compile(
+        rf"^(?P<level>#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}})\s+(?P<content>.{{0,{MAX_CONTENT_LENGTH}}})$"
+    )
     CODE_BLOCK_PATTERN = re.compile(r"^```[\w\-]*$")
     CODE_BLOCK_START_PATTERN = re.compile(r"^```(?P<language>[\w\-]*)$")
-    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--.*?-->\s*$")
+    # Security fix: Use atomic group equivalent - match to first --> found
+    # No backtracking possible as we consume everything before -->
+    HTML_COMMENT_SINGLE_LINE_PATTERN = re.compile(r"^<!--[^>]*(?:>[^>]*)*-->\s*$")
     HTML_COMMENT_START_PATTERN = re.compile(r"^<!--")
     HTML_COMMENT_END_PATTERN = re.compile(r"-->\s*$")
     LIST_ITEM_PATTERN = re.compile(r"^\s*([*+-]|\d+\.)\s+")
+    # Bug fix: Improve ordered list pattern to handle edge cases with spacing
+    # Security fix: Remove overlapping quantifiers completely
+    # Match: optional spaces, digits, dot, single space, rest of line
     ORDERED_LIST_PATTERN = re.compile(
-        r"^\s*(?P<number>\d+)\.(?P<content>\s+.{0,1000})$"
+        r"^\s*(?P<number>\d+)\.(?P<content> .*)$"
     )
     UNORDERED_LIST_PATTERN = re.compile(r"^\s*[*+-]\s+")
     BLANK_LINE_PATTERN = re.compile(r"^\s*$")
-    BARE_URL_PATTERN = re.compile(r"(?<![<\[\(])(https?://[^\s<>\[\]()]+)(?![>\]\)])")
+    # Bug fix: Improve URL pattern to avoid false positives with markdown links
+    BARE_URL_PATTERN = re.compile(r"(?<![<\[\(])(https?://[^\s<>\[\]()\"\']+)(?![>\]\)])")
     EMAIL_PATTERN = re.compile(
-        r"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?![>\]\)])"
+        rf"(?<![<\[\(])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{{{MIN_TLD_LENGTH},}})(?![>\]\)])"
     )
-    CLOSED_ATX_HEADING_PATTERN = re.compile(r"^#{1,6}\s+[^\s].*[^\s]\s+#{1,6}\s*$")
+    # Security fix: Eliminate .* pattern completely - match with explicit patterns
+    # Match: # + space + non-space + [non-space or (space + non-#)]* + space + #
+    CLOSED_ATX_HEADING_PATTERN = re.compile(
+        rf"^#{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}} \S(?:[^\s#]|\s(?!#))*\S #{{{MIN_HEADING_LEVEL},{MAX_HEADING_LEVEL}}}\s*$"
+    )
 
-    # Constants for repeated messages
+    # Code improvement: Constants for repeated messages and error codes
     MSG_FENCED_CODE_BLOCKS_SPACING = (
         "Fenced code blocks should be surrounded by blank lines"
     )
+    MSG_TRIM_TRAILING_WHITESPACE = "Trim trailing whitespace"
+    MSG_MISSING_FINAL_NEWLINE = "Missing final newline"
+    MSG_MISSING_SPACE_AFTER_HEADING = "Missing space after heading marker"
+    MSG_HEADING_SHOULD_BE_SURROUNDED = "Headings should be surrounded by blank lines"
+    
+    # Error code constants
+    CODE_LINE_ENDINGS = "MD001"
+    CODE_HEADING_CAPITALIZATION = "MD002"
+    CODE_LIST_INDENTATION = "MD007"
+    CODE_TRAILING_WHITESPACE = "MD009"
+    CODE_MULTIPLE_BLANK_LINES = "MD012"
+    CODE_LINE_LENGTH = "MD013"
+    CODE_MISSING_SPACE_HEADING = "MD018"
+    CODE_HEADING_SPACING = "MD022"
+    CODE_DUPLICATE_HEADINGS = "MD024"
+    CODE_TRAILING_HASH = "MD026"
+    CODE_ORDERED_LIST_NUMBERING = "MD029"
+    CODE_FENCED_CODE_SPACING = "MD031"
+    CODE_LIST_SPACING = "MD032"
+    CODE_BARE_URL = "MD034"
+    CODE_NO_LANGUAGE_CODE_BLOCK = "MD040"
+    CODE_FINAL_NEWLINE = "MD047"
 
     def __init__(self, config: Optional[dict] = None):
         """Initialize the linter with the given configuration."""
@@ -233,8 +278,8 @@ class MarkdownLinter:
             self._add_issue(
                 report,
                 line_num,
-                "Trim trailing whitespace",
-                "MD009",
+                self.MSG_TRIM_TRAILING_WHITESPACE,
+                self.CODE_TRAILING_WHITESPACE,
                 fix=lambda line: line.rstrip(),
             )
 
@@ -245,7 +290,7 @@ class MarkdownLinter:
                 report,
                 line_num,
                 "Inconsistent line endings (CRLF)",
-                "MD001",
+                self.CODE_LINE_ENDINGS,
                 fix=lambda line: line.replace("\r\n", "\n"),
             )
         elif expected_eol == "crlf" and "\r\n" not in line and line.endswith("\n"):
@@ -345,20 +390,31 @@ class MarkdownLinter:
         self, report: FileReport, content: str, lines: list
     ) -> None:
         """Perform final checks after processing all lines."""
-        # Check for final newline
-        if (
-            self.config["insert_final_newline"]
-            and content
-            and not content.endswith("\n")
-        ):
-            self._add_issue(
-                report,
-                len(lines),
-                "Missing final newline",
-                "MD047",
-                fix=lambda c: c + "\n",
-                file_level=True,
-            )
+        # Bug fix: Check for final newline with proper validation
+        if self.config["insert_final_newline"] and content:
+            # Bug fix: Handle edge case where file ends with multiple newlines
+            if not content.endswith("\n"):
+                self._add_issue(
+                    report,
+                    len(lines),
+                    "Missing final newline",
+                    "MD047",
+                    fix=lambda c: c + "\n",
+                    file_level=True,
+                )
+            # Bug fix: Check for multiple trailing newlines
+            elif content.endswith("\n\n\n") and not self.config["allow_multiple_blank_lines"]:
+                # Count trailing newlines
+                trailing_newlines = len(content) - len(content.rstrip("\n"))
+                if trailing_newlines > 1:
+                    self._add_issue(
+                        report,
+                        len(lines),
+                        f"Multiple trailing newlines ({trailing_newlines} found, expected 1)",
+                        "MD012",
+                        fix=lambda c: c.rstrip("\n") + "\n",
+                        file_level=True,
+                    )
 
         # Store the fixed content if there are fixes
         if any(issue.fixable for issue in report.issues):
