@@ -15,7 +15,7 @@ This document describes the advanced features available in the HomeLab Dashboard
 
 The retry mechanism automatically retries failed operations with exponential backoff.
 
-### Usage
+### Retry Usage
 
 ```typescript
 import { invokeWithRetry } from '@/utils/commandUtils';
@@ -55,7 +55,7 @@ Default retry configuration (can be customized):
 
 Prevent long-running operations from hanging indefinitely.
 
-### Usage
+### Timeout Usage
 
 ```typescript
 import { invokeWithTimeout } from '@/utils/commandUtils';
@@ -102,7 +102,7 @@ const result = await invokeWithRetryAndTimeout(
 
 Track progress of long-running operations with visual feedback.
 
-### Usage
+### Progress Usage
 
 ```typescript
 import { invokeWithProgress } from '@/utils/commandUtils';
@@ -134,7 +134,7 @@ The callback receives:
 
 Cache command results to reduce redundant operations and improve performance.
 
-### Usage
+### Caching Usage
 
 ```typescript
 import { invokeWithCache, commandCache } from '@/utils/commandUtils';
@@ -248,7 +248,7 @@ Toggle between light and dark themes with system preference support.
 - Smooth transitions
 - Theme-aware components
 
-### Usage
+### Dark Mode Usage
 
 #### Initialize Theme
 
