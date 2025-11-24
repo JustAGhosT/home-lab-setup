@@ -18,7 +18,7 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Get version
         id: get-version
@@ -68,7 +68,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Update module version
         run: |
@@ -124,7 +124,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download release artifacts
         uses: actions/download-artifact@v6
@@ -169,7 +169,7 @@ jobs:
     if: ${{ !contains(needs.validate.outputs.version, '-') }} # Only for stable releases
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download release artifacts
         uses: actions/download-artifact@v6
