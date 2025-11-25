@@ -175,13 +175,29 @@ jobs:
           # Update version in tauri.conf.json
           if command -v jq &> /dev/null; then
             jq --arg v "$version_number" '.version = $v' tauri.conf.json > tmp.json && mv tmp.json tauri.conf.json
+            echo "Updated tauri.conf.json version to $version_number using jq"
           else
-            # Fallback for Windows without jq
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$version_number\"/" tauri.conf.json || true
+            # Fallback for Windows without jq - use PowerShell
+            if command -v pwsh &> /dev/null; then
+              pwsh -Command "(Get-Content tauri.conf.json -Raw) -replace '\"version\": \"[^\"]*\"', '\"version\": \"$version_number\"' | Set-Content tauri.conf.json"
+              echo "Updated tauri.conf.json version to $version_number using PowerShell"
+            else
+              sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$version_number\"/" tauri.conf.json
+              echo "Updated tauri.conf.json version to $version_number using sed"
+            fi
           fi
           
           # Update version in Cargo.toml
-          sed -i "s/^version = \"[^\"]*\"/version = \"$version_number\"/" Cargo.toml || true
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/^version = \"[^\"]*\"/version = \"$version_number\"/" Cargo.toml
+          else
+            sed -i "s/^version = \"[^\"]*\"/version = \"$version_number\"/" Cargo.toml
+          fi
+          echo "Updated Cargo.toml version to $version_number"
+          
+          # Verify updates
+          echo "Verifying version updates..."
+          grep -E '"version":|^version = ' tauri.conf.json Cargo.toml || true
 
       - name: Build Tauri app with updater artifacts
         working-directory: app
@@ -272,21 +288,29 @@ jobs:
           pub_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           repo_url="https://github.com/${{ github.repository }}"
           
-          # Extract changelog for release notes
+          # Extract changelog for release notes - support multiple formats
+          notes=""
           if [ -f "CHANGELOG.md" ]; then
-            notes=$(sed -n "/## \[${version_number}\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2 | head -20)
+            # Try format: ## [version] or ## version
+            notes=$(awk "/^## \\[?${version_number}\\]?/,/^## \\[?[0-9]/" CHANGELOG.md | tail -n +2 | head -n -1 | head -20)
             if [ -z "$notes" ]; then
-              notes="Release $version - See CHANGELOG.md for full details"
+              # Try format: # version or ## v1.0.0
+              notes=$(awk "/^##? v?${version_number}/,/^##? v?[0-9]/" CHANGELOG.md | tail -n +2 | head -n -1 | head -20)
             fi
-          else
-            notes="Release $version"
           fi
           
-          # Generate the updater manifest
+          if [ -z "$notes" ]; then
+            notes="Release $version - See CHANGELOG.md for full details"
+          fi
+          
+          # Escape the notes for JSON
+          notes_json=$(echo "$notes" | jq -Rs .)
+          
+          # Generate the updater manifest with empty signatures initially
           cat > ./release-assets/latest.json << EOF
           {
             "version": "$version_number",
-            "notes": $(echo "$notes" | jq -Rs .),
+            "notes": $notes_json,
             "pub_date": "$pub_date",
             "platforms": {
               "windows-x86_64": {
@@ -309,6 +333,10 @@ jobs:
           }
           EOF
           
+          # Track which signatures were found
+          sig_count=0
+          missing_sigs=""
+          
           # Update signatures if signature files exist
           for sig_file in ./release-assets/*.sig; do
             if [ -f "$sig_file" ]; then
@@ -318,16 +346,38 @@ jobs:
               # Update the appropriate platform signature in latest.json
               if [[ "$base_name" == *"x64-setup.exe"* ]] || [[ "$base_name" == *".msi"* ]]; then
                 jq --arg sig "$sig_content" '.platforms["windows-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+                sig_count=$((sig_count + 1))
+                echo "✅ Found Windows signature"
               elif [[ "$base_name" == *"x64.app.tar.gz"* ]]; then
                 jq --arg sig "$sig_content" '.platforms["darwin-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+                sig_count=$((sig_count + 1))
+                echo "✅ Found macOS x64 signature"
               elif [[ "$base_name" == *"aarch64.app.tar.gz"* ]]; then
                 jq --arg sig "$sig_content" '.platforms["darwin-aarch64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
-              elif [[ "$base_name" == *"amd64.AppImage.tar.gz"* ]]; then
+                sig_count=$((sig_count + 1))
+                echo "✅ Found macOS ARM signature"
+              elif [[ "$base_name" == *"amd64.AppImage.tar.gz"* ]] || [[ "$base_name" == *"AppImage"* ]]; then
                 jq --arg sig "$sig_content" '.platforms["linux-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+                sig_count=$((sig_count + 1))
+                echo "✅ Found Linux signature"
               fi
             fi
           done
           
+          # Check for missing signatures and warn
+          echo ""
+          echo "=== Signature Status ==="
+          if [ $sig_count -eq 0 ]; then
+            echo "⚠️ WARNING: No signatures found. Updates will not be cryptographically verified."
+            echo "⚠️ To enable signed updates, configure TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD secrets."
+          elif [ $sig_count -lt 4 ]; then
+            echo "⚠️ WARNING: Only $sig_count of 4 platform signatures found."
+            echo "⚠️ Some platforms may not receive signed updates."
+          else
+            echo "✅ All platform signatures found."
+          fi
+          
+          echo ""
           echo "Generated latest.json:"
           cat ./release-assets/latest.json
 

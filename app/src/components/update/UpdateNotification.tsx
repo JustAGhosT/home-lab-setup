@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUpdater } from '../../hooks/useUpdater';
+import { AppConfig } from '../../constants/app';
 
 const UpdateNotification: React.FC = () => {
   const {
@@ -64,7 +65,7 @@ const UpdateNotification: React.FC = () => {
         <div className="p-4">
           <div className="mb-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              A new version of HomeLab is available!
+              A new version of {AppConfig.name} is available!
             </p>
             <div className="mt-2 flex items-center space-x-2 text-sm">
               <span className="text-gray-500 dark:text-gray-400">

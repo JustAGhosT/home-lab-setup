@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { check, Update } from '@tauri-apps/plugin-updater';
+import { UpdateConfig } from '../constants/app';
 
 export interface UpdateInfo {
   available: boolean;
@@ -97,10 +98,10 @@ export const useUpdater = (): UseUpdaterResult => {
             });
             break;
           case 'Finished':
-            setProgress((prev) => ({
-              ...prev!,
+            setProgress((prev) => prev ? {
+              ...prev,
               percentage: 100,
-            }));
+            } : { downloaded: 0, total: 0, percentage: 100 });
             setIsDownloading(false);
             setIsInstalling(true);
             break;
@@ -127,7 +128,7 @@ export const useUpdater = (): UseUpdaterResult => {
     // Delay initial check to allow app to fully load
     const timer = setTimeout(() => {
       checkForUpdates();
-    }, 3000);
+    }, UpdateConfig.checkDelayMs);
 
     return () => clearTimeout(timer);
   }, [checkForUpdates]);
