@@ -117,8 +117,113 @@ jobs:
           name: release-package
           path: HomeLab-*.zip
 
+  build-tauri-installer:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundle_ext: ".msi,.exe"
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            bundle_ext: ".dmg,.app.tar.gz"
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            bundle_ext: ".dmg,.app.tar.gz"
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundle_ext: ".deb,.AppImage,.AppImage.tar.gz"
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        working-directory: app
+        run: pnpm install
+
+      - name: Update Tauri version
+        working-directory: app/src-tauri
+        shell: bash
+        run: |
+          version="${{ needs.validate.outputs.version }}"
+          version_number="${version#v}"
+          
+          # Update version in tauri.conf.json
+          if command -v jq &> /dev/null; then
+            jq --arg v "$version_number" '.version = $v' tauri.conf.json > tmp.json && mv tmp.json tauri.conf.json
+          else
+            # Fallback for Windows without jq
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$version_number\"/" tauri.conf.json || true
+          fi
+          
+          # Update version in Cargo.toml
+          sed -i "s/^version = \"[^\"]*\"/version = \"$version_number\"/" Cargo.toml || true
+
+      - name: Build Tauri app with updater artifacts
+        working-directory: app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --target ${{ matrix.target }}
+
+      - name: Upload installer artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-installer-windows
+          path: |
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi.sig
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe.sig
+
+      - name: Upload installer artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-installer-macos-${{ matrix.target }}
+          path: |
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+
+      - name: Upload installer artifacts (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-installer-linux
+          path: |
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage.tar.gz
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage.tar.gz.sig
+
   release:
-    needs: [validate, build]
+    needs: [validate, build, build-tauri-installer]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -126,10 +231,105 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Download release artifacts
+      - name: Download PowerShell release artifacts
         uses: actions/download-artifact@v6
         with:
           name: release-package
+          path: ./release-assets
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v6
+        with:
+          name: tauri-installer-windows
+          path: ./release-assets
+        continue-on-error: true
+
+      - name: Download macOS x64 installer
+        uses: actions/download-artifact@v6
+        with:
+          name: tauri-installer-macos-x86_64-apple-darwin
+          path: ./release-assets
+        continue-on-error: true
+
+      - name: Download macOS ARM installer
+        uses: actions/download-artifact@v6
+        with:
+          name: tauri-installer-macos-aarch64-apple-darwin
+          path: ./release-assets
+        continue-on-error: true
+
+      - name: Download Linux installer
+        uses: actions/download-artifact@v6
+        with:
+          name: tauri-installer-linux
+          path: ./release-assets
+        continue-on-error: true
+
+      - name: Generate updater manifest (latest.json)
+        run: |
+          version="${{ needs.validate.outputs.version }}"
+          version_number="${version#v}"
+          pub_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          repo_url="https://github.com/${{ github.repository }}"
+          
+          # Extract changelog for release notes
+          if [ -f "CHANGELOG.md" ]; then
+            notes=$(sed -n "/## \[${version_number}\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2 | head -20)
+            if [ -z "$notes" ]; then
+              notes="Release $version - See CHANGELOG.md for full details"
+            fi
+          else
+            notes="Release $version"
+          fi
+          
+          # Generate the updater manifest
+          cat > ./release-assets/latest.json << EOF
+          {
+            "version": "$version_number",
+            "notes": $(echo "$notes" | jq -Rs .),
+            "pub_date": "$pub_date",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "",
+                "url": "${repo_url}/releases/download/${version}/HomeLab_${version_number}_x64-setup.exe"
+              },
+              "darwin-x86_64": {
+                "signature": "",
+                "url": "${repo_url}/releases/download/${version}/HomeLab_${version_number}_x64.app.tar.gz"
+              },
+              "darwin-aarch64": {
+                "signature": "",
+                "url": "${repo_url}/releases/download/${version}/HomeLab_${version_number}_aarch64.app.tar.gz"
+              },
+              "linux-x86_64": {
+                "signature": "",
+                "url": "${repo_url}/releases/download/${version}/HomeLab_${version_number}_amd64.AppImage.tar.gz"
+              }
+            }
+          }
+          EOF
+          
+          # Update signatures if signature files exist
+          for sig_file in ./release-assets/*.sig; do
+            if [ -f "$sig_file" ]; then
+              sig_content=$(cat "$sig_file")
+              base_name=$(basename "$sig_file" .sig)
+              
+              # Update the appropriate platform signature in latest.json
+              if [[ "$base_name" == *"x64-setup.exe"* ]] || [[ "$base_name" == *".msi"* ]]; then
+                jq --arg sig "$sig_content" '.platforms["windows-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+              elif [[ "$base_name" == *"x64.app.tar.gz"* ]]; then
+                jq --arg sig "$sig_content" '.platforms["darwin-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+              elif [[ "$base_name" == *"aarch64.app.tar.gz"* ]]; then
+                jq --arg sig "$sig_content" '.platforms["darwin-aarch64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+              elif [[ "$base_name" == *"amd64.AppImage.tar.gz"* ]]; then
+                jq --arg sig "$sig_content" '.platforms["linux-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
+              fi
+            fi
+          done
+          
+          echo "Generated latest.json:"
+          cat ./release-assets/latest.json
 
       - name: Extract changelog for version
         id: changelog
@@ -151,13 +351,19 @@ jobs:
           echo "$changelog" > release-notes.md
           echo "Changelog extracted for $version"
 
+      - name: List release assets
+        run: |
+          echo "Release assets:"
+          find ./release-assets -type f | head -50
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate.outputs.version }}
           name: Release ${{ needs.validate.outputs.version }}
           body_path: release-notes.md
-          files: HomeLab-*.zip
+          files: |
+            ./release-assets/*
           draft: false
           prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
         env:
@@ -202,7 +408,7 @@ jobs:
         #   POWERSHELL_GALLERY_API_KEY: ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
 
   notify:
-    needs: [validate, build, release]
+    needs: [validate, build, build-tauri-installer, release]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -217,6 +423,14 @@ jobs:
           if [ "${{ needs.release.result }}" = "success" ]; then
             echo "✅ Release created successfully" >> $GITHUB_STEP_SUMMARY
             echo "📦 Release package available in GitHub Releases" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 📥 Desktop App Installers" >> $GITHUB_STEP_SUMMARY
+            echo "- Windows: MSI and NSIS installers" >> $GITHUB_STEP_SUMMARY
+            echo "- macOS: DMG installers (x64 and ARM)" >> $GITHUB_STEP_SUMMARY
+            echo "- Linux: DEB and AppImage" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔄 Auto-Update" >> $GITHUB_STEP_SUMMARY
+            echo "The \`latest.json\` manifest has been published for automatic updates." >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Release failed" >> $GITHUB_STEP_SUMMARY
           fi

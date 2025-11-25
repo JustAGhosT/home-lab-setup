@@ -7,6 +7,7 @@ import Nat from './components/nat/Nat';
 import Dns from './components/dns/Dns';
 import Docs from './components/docs/Docs';
 import Settings from './components/settings/Settings';
+import UpdateNotification from './components/update/UpdateNotification';
 
 const App: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const App: React.FC = () => {
         <Route path="/docs" element={<Docs />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
+      <UpdateNotification />
     </Router>
   );
 };
