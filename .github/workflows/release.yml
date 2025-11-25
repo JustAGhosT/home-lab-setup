@@ -171,7 +171,7 @@ jobs:
         run: |
           version="${{ needs.validate.outputs.version }}"
           version_number="${version#v}"
-          
+
           # Update version in tauri.conf.json
           if command -v jq &> /dev/null; then
             jq --arg v "$version_number" '.version = $v' tauri.conf.json > tmp.json && mv tmp.json tauri.conf.json
@@ -186,7 +186,7 @@ jobs:
               echo "Updated tauri.conf.json version to $version_number using sed"
             fi
           fi
-          
+
           # Update version in Cargo.toml
           if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "s/^version = \"[^\"]*\"/version = \"$version_number\"/" Cargo.toml
@@ -194,7 +194,7 @@ jobs:
             sed -i "s/^version = \"[^\"]*\"/version = \"$version_number\"/" Cargo.toml
           fi
           echo "Updated Cargo.toml version to $version_number"
-          
+
           # Verify updates
           echo "Verifying version updates..."
           grep -E '"version":|^version = ' tauri.conf.json Cargo.toml || true
@@ -287,7 +287,7 @@ jobs:
           version_number="${version#v}"
           pub_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           repo_url="https://github.com/${{ github.repository }}"
-          
+
           # Extract changelog for release notes - support multiple formats
           notes=""
           if [ -f "CHANGELOG.md" ]; then
@@ -298,14 +298,14 @@ jobs:
               notes=$(awk "/^##? v?${version_number}/,/^##? v?[0-9]/" CHANGELOG.md | tail -n +2 | head -n -1 | head -20)
             fi
           fi
-          
+
           if [ -z "$notes" ]; then
             notes="Release $version - See CHANGELOG.md for full details"
           fi
-          
+
           # Escape the notes for JSON
           notes_json=$(echo "$notes" | jq -Rs .)
-          
+
           # Generate the updater manifest with empty signatures initially
           cat > ./release-assets/latest.json << EOF
           {
@@ -332,17 +332,17 @@ jobs:
             }
           }
           EOF
-          
+
           # Track which signatures were found
           sig_count=0
           missing_sigs=""
-          
+
           # Update signatures if signature files exist
           for sig_file in ./release-assets/*.sig; do
             if [ -f "$sig_file" ]; then
               sig_content=$(cat "$sig_file")
               base_name=$(basename "$sig_file" .sig)
-              
+
               # Update the appropriate platform signature in latest.json
               if [[ "$base_name" == *"x64-setup.exe"* ]] || [[ "$base_name" == *".msi"* ]]; then
                 jq --arg sig "$sig_content" '.platforms["windows-x86_64"].signature = $sig' ./release-assets/latest.json > tmp.json && mv tmp.json ./release-assets/latest.json
@@ -363,7 +363,7 @@ jobs:
               fi
             fi
           done
-          
+
           # Check for missing signatures and warn
           echo ""
           echo "=== Signature Status ==="
@@ -376,7 +376,7 @@ jobs:
           else
             echo "✅ All platform signatures found."
           fi
-          
+
           echo ""
           echo "Generated latest.json:"
           cat ./release-assets/latest.json
@@ -484,4 +484,3 @@ jobs:
           else
             echo "❌ Release failed" >> $GITHUB_STEP_SUMMARY
           fi
-

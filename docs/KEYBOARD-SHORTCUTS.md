@@ -7,7 +7,7 @@ This document provides a comprehensive guide to keyboard shortcuts available in 
 These shortcuts help you quickly navigate between different sections of the application:
 
 | Shortcut | Description |
-|----------|-------------|
+| -------- | ----------- |
 | `Ctrl + D` | Go to Dashboard |
 | `Ctrl + P` | Go to Deployment page |
 | `Ctrl + V` | Go to VPN Management |
@@ -20,7 +20,7 @@ These shortcuts help you quickly navigate between different sections of the appl
 Perform common operations quickly:
 
 | Shortcut | Description |
-|----------|-------------|
+| -------- | ----------- |
 | `Ctrl + R` | Refresh current page |
 | `Ctrl + Shift + E` | Export logs |
 | `Ctrl + Shift + T` | Toggle dark/light mode |
@@ -28,7 +28,7 @@ Perform common operations quickly:
 ## General Shortcuts
 
 | Shortcut | Description |
-|----------|-------------|
+| -------- | ----------- |
 | `Shift + ?` | Show keyboard shortcuts help modal |
 | `Escape` | Close modal or cancel current operation |
 

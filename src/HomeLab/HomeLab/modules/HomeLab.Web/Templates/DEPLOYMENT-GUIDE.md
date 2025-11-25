@@ -84,7 +84,7 @@ Deploy-Website `
 ## Decision Matrix: Static Web Apps vs App Service
 
 | Feature | Static Web Apps | App Service |
-|---------|----------------|-------------|
+| ------- | --------------- | ----------- |
 | Best For | Static sites, SPAs, JAMstack | Dynamic web applications |
 | Examples | React, Vue, Angular, HTML/CSS/JS | Node.js, Python/Django, .NET, PHP |
 | Server-side Processing | ❌ No | ✅ Yes |

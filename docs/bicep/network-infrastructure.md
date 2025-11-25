@@ -66,7 +66,7 @@ The network template also calls child modules to integrate with:
 ## Parameters
 
 | Parameter | Default Value | Description |
-|-----------|---------------|-------------|
+| --------- | ------------- | ----------- |
 | location | southafricanorth | Azure region for resource deployment |
 | env | dev | Environment prefix (dev, test, prod) |
 | loc | saf | Location abbreviation for resource naming |

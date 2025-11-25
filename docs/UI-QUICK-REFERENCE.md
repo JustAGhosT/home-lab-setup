@@ -7,7 +7,7 @@
 When navigating HomeLab menus, you can now use the following shortcuts:
 
 | Shortcut | Action |
-|----------|--------|
+| -------- | ------ |
 | `?` | Show help and navigation guide |
 | `h` | View recent menu history |
 | `/` | Search menu items (when supported) |
