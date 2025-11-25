@@ -332,4 +332,3 @@ jobs:
             echo "Custom URL: ${{ steps.get-url.outputs.custom_url }}"
             echo "Note: It may take some time for DNS changes to propagate."
           fi
-
