@@ -210,7 +210,7 @@ A commercial solution with both free and paid versions.
 ## Comparison with Hardware KVM
 
 | Feature | Software KVM (Synergy/Barrier) | Hardware KVM |
-|---------|--------------------------------|-------------|
+| ------- | ------------------------------ | ------------ |
 | Cost | $0-99 | $30-500+ |
 | Setup Complexity | Moderate | Low |
 | Latency | Low-Moderate (network dependent) | None |

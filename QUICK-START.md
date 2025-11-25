@@ -64,7 +64,7 @@ The system will:
 ## 🌐 Deployment Types
 
 | Type | Best For | Examples |
-|------|----------|----------|
+| ---- | -------- | -------- |
 | **static** | Static sites, SPAs, JAMstack | React, Vue, Angular, Hugo, Jekyll |
 | **appservice** | Dynamic web apps | Node.js/Express, Python/Django, .NET, PHP |
 | **auto** | Let system decide | Any project - analyzes files to determine type |

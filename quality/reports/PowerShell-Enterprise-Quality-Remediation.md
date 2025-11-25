@@ -46,8 +46,8 @@ Based on comprehensive PSScriptAnalyzer analysis, your PowerShell codebase requi
 
 ## 📊 Severity Breakdown
 
-| Category       | Count | Priority   | Impact              |
-| -------------- | ----- | ---------- | ------------------- |
+| Category       | Count | Priority    | Impact              |
+| -------------- | ----- | ----------- | ------------------- |
 | **Security**   | 5     | 🔴 CRITICAL | Production Blocking |
 | **Automation** | 89    | 🔴 CRITICAL | CI/CD Failure       |
 | **Logging**    | 24    | 🟡 HIGH     | Operational Issues  |

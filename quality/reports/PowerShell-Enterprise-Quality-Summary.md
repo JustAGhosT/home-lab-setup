@@ -6,8 +6,8 @@ Based on comprehensive PSScriptAnalyzer analysis showing **276+ quality violatio
 
 ### Immediate Security Threats (Fix TODAY)
 
-| Threat                  | Impact                 | Files Affected | Risk Level |
-| ----------------------- | ---------------------- | -------------- | ---------- |
+| Threat                  | Impact                 | Files Affected | Risk Level  |
+| ----------------------- | ---------------------- | -------------- | ----------- |
 | **Code Injection**      | Remote code execution  | 4 files        | 🔴 CRITICAL |
 | **Credential Exposure** | Security audit failure | 2 files        | 🔴 CRITICAL |
 | **Automation Blocking** | CI/CD pipeline failure | 24 files       | 🔴 CRITICAL |

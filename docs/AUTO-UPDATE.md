@@ -34,7 +34,7 @@ The `latest.json` manifest contains:
 ## Supported Platforms
 
 | Platform | Architecture | Installer Format |
-|----------|--------------|------------------|
+| -------- | ------------ | ---------------- |
 | Windows | x64 | NSIS (.exe), MSI |
 | macOS | x64 (Intel) | DMG, App Bundle |
 | macOS | ARM64 (Apple Silicon) | DMG, App Bundle |

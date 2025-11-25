@@ -65,7 +65,7 @@ The template creates several alert rules for monitoring the environment:
 ## Parameters
 
 | Parameter | Default Value | Description |
-|-----------|---------------|-------------|
+| --------- | ------------- | ----------- |
 | location | southafricanorth | Azure region for resource deployment |
 | env | dev | Environment prefix (dev, test, prod) |
 | loc | saf | Location abbreviation for resource naming |
