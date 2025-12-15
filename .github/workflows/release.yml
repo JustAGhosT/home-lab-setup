@@ -248,34 +248,34 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download PowerShell release artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: release-package
           path: ./release-assets
 
       - name: Download Windows installer
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: tauri-installer-windows
           path: ./release-assets
         continue-on-error: true
 
       - name: Download macOS x64 installer
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: tauri-installer-macos-x86_64-apple-darwin
           path: ./release-assets
         continue-on-error: true
 
       - name: Download macOS ARM installer
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: tauri-installer-macos-aarch64-apple-darwin
           path: ./release-assets
         continue-on-error: true
 
       - name: Download Linux installer
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: tauri-installer-linux
           path: ./release-assets
@@ -428,7 +428,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download release artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: release-package
 
