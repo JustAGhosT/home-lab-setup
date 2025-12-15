@@ -112,7 +112,7 @@ jobs:
         shell: pwsh
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: release-package
           path: HomeLab-*.zip
@@ -208,7 +208,7 @@ jobs:
 
       - name: Upload installer artifacts (Windows)
         if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: tauri-installer-windows
           path: |
@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload installer artifacts (macOS)
         if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: tauri-installer-macos-${{ matrix.target }}
           path: |
@@ -229,7 +229,7 @@ jobs:
 
       - name: Upload installer artifacts (Linux)
         if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: tauri-installer-linux
           path: |
